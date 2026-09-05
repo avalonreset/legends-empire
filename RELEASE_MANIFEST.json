@@ -226,8 +226,8 @@
     {
       "mode": "0644",
       "path": "bin/setup-multi-agent.ps1",
-      "sha256": "fd4601d6ef8a3c6fcba62171ed0872c64c76f4167304616619635c3a4bfc5125",
-      "size": 1073
+      "sha256": "c22fae97bda2eb48f2f7dc9992b8307d2120f5a468dc7df2344e0c60e7121025",
+      "size": 1299
     },
     {
       "mode": "0755",
@@ -414,6 +414,12 @@
       "path": "docs/AGENTS-MATRIX.md",
       "sha256": "fd670aaf89d82458b03ed6ed2b31608562070dce801be7077c2bfb83a9efb949",
       "size": 6045
+    },
+    {
+      "mode": "0644",
+      "path": "docs/RELEASE-VERIFICATION.md",
+      "sha256": "a427905043740abd6c0827af901858784a92aa15fdd8a849c572f885547ca0ef",
+      "size": 3854
     },
     {
       "mode": "0644",
@@ -1186,8 +1192,8 @@
     {
       "mode": "0644",
       "path": "tests/test_setup_multi_agent.py",
-      "sha256": "e1c516e95516e1d72f76d2b97fb7524894508877f6d8a81504c2e5f3e77dac74",
-      "size": 8184
+      "sha256": "284d0176881680392e6a92a774066f68c3135e04f095cef0fc05fc522da5fff5",
+      "size": 9003
     },
     {
       "mode": "0644",
@@ -1271,6 +1277,6 @@
     }
   },
   "schema_version": 1,
-  "source_commit": "b01d6fac2e751c60069ae0494eeded20c8393bff",
-  "source_date_epoch": 1788635143
+  "source_commit": "1928faeb834f6dc72c1cfa35778341d6dbf06581",
+  "source_date_epoch": 1788635545
 }
