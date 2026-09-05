@@ -141,6 +141,18 @@ class SetupMultiAgentTests(unittest.TestCase):
             self.assertEqual([], list(Path(directory).iterdir()))
 
     @unittest.skipUnless(shutil.which('pwsh'), 'PowerShell not installed')
+    def test_powershell_file_accepts_documented_four_host_list(self):
+        with tempfile.TemporaryDirectory() as directory:
+            result = subprocess.run(['pwsh', '-NoProfile', '-File', str(ROOT / 'bin/setup-multi-agent.ps1'),
+                                     '-HomeDirectory', directory, '-Hosts', 'grok,codex,gemini,claude'],
+                                    text=True, capture_output=True)
+            self.assertEqual(0, result.returncode, result.stderr)
+            for host in ('grok', 'codex', 'gemini', 'claude'):
+                self.assertIn(f'PLANNED {host} ', result.stdout)
+            self.assertNotIn('PLANNED opencode', result.stdout)
+            self.assertEqual([], list(Path(directory).iterdir()))
+
+    @unittest.skipUnless(shutil.which('pwsh'), 'PowerShell not installed')
     def test_powershell_entry_point_preserves_exit_codes(self):
         with tempfile.TemporaryDirectory() as directory:
             result = subprocess.run(['pwsh', '-NoProfile', '-File', str(ROOT / 'bin/setup-multi-agent.ps1'),

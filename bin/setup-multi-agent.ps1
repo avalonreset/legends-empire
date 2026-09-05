@@ -10,7 +10,13 @@ param(
 $ErrorActionPreference = 'Stop'
 $installer = Join-Path $PSScriptRoot 'setup_multi_agent.py'
 $installerArgs = @('-B', $installer, "--$Mode", '--scope', $Scope)
-foreach ($targetHost in $Hosts) { $installerArgs += @('--host', $targetHost) }
+# pwsh -File receives comma-separated host names as a single string, while
+# direct script invocation can bind a string array. Support both spellings.
+foreach ($hostGroup in $Hosts) {
+    foreach ($targetHost in ($hostGroup -split ',')) {
+        $installerArgs += @('--host', $targetHost.Trim())
+    }
+}
 if ($Workspace) { $installerArgs += @('--workspace', $Workspace) }
 if ($HomeDirectory) { $installerArgs += @('--home', $HomeDirectory) }
 $pythonCommand = Get-Command python -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
