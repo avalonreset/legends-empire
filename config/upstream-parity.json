@@ -1,0 +1,328 @@
+{
+  "repository": "https://github.com/AgriciDaniel/claude-obsidian",
+  "tag": "v2.1.1",
+  "tag_commit": "9f8c1199047eac2c3828496279fbb7ba9540b90b",
+  "commit": "ad67087cad22ad84cc3288f915588ae42c0c2b44",
+  "checked_at": "2026-09-05",
+  "files": [
+    {
+      "path": "claude_obsidian/__init__.py",
+      "sha256": "fc9eded2259f55c00e36899e2572a876c110e3c0d6b51084d860aabe2d52be24"
+    },
+    {
+      "path": "claude_obsidian/__main__.py",
+      "sha256": "9573278a10fd58f03b8d2480311533fb9d8ceec8e0ec13ce414b811d27c78c04"
+    },
+    {
+      "path": "claude_obsidian/capture.py",
+      "sha256": "9fded207710e1e9b2fb60c6616b0675338b5eeaa1959f4ad972faec3c1ebd891"
+    },
+    {
+      "path": "claude_obsidian/checkpoint.py",
+      "sha256": "9770df91a8c2db82b2be04abecd04c38f6adf3380fd47907b05e42c811bfe9b6"
+    },
+    {
+      "path": "claude_obsidian/cli.py",
+      "sha256": "38703e6db742f1c76ba6f8cce797b8ecf69a7cdf2ff1f9c739df60acab7e973a"
+    },
+    {
+      "path": "claude_obsidian/contracts.py",
+      "sha256": "995baf1ce86fc2b2ad426523bd142ef0853f6a41841dcd0e557c463cc8e9025c"
+    },
+    {
+      "path": "claude_obsidian/extensions.py",
+      "sha256": "846ef977af9d8029fdde3c7024159b3e8c35e3bd6c5fba020173726009bb5ee9"
+    },
+    {
+      "path": "claude_obsidian/gates.py",
+      "sha256": "d36cf301e5c4bbd40e5f225abd9cfa8f2071e59ef918a8a9d119ad4a8932b974"
+    },
+    {
+      "path": "claude_obsidian/hook_adapter.py",
+      "sha256": "ed148a8ff5a9fa36a1ccf80323ab252a8b81d37f3eef89da02478ddf15a40419"
+    },
+    {
+      "path": "claude_obsidian/json_utils.py",
+      "sha256": "31143eebb4e9d22de3159753a368a71ef2a15f3c84177e0507a29885ac1d31f1"
+    },
+    {
+      "path": "claude_obsidian/ledgers.py",
+      "sha256": "9751d56272e2256bde643e7d3effd47f4c875ce02422be09a8dc0a148113f2d1"
+    },
+    {
+      "path": "claude_obsidian/legacy_lock.py",
+      "sha256": "6edd094debd30ac3550974a624e37bc13d1902a355888009778cad812ebe5d18"
+    },
+    {
+      "path": "claude_obsidian/lint_engine.py",
+      "sha256": "775cecd84170774fc3bf2f95a61c8b68df30e870baf863b4ac054b08587b94c3"
+    },
+    {
+      "path": "claude_obsidian/mode_config.py",
+      "sha256": "0dfa01bfcf52e55bcc50f5f7bbc4b2c2cc945f333cb5847b933da9c2a2579cbb"
+    },
+    {
+      "path": "claude_obsidian/package_validation.py",
+      "sha256": "963a54659a961de4e9791dd9abaffa9ede7a9e490a48bccadb5f4122cdd731ef"
+    },
+    {
+      "path": "claude_obsidian/paths.py",
+      "sha256": "970e7ba997d9a7666d99c24562881a3ea677053d77fe8fd3c689fd3b7988bbf6"
+    },
+    {
+      "path": "claude_obsidian/release.py",
+      "sha256": "a99e4f09821caba7ccfd1f4cc564d7270447db47d3d1938f0d725786f1f49f87"
+    },
+    {
+      "path": "claude_obsidian/transaction.py",
+      "sha256": "e007e3b7d08f72eabc4a95c7031fb596c201562432cf37cc649136b02b223de2"
+    },
+    {
+      "path": "claude_obsidian/url_safety.py",
+      "sha256": "d32b74164daa1bc735cc9a96b2cce07a5e3aa08209e4bdd2328dc6b8ef761d6b"
+    },
+    {
+      "path": "claude_obsidian/vault_ops.py",
+      "sha256": "baab23cb2fd4936186108cc6fb47d4c5663b4026978fc56c06810489ba833a57"
+    },
+    {
+      "path": "hooks/hooks.json",
+      "sha256": "e3c3469bfc6f8f0de380a4616f6e0e5733278fac3ad4ed43958cb6055bf855d1"
+    },
+    {
+      "path": "hooks/README.md",
+      "sha256": "ab529c807de8733f92958815c4206aa47eb664f26417eb04eaa274cc8ce3ccf8"
+    },
+    {
+      "path": "scripts/allocate-address.sh",
+      "sha256": "999ffab114d8584bacde49d36c10858a4e86784f84952e3056a150835618f03c"
+    },
+    {
+      "path": "scripts/bm25-index.py",
+      "sha256": "6d9a2d9fc6b9dd08061ed6606b7dbff60715de5e128e987581a722293bb61289"
+    },
+    {
+      "path": "scripts/boundary-score.py",
+      "sha256": "b1537782b93bc1a3dac64e8a097e786abd01b752af173a26acabdc7975edcd3c"
+    },
+    {
+      "path": "scripts/claude-obsidian.py",
+      "sha256": "34f3030da4a0ebc223a5dfba7f7180638d08dffa3d044be33fa72234866900c2"
+    },
+    {
+      "path": "scripts/contextual-prefix.py",
+      "sha256": "df09a434b3f80c9282fc8875caa4d21f69989d02ddf49a596e414017baa052d7"
+    },
+    {
+      "path": "scripts/detect-transport.sh",
+      "sha256": "5cee4d29099701a081d262f90de0c0c68e57b2fbbb058a47527e09a92293e663"
+    },
+    {
+      "path": "scripts/rerank.py",
+      "sha256": "744043d5a3b975237181e3c7273e733b42a3f82774f7f2e3f05ece6a5cc4beaf"
+    },
+    {
+      "path": "scripts/retrieve.py",
+      "sha256": "4ff0584c351239c63da5eb8324ac81279b5d90471629a5a77b4f5f4cfb4251fd"
+    },
+    {
+      "path": "scripts/tiling-check.py",
+      "sha256": "8f184015be341950e989df6f149513a67a844996eefad0e8083ebe33ca57ceec"
+    },
+    {
+      "path": "scripts/wiki-lock.sh",
+      "sha256": "3bfc9bd31dea36e60855877de12fcbd7a20ac79ea229a5d6a4fd1a681f840d02"
+    },
+    {
+      "path": "scripts/wiki-mode.py",
+      "sha256": "f3c990d4ea2a8bec9752ed1474903532eac4a662af7c6e9f16927260596e12a5"
+    },
+    {
+      "path": "skills/autoresearch/references/program.md",
+      "sha256": "d4ac8ac443461723069cad0e4eacf7d303c1bed644bcf76dda24649ec97991c8"
+    },
+    {
+      "path": "skills/autoresearch/SKILL.md",
+      "sha256": "e369ab3e1181ddebd70fd61eeb623edc7eab7d123ea32ff4e6ac75ec315db0ce"
+    },
+    {
+      "path": "skills/canvas/references/canvas-spec.md",
+      "sha256": "de66f7d6473e5d4fecee221f5d52c06e7bf63e6130fe57c6c2446f79ddfbe1d1"
+    },
+    {
+      "path": "skills/canvas/SKILL.md",
+      "sha256": "cc2eea755757765f512b1604dde8444ef0c5836a7ea3baa3df927e13db947ab6"
+    },
+    {
+      "path": "skills/defuddle/SKILL.md",
+      "sha256": "458b6a3fbd2051ce908790983f091e424af09ee680adf6b72495be4a40318c7a"
+    },
+    {
+      "path": "skills/obsidian-bases/SKILL.md",
+      "sha256": "58828855d8b4f58c6d0dbe8ec56c1675e44464f92ca414f902744cbd8221b878"
+    },
+    {
+      "path": "skills/obsidian-markdown/SKILL.md",
+      "sha256": "b56603d91740117460ecc3bbf30f7ce1e83ae184e4af5be955e8b1a7b04fb63c"
+    },
+    {
+      "path": "skills/save/SKILL.md",
+      "sha256": "b98a175ed02f00f73c19fe386379f3a45d2d7c86e1936d47bc8d981c1171be4c"
+    },
+    {
+      "path": "skills/think/SKILL.md",
+      "sha256": "3a50f23f31b6aca41fae5d76017dace73191bbdde0cfb4c9515d069a9005644a"
+    },
+    {
+      "path": "skills/wiki-cli/SKILL.md",
+      "sha256": "2885621fc55c1edd0954f86089f2258618ac38c92f329cae19cfdca8334145ec"
+    },
+    {
+      "path": "skills/wiki-fold/references/fold-template.md",
+      "sha256": "9542a4a5c9b34f54458d01ac542039e2d893da03dbac061ff99f06d2b13b1111"
+    },
+    {
+      "path": "skills/wiki-fold/SKILL.md",
+      "sha256": "a887e48737eab42303e584085cbcb18a679af8a0181c84d2c4035345d66080cb"
+    },
+    {
+      "path": "skills/wiki-ingest/SKILL.md",
+      "sha256": "3fb3bc9b9b6dafe988cd71883fced9820af60f8ca8ba1278d6d74a15b0e8bffa"
+    },
+    {
+      "path": "skills/wiki-lint/SKILL.md",
+      "sha256": "e268098bb634c979cb288a560e230d4d4bab776b42320551157c21b7edf61f9c"
+    },
+    {
+      "path": "skills/wiki-mode/SKILL.md",
+      "sha256": "13800d7af8548db487475f5a7249a620febb584d0b9ce39338bc91756d70ae1d"
+    },
+    {
+      "path": "skills/wiki-mode/templates/lyt/atomic-template.md",
+      "sha256": "015b912ff18a2f7c7cf00aaaf72894a2c36c1d44130b9201501491c364d55d40"
+    },
+    {
+      "path": "skills/wiki-mode/templates/lyt/moc-template.md",
+      "sha256": "a282349f22a11b04e42a23740ed8044c6027ea2c9b39feea0a0b880eab103029"
+    },
+    {
+      "path": "skills/wiki-mode/templates/para/area-template.md",
+      "sha256": "358f21f12d094fff96eb630094879ea9e66d7394e72a7db6abb15c6c9ae4f2ad"
+    },
+    {
+      "path": "skills/wiki-mode/templates/para/project-template.md",
+      "sha256": "82b92d9b91db4295e0f69710f8641e7d69af6654e561210b425b1c7d504a0cb5"
+    },
+    {
+      "path": "skills/wiki-mode/templates/para/resource-template.md",
+      "sha256": "07ac35a2247032da7fd1b82af1e0489b158d9924af23e7c8f4f51736e78a2f9f"
+    },
+    {
+      "path": "skills/wiki-mode/templates/zettel/atomic-template.md",
+      "sha256": "3d59bbba5940a3ab7f0a58234a43426268c11c2f1abfa8b707147b46a2a01547"
+    },
+    {
+      "path": "skills/wiki-query/SKILL.md",
+      "sha256": "21f6c4f2e9dbcf583c4867765c1b3b19c8849e0815197fc6b7e49c2fea17b892"
+    },
+    {
+      "path": "skills/wiki-retrieve/SKILL.md",
+      "sha256": "1e7735d493e9f9943e079cfec0d28d8db76821b1f50e0f569dea8e115a8b67b6"
+    },
+    {
+      "path": "skills/wiki/references/css-snippets.md",
+      "sha256": "1b493d6b601a2ebc8ace6db75acfa84663ecfb8633f2a1b93da874793615f625"
+    },
+    {
+      "path": "skills/wiki/references/frontmatter.md",
+      "sha256": "8c2adb0feeaddfe13d6fcc05ba0daa477ca129eade00f24d7c63d96dc9765eaf"
+    },
+    {
+      "path": "skills/wiki/references/git-setup.md",
+      "sha256": "932c92d490ac7f998065d9188d47b571578cb8ba60258cf5e401602cc77c0714"
+    },
+    {
+      "path": "skills/wiki/references/install-modes.md",
+      "sha256": "1ae30c16ed0d205a70b10926a1c11667cc690a223a170478e63b4f047266f69f"
+    },
+    {
+      "path": "skills/wiki/references/mcp-setup.md",
+      "sha256": "56353117c309c6d7ea65128a66885d29a3a34c96b2c974c9f4e8785b255a718a"
+    },
+    {
+      "path": "skills/wiki/references/modes.md",
+      "sha256": "affecc6cc55d8344593d846ef94a72baec4faacdb654c0d31721176779926eca"
+    },
+    {
+      "path": "skills/wiki/references/operation-transactions.md",
+      "sha256": "75a6c01950983c6210647ee11104f3be0c389fd7f81458d9d0f06306401a8f83"
+    },
+    {
+      "path": "skills/wiki/references/plugins.md",
+      "sha256": "696f9d3a44c76e4817e0b8698f0d7e8def098cabcb4086f067696d3288c05dc4"
+    },
+    {
+      "path": "skills/wiki/references/provenance.md",
+      "sha256": "8c773a95a36bd23f6482c4595c70b8ba9679122c9e48986d26955bfdc176c418"
+    },
+    {
+      "path": "skills/wiki/references/rest-api.md",
+      "sha256": "79179ede8e8b8279ac0ec9982c616b86b548428edf14175e86c0dd02e5932ffb"
+    },
+    {
+      "path": "skills/wiki/SKILL.md",
+      "sha256": "965568b92479236bb48eed617901f2d786405384a0f328f22454960e058c3492"
+    },
+    {
+      "path": "templates/vault/.gitignore",
+      "sha256": "0d62dd96ce7a511d2f0154b6373b7a0bfc74b7985c2342af9357751b9fba42dd"
+    },
+    {
+      "path": "templates/vault/.obsidian/app.json",
+      "sha256": "b8c736f8900e4d28ead438125440572f32f5a475dd094ba7155b0879dc253c4b"
+    },
+    {
+      "path": "templates/vault/.obsidian/appearance.json",
+      "sha256": "d0bd766999b3bb8d45bdb5997916d82c51123c295599ff6a5db39ba40618bd7a"
+    },
+    {
+      "path": "templates/vault/.obsidian/graph.json",
+      "sha256": "574d00b8e5c2e16724678023c50a85e727af9067839f8612c55958e525f90c99"
+    },
+    {
+      "path": "templates/vault/.obsidian/snippets/vault-colors.css",
+      "sha256": "908fd97fabd94e989cc979605bb7b17b4da33c409e4846fd701780aea53107fd"
+    },
+    {
+      "path": "templates/vault/.raw/.manifest.json",
+      "sha256": "3061feca9f7973930654de66ebf3bb0959e23783f0129ce899634c91e2c050fb"
+    },
+    {
+      "path": "templates/vault/inbox/.gitkeep",
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+    },
+    {
+      "path": "templates/vault/wiki/hot.md",
+      "sha256": "111cfcce3e5f72d9475cf675528112741703ee82d7f8508ec520f38f5ea2378d"
+    },
+    {
+      "path": "templates/vault/wiki/index.md",
+      "sha256": "cf768cf5e8af8118c2e3b4ab1ec3e8466b6c4a12a8800ec8bc5649f45ef634b6"
+    },
+    {
+      "path": "templates/vault/wiki/log.md",
+      "sha256": "1f8415ce27cf5320306aebe19eba0810503270187841d2b287a802d80eb429e6"
+    },
+    {
+      "path": "templates/vault/wiki/overview.md",
+      "sha256": "f6d4c76ec687b0124397280089d004226c530a127f33de31c77feb1d2c784b23"
+    }
+  ],
+  "reviewed_patches": {
+    "claude_obsidian/release.py": {
+      "upstream_sha256": "a99e4f09821caba7ccfd1f4cc564d7270447db47d3d1938f0d725786f1f49f87",
+      "distribution_sha256": "434f2353bc15021aa013e3ea9bb88d34255b5dc9e64fb8b88b67506ae03fb9f9",
+      "reason": "Open ZIP audit descriptors with O_BINARY on Windows; prevents CRLF translation and Ctrl-Z truncation. Covered by tests/test_release_binary_io.py."
+    }
+  }
+}

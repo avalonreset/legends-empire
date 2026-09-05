@@ -1,0 +1,32 @@
+---
+description: Portable rules for the claude-obsidian product and user vault workflows.
+globs:
+  - "skills/**/SKILL.md"
+  - "claude_obsidian/**/*.py"
+  - "wiki/**/*.md"
+  - ".raw/**/*"
+alwaysApply: true
+---
+
+# claude-obsidian
+
+Read `AGENTS.md` as the canonical contract. This repository is product source;
+mutable knowledge belongs in a separately resolved user vault.
+
+- Discover workflows from `skills/<name>/SKILL.md`.
+- Resolve vaults explicitly; never use the plugin/product directory by default.
+- Read a selected vault's bounded `wiki/hot.md` at session start when present.
+- Treat raw source payloads as create-only.
+- Have parallel workers draft; apply one recoverable operation transaction.
+- Keep queries and lint read-only. Put persistence or repair in a separate
+  reviewed operation.
+- Require consent for network egress, destructive changes, and Git checkpoints.
+
+Preview and then install workspace-local skill links with:
+
+```bash
+bash bin/setup-multi-agent.sh --host cursor --workspace "$PWD"
+bash bin/setup-multi-agent.sh --host cursor --workspace "$PWD" --apply
+```
+
+Public canonical: https://github.com/AgriciDaniel/claude-obsidian

@@ -1,0 +1,28 @@
+{
+  "name": "legends-obsidian",
+  "version": "2.1.1",
+  "description": "Provider-neutral distribution of Daniel Agrici's claude-obsidian for Grok, Codex, Gemini CLI, Claude Code, and compatible Agent Skills hosts. Source-cited Obsidian knowledge, recoverable transactions, retrieval, and vault maintenance.",
+  "author": {
+    "name": "AgriciDaniel",
+    "url": "https://github.com/AgriciDaniel"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/avalonreset/legends-obsidian",
+  "repository": "https://github.com/avalonreset/legends-obsidian",
+  "keywords": [
+    "obsidian",
+    "knowledge-base",
+    "wiki",
+    "memory",
+    "notetaker",
+    "second-brain",
+    "vault",
+    "markdown",
+    "cross-project",
+    "llm-wiki",
+    "karpathy",
+    "pkm",
+    "canvas",
+    "visual"
+  ]
+}

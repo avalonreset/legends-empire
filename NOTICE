@@ -1,0 +1,17 @@
+Legends Obsidian is a provider-neutral distribution of claude-obsidian,
+created by Daniel Agrici (AgriciDaniel / AI Marketing Hub).
+
+Original project: https://github.com/AgriciDaniel/claude-obsidian
+Original author: https://github.com/AgriciDaniel
+License: MIT. The original copyright and license are preserved in LICENSE.
+
+Upstream foundation: v2.1.1 plus public main commit
+ad67087cad22ad84cc3288f915588ae42c0c2b44 (2026-08-26).
+
+Legends distribution maintenance: Benjamin Samar / avalonreset.
+Changes focus on provider-neutral product naming, host installation,
+distribution documentation, and release verification. This distribution
+does not imply endorsement by Daniel Agrici or any agent provider.
+
+See ATTRIBUTION.md for upstream contributors and third-party acknowledgments,
+and docs/UPSTREAM.md for the exact provenance and parity boundary.

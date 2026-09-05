@@ -1,0 +1,22 @@
+{
+  "description": "Legends Obsidian, based on Daniel Agrici's MIT-licensed claude-obsidian",
+  "name": "avalonreset-legends-obsidian",
+  "owner": {
+    "name": "avalonreset"
+  },
+  "plugins": [
+    {
+      "author": {
+        "name": "AgriciDaniel",
+        "url": "https://github.com/AgriciDaniel"
+      },
+      "description": "Provider-neutral distribution of Daniel Agrici's claude-obsidian for Grok, Codex, Gemini CLI, Claude Code, and compatible Agent Skills hosts. Source-cited Obsidian knowledge, recoverable transactions, retrieval, and vault maintenance.",
+      "homepage": "https://github.com/avalonreset/legends-obsidian",
+      "license": "MIT",
+      "name": "legends-obsidian",
+      "repository": "https://github.com/avalonreset/legends-obsidian",
+      "source": "./"
+    }
+  ],
+  "version": "2.1.1"
+}

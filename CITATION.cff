@@ -1,0 +1,27 @@
+cff-version: 1.2.0
+title: Legends Obsidian
+message: >-
+  Please credit Daniel Agrici's claude-obsidian, the upstream knowledge system,
+  and this provider-neutral Legends distribution when using this software.
+type: software
+authors:
+  - alias: AgriciDaniel
+  - name: Benjamin Samar
+    alias: avalonreset
+repository-code: 'https://github.com/avalonreset/legends-obsidian'
+url: 'https://github.com/avalonreset/legends-obsidian'
+license: MIT
+version: 2.1.1
+date-released: '2026-09-05'
+references:
+  - type: software
+    title: claude-obsidian
+    authors:
+      - alias: AgriciDaniel
+    repository-code: 'https://github.com/AgriciDaniel/claude-obsidian'
+    version: 2.1.1
+keywords:
+  - obsidian
+  - agent-skills
+  - knowledge-management
+  - second-brain
