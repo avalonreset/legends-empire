@@ -110,7 +110,7 @@ class SetupMultiAgentTests(unittest.TestCase):
             installer.create_link(outside, destination)
             result = self.invoke(base, '--apply', '--host', 'grok')
             self.assertEqual(2, result.returncode)
-            self.assertEqual(outside, destination.resolve())
+            self.assertEqual(outside.resolve(), destination.resolve())
             self.assertFalse((destination.parent / 'save').exists())
 
     def test_bad_arguments_do_not_write(self):
