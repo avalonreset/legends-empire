@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+title: legends-obsidian
+message: >-
+  If you use this software, please cite it using the metadata from this file.
+type: software
+authors:
+  - alias: AgriciDaniel
+repository-code: 'https://github.com/avalonreset/legends-obsidian'
+url: 'https://github.com/avalonreset/legends-obsidian'
+license: MIT
+version: 2.3.0
+date-released: '2026-09-15'
+keywords:
+  - obsidian
+  - claude-code
+  - knowledge-management
+  - second-brain
+  - pkm
+  - llm-wiki
+  - rag

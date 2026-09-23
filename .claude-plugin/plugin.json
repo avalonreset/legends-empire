@@ -1,0 +1,28 @@
+{
+  "name": "legends-obsidian",
+  "version": "2.3.0",
+  "description": "Legends Obsidian \u2014 local-first Agent Skills package for source-cited Obsidian knowledge bases. Capability 2.3.0 house cut of AgriciDaniel/claude-obsidian. Provides explicit vault initialization and adoption, recoverable operation transactions, deterministic lint and retrieval, provenance ledgers, offline-first capture foundations, and optional methodology modes.",
+  "author": {
+    "name": "Avalon Reset / AgriciDaniel",
+    "url": "https://github.com/AgriciDaniel/claude-obsidian"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/avalonreset/legends-obsidian",
+  "repository": "https://github.com/avalonreset/legends-obsidian",
+  "keywords": [
+    "obsidian",
+    "knowledge-base",
+    "wiki",
+    "memory",
+    "notetaker",
+    "second-brain",
+    "vault",
+    "markdown",
+    "cross-project",
+    "llm-wiki",
+    "karpathy",
+    "pkm",
+    "canvas",
+    "visual"
+  ]
+}
