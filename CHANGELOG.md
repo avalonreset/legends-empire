@@ -36,7 +36,7 @@ House speech cut of upstream `AgriciDaniel/claude-obsidian` **v2.2.0**
   for Grok, Codex, and Claude per-skill junctions.
 - Unix installer `--host grok` plus Codex dual-write into `~/.codex/skills`
   and `~/.agents/skills`.
-- `--all-vault` retrieval over Empire's canonical Markdown spine (areas,
+- `--all-vault` retrieval over the selected vault's canonical Markdown spine (areas,
   decisions, fleet, inbox, meta, people, projects, sops, wiki, root entry
   notes). Excludes `inbox/assets/` and `meta/history/`.
 
@@ -45,14 +45,12 @@ House speech cut of upstream `AgriciDaniel/claude-obsidian` **v2.2.0**
 - Plugin name `claude-obsidian` → `legends-obsidian`. Capability version stays
   `2.2.0`. Internal Python package remains `claude_obsidian`.
 - Setup bash scripts follow upstream: `scripts/setup-*.sh` (not `bin/`).
-- Product checkout is tooling. Life vault on this machine is `E:\empire`.
+- Product checkout is tooling, separate from the explicitly selected vault.
 
-### Known house residual
+### Platform boundary
 
-- Native Windows still refuses `claude-obsidian.py` mutation (`UNSUPPORTED_PLATFORM`).
-  Daily Empire writes stay on host Write tools. WSL is required for transaction apply.
-- Uncommitted 2.1.1 Windows path-based mutation lock was saved aside and not
-  merged into 2.2.0 in this cut (`E:\empire\tmp\claude-obsidian-v2.2.0\house-uncommitted-2.1.1.patch`).
+Native Windows supports inspection and dry runs. Transaction apply requires
+WSL or a supported POSIX host; do not bypass the transaction protocol.
 
 ## [2.2.0] - 2026-09-10
 

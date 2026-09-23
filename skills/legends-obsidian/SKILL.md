@@ -50,7 +50,7 @@ Load sibling skill `wiki` as orchestrator, then:
 ## Installation and execution
 
 Read `../../docs/install-guide.md`. On POSIX hosts, run
-`bash scripts/setup-multi-agent.sh --dry-run --host codex` from the extracted
+`bash "$PRODUCT_ROOT/scripts/setup-multi-agent.sh" --dry-run --host codex` from the extracted
 product directory; review before `--apply`. The CLI is
 `python "$PRODUCT_ROOT/scripts/claude-obsidian.py" --help`, with PRODUCT_ROOT resolved from this installed skill.
 
