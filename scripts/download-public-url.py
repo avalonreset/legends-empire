@@ -9,6 +9,8 @@ import os
 from pathlib import Path
 import socket
 import sys
+
+sys.dont_write_bytecode = True
 import urllib.request
 from urllib.parse import urlparse
 
