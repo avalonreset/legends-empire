@@ -25,8 +25,8 @@ every finding category.
 Link resolution is gitignore-aware: when a wikilink resolves to multiple
 candidates and at least one is not gitignored, gitignored candidates (for
 example build artifacts shadowing a page's name) are dropped before ambiguity
-is reported. Only ``.gitignore`` files inside the vault root are consulted —
-never ``.git/info/exclude``, global excludes, or a ``git`` subprocess — so
+is reported. Only ``.gitignore`` files inside the vault root are consulted;
+``.git/info/exclude``, global excludes, and ``git`` subprocesses are excluded, so
 reports stay deterministic and process-free.
 
 This module never creates directories or files. Even its command-line entry

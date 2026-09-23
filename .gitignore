@@ -1,5 +1,5 @@
 # Obsidian
-# workspace.json is intentionally tracked — ships with pre-configured graph view
+# workspace.json is intentionally tracked: ships with pre-configured graph view
 # .obsidian/workspace.json
 .obsidian/workspace-mobile.json
 .obsidian/workspace-visual.json
@@ -10,7 +10,7 @@
 # Excalidraw runtime bundle is user-installed through Obsidian, never by setup
 .obsidian/plugins/obsidian-excalidraw-plugin/main.js
 
-# Large binary assets — add your own images to _attachments/images/
+# Large binary assets: add your own images to _attachments/images/
 # Uncomment the line below to exclude images from git (recommended for large vaults)
 # _attachments/images/
 .smart-connections/
@@ -77,7 +77,7 @@ Demo Images.canvas
 *.mov
 *.avi
 
-# Transcripts (copyright — do not commit)
+# Transcripts (copyright: do not commit)
 *Trascipt*.txt
 *Transcript*.txt
 
@@ -94,7 +94,7 @@ Excalidraw/
 Claude SEO*.gif
 Claude SEO*.png
 
-# Private Skool Hub assets — not for public repos
+# Private Skool Hub assets: not for public repos
 _attachments/images/skool-hub/
 
 # Archive of old versions (cosmic-brain, GIF assets)

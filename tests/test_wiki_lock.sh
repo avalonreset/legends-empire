@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# test_wiki_lock.sh — unit tests for scripts/wiki-lock.sh.
+# test_wiki_lock.sh: unit tests for scripts/wiki-lock.sh.
 #
 # Hermetic: creates a throwaway vault under mktemp, no network, no external
 # deps beyond bash + standard POSIX utilities. Covers:
@@ -113,7 +113,7 @@ wl release wiki/concepts/Foo.md
 # Acquire with a 1-second stale window, sleep 2s, second acquire should succeed
 wl --stale-after-sec 1 acquire wiki/concepts/Aged.md >/dev/null 2>&1 || \
   bash "$LOCK_SH" acquire --stale-after-sec 1 wiki/concepts/Aged.md >/dev/null 2>&1
-# (flag order tolerance) — make sure the lock exists
+# (flag order tolerance): make sure the lock exists
 PEEK_AGED=$(wl peek wiki/concepts/Aged.md)
 case "$PEEK_AGED" in
   *Aged.md*) : ;;

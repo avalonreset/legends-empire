@@ -9,15 +9,15 @@ exists, and how to unstick WSL when it misbehaves.
 | Capability | WSL / Linux / macOS | Native Windows (incl. Git Bash) |
 |---|---|---|
 | Inspection, dry-run previews, retrieval | Yes | Yes |
-| Vault writes (`transaction apply`, `init`, `adopt`, `migrate`, `capture apply`, `mode set`) | Yes | No — refused with `UNSUPPORTED_PLATFORM` |
-| Capture queue commands (including read-only `capture queue list`) | Yes | No — currently refused; tracked in [#151](https://github.com/AgriciDaniel/claude-obsidian/issues/151) |
+| Vault writes (`transaction apply`, `init`, `adopt`, `migrate`, `capture apply`, `mode set`) | Yes | No: refused with `UNSUPPORTED_PLATFORM` |
+| Capture queue commands (including read-only `capture queue list`) | Yes | No: currently refused; tracked in [#151](https://github.com/AgriciDaniel/claude-obsidian/issues/151) |
 | Git checkpoints (`checkpoint`) | Linux and macOS only | No |
 | Bash setup scripts and shell test suites | Yes | No (POSIX-only) |
 | Claude Code hooks (`SessionStart`, `Stop`) | Yes (works out of the box) | Partial: requires `python3` on `PATH`; see [below](#claude-code-hooks-and-python3-on-windows) |
 
 Vaults must live on a filesystem with stable file identity: NTFS is fine, but
 FAT/exFAT volumes (typical USB sticks) and some network shares are refused with
-`UNSAFE_VAULT_IDENTITY` — move the vault to NTFS or work inside WSL.
+`UNSAFE_VAULT_IDENTITY`: move the vault to NTFS or work inside WSL.
 
 ## Claude Code hooks and python3 on Windows
 
@@ -55,8 +55,8 @@ write (see the [compound vault guide](compound-vault-guide.md)). Native Windows
 cannot provide those primitives, so writes are refused up front rather than
 silently running with weaker guarantees.
 
-A degraded native-Windows write mode — default-off, behind an explicit
-reduced-guarantees flag — is under consideration in
+A degraded native-Windows write mode (default-off, behind an explicit
+reduced-guarantees flag) is under consideration in
 [#151](https://github.com/AgriciDaniel/claude-obsidian/issues/151). If WSL is a
 blocker for you, that issue is the place to weigh in.
 

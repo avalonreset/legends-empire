@@ -17,7 +17,7 @@ tags:
 
 ## Key content
 
-(The actual reference material — quotes, summaries, links, structured information.)
+(The actual reference material: quotes, summaries, links, structured information.)
 
 ## Sources
 

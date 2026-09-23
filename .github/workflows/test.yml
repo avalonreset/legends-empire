@@ -50,7 +50,7 @@ jobs:
           test -z "$(git status --porcelain=v1 --untracked-files=all)"
 
   windows-smoke:
-    # The full suite exercises dirfd confinement, symlinks, fcntl, and bash —
+    # The full suite exercises dirfd confinement, symlinks, fcntl, and Bash.
     # deliberately unsupported on native Windows.  This job runs the portable
     # surface (schema/package/contract validation plus the Windows
     # compatibility suite) as an explicit allowlist so a skip can never be

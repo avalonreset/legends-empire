@@ -6,7 +6,7 @@
 
 <p align="center">
   <strong>Build an Obsidian knowledge base that becomes more useful every time you use it.</strong><br>
-  Capture sources, create connected notes, retrieve grounded answers, and keep the vault healthy—without giving up ownership of your files.
+  Capture sources, create connected notes, retrieve grounded answers, and keep the vault healthy without giving up ownership of your files.
 </p>
 
 <p align="center">
@@ -143,13 +143,17 @@ Then place a source in `inbox/` and invoke
 `/legends-obsidian:wiki-ingest`. Save an answer explicitly with
 `/legends-obsidian:save`; ask the vault with `/legends-obsidian:wiki-query`.
 
-For Codex, OpenCode, Gemini, or ZCode, preview and then apply the portable
+For Codex, Gemini, Claude, Grok, OpenCode or ZCode, preview and then apply the portable
 skill links from the product checkout:
 
 ```bash
 bash scripts/setup-multi-agent.sh --host codex
 bash scripts/setup-multi-agent.sh --host codex --apply
 ```
+
+Grok, Codex, Gemini, Claude, Cursor and MetaMuse share the canonical workflow.
+MetaMuse has an explicit manual file-based fallback; its native discovery is
+unverified. Configuration tests are not live model certification.
 
 Cursor and Windsurf use workspace-local skill discovery. Marketplace setup,
 every supported host, vault adoption, upgrades, and uninstall steps are covered
@@ -165,7 +169,7 @@ the same evidence, vault-selection, and mutation rules.
 | Skill | What it does |
 |---|---|
 | `wiki` | Initializes or adopts a vault, diagnoses readiness, and routes work |
-| `save` | Saves one scoped answer or insight—never an automatic transcript |
+| `save` | Saves one scoped answer or insight, never an automatic transcript |
 | `wiki-ingest` | Turns captured sources into linked pages and provenance records |
 | `wiki-query` | Answers read-only from relevant vault evidence |
 | `wiki-lint` | Reports dead links, orphans, metadata gaps, stale indexes, and empty sections |

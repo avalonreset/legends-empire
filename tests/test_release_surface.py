@@ -12,6 +12,17 @@ class PublicSurfaceTests(unittest.TestCase):
         self.assertEqual(plugin["name"], manifest["plugins"][0]["name"])
         self.assertEqual("https://github.com/avalonreset/legends-obsidian", plugin["repository"])
 
+    def test_public_writing_style_and_six_host_contract(self):
+        router = (ROOT / "skills/legends-obsidian/SKILL.md").read_text(encoding="utf-8")
+        self.assertIn("Do not use em dashes", router)
+        for relative in ("README.md", "docs/AGENTS-MATRIX.md"):
+            text = (ROOT / relative).read_text(encoding="utf-8")
+            for host in ("Grok", "Codex", "Gemini", "Claude", "Cursor", "MetaMuse"):
+                self.assertIn(host, text, (relative, host))
+        for directory in ("skills", "docs", "agents", "templates"):
+            for path in (ROOT / directory).rglob("*.md"):
+                self.assertNotIn(chr(0x2014), path.read_text(encoding="utf-8"), str(path))
+
     def test_required_knowledge_contracts_exist(self):
         for relative in ("WIKI.md", "agents/wiki-ingest.md", "agents/wiki-lint.md",
                          "docs/RESEARCH-EVIDENCE-HANDOFF.md"):

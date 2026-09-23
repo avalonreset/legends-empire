@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test_wiki_mode.py — hermetic tests for scripts/wiki-mode.py.
+"""test_wiki_mode.py: hermetic tests for scripts/wiki-mode.py.
 
 Covers config load/save round-trip, all 4 modes' routing, slugification, ID
 minting, and the default-to-generic fallback when .vault-meta/mode.json is
@@ -611,8 +611,8 @@ def test_cli_templates_lists_six():
 def test_routable_types_are_derived_not_restated():
     """Regression: VALID_TYPES was a fifth hand-maintained copy of the vocabulary.
 
-    Four sources declared `type` differently — WIKI.md, the frontmatter reference,
-    the save skill, and this router — with a union of twelve values and an
+    Four sources declared `type` differently: WIKI.md, the frontmatter reference,
+    the save skill, and this router: with a union of twelve values and an
     intersection of two. The router must now read the one declaration.
     """
     from claude_obsidian.page_schema import LEGACY_TYPE_ALIASES, ROUTABLE_TYPES
@@ -626,7 +626,7 @@ def test_routable_types_are_derived_not_restated():
 
 def test_question_is_routable_in_every_mode():
     """Regression: `question` is documented in WIKI.md and the root layout ships
-    wiki/questions/, yet the router rejected it — so the save skill's own default
+    wiki/questions/, yet the router rejected it: so the save skill's own default
     note kind had no filing destination."""
     cfg = wm.default_config()
     for mode in ("generic", "lyt", "para", "zettelkasten"):
@@ -698,7 +698,7 @@ def test_routable_types_cannot_escape_the_page_vocabulary():
     """Regression the first version of this module shipped: PAGE_TYPES and
     ROUTABLE_TYPES were two hand-written tuples with nothing tying them together,
     so a routable type that was not a valid page type would have been cleared by
-    `route_rejection` while the frontmatter vocabulary rejected it — the exact
+    `route_rejection` while the frontmatter vocabulary rejected it: the exact
     two-copies-drift this module exists to end, reintroduced one level up.
 
     ROUTABLE_TYPES is now subtraction, so ⊆ holds structurally. This covers the
@@ -741,7 +741,7 @@ def test_legacy_mode_json_on_disk_routes_through_both_callers():
     """Regression: `questions_folder` is a folder key added after release, so no
     existing `mode.json` contains it. Both callers own a separate default document
     and merge the on-disk file onto it, so this must be exercised on the REAL path
-    — through a file on disk — not by deleting a key from an in-memory default,
+   : through a file on disk: not by deleting a key from an in-memory default,
     which is a state neither caller can reach.
     """
     with tempfile.TemporaryDirectory() as directory:
@@ -790,7 +790,7 @@ def _documented_page_types() -> list[str]:
     whole-file substring search is not a check: the first version of this test
     asked whether ``f"`{page_type}`"`` appeared anywhere in WIKI.md, and the same
     commit added a paragraph naming five of the types in prose. Deleting the
-    entire table would have left it green — it was satisfied by its own PR's
+    entire table would have left it green: it was satisfied by its own PR's
     wording rather than by the documentation it claimed to verify.
     """
     lines = (ROOT / "WIKI.md").read_text(encoding="utf-8").splitlines()
@@ -814,7 +814,7 @@ def test_page_vocabulary_matches_the_documented_table():
     One declaration only pays off if the doc and the module cannot disagree. The
     previous assertion covered one direction (every module type is mentioned
     somewhere) and would not have noticed WIKI.md documenting a tenth type the
-    code rejects — which is the very defect this PR was opened to fix, in the
+    code rejects: which is the very defect this PR was opened to fix, in the
     other direction.
     """
     from claude_obsidian.page_schema import PAGE_TYPES

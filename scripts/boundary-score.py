@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""boundary-score.py — DragonScale Mechanism 4: boundary-first autoresearch scorer.
+"""boundary-score.py: DragonScale Mechanism 4: boundary-first autoresearch scorer.
 
 Reads `wiki/**/*.md`, builds a wikilink graph, and emits per-page boundary
 scores to stdout (text) or as JSON for tooling.
@@ -178,7 +178,7 @@ def extract_wikilinks(body: str) -> set[str]:
     Fence handling: backtick AND tilde fences, with length tracking per
     CommonMark: the opening run sets (char, min_len); the closing line
     must use the SAME char with a run of SAME-OR-LONGER length. Indented
-    code blocks (4+ spaces) are intentionally NOT filtered — indented
+    code blocks (4+ spaces) are intentionally NOT filtered: indented
     bullets in Obsidian often contain wikilinks.
     """
     cleaned: list[str] = []

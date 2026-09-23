@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""rerank.py — query-time reranker for chunk candidates.
+"""rerank.py: query-time reranker for chunk candidates.
 
 Takes a query string + a list of candidate chunks (from BM25, vector, or any
 upstream stage) and reorders them using semantic similarity.
@@ -35,11 +35,11 @@ Candidates JSON shape:
 Output: ranked candidates with `rerank_score` added.
 
 Exit codes:
-  0 — success
-  2 — usage error
-  3 — candidate input malformed
-  10 — ollama unreachable (no-op rerank performed, exit 0 with note)
-  11 — model not pulled (no-op rerank performed, exit 0 with note)
+  0: success
+  2: usage error
+  3: candidate input malformed
+  10: ollama unreachable (no-op rerank performed, exit 0 with note)
+  11: model not pulled (no-op rerank performed, exit 0 with note)
 """
 
 import argparse
@@ -288,7 +288,7 @@ def ollama_url(allow_remote):
         host = parsed.hostname or ""
         if host not in ("127.0.0.1", "localhost", "::1"):
             log(f"ERR: OLLAMA_URL={url} points off-localhost (host={host!r}).")
-            log("  Either: (a) run ollama locally — `systemctl --user start ollama` or `ollama serve`")
+            log("  Either: (a) run ollama locally: `systemctl --user start ollama` or `ollama serve`")
             log("  Or:     (b) pass --allow-remote-ollama through retrieve.py, which forwards it here.")
             log("  Or:     (c) unset OLLAMA_URL to fall back to the local default (127.0.0.1:11434).")
             sys.exit(EXIT_USAGE)
@@ -405,12 +405,12 @@ def rerank(query, candidates, top_k=5, allow_remote=False, model=None):
     url = ollama_url(allow_remote)
     alive, models = ollama_alive(url)
     if not alive:
-        log("ollama unreachable — no-op rerank")
+        log("ollama unreachable: no-op rerank")
         mark_noop(candidates, "noop-no-ollama")
         return candidates[:top_k]
     if not model_is_available(selected_model, models):
         log(
-            f"model {selected_model} not pulled — no-op rerank; "
+            f"model {selected_model} not pulled: no-op rerank; "
             f"install explicitly with: ollama pull {selected_model}"
         )
         mark_noop(candidates, "noop-no-model")
@@ -434,7 +434,7 @@ def rerank(query, candidates, top_k=5, allow_remote=False, model=None):
     for c in candidates:
         chunk = load_chunk(c.get("path", ""))
         if not chunk:
-            log(f"chunk missing for {c.get('chunk_id')} — no-op rerank")
+            log(f"chunk missing for {c.get('chunk_id')}: no-op rerank")
             mark_noop(candidates, "noop-missing-chunk")
             return candidates[:top_k]
         text = chunk.get("contextualized_text") or chunk.get("raw_text", "")

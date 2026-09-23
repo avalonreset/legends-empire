@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""wiki-mode.py — read + route helper for v1.8 methodology modes.
+"""wiki-mode.py: read + route helper for v1.8 methodology modes.
 
 Single source of truth for "which mode is this vault in" and "where should
 new content of type X be filed under mode Y." Consumed by:
@@ -22,11 +22,11 @@ CLI:
   wiki-mode.py templates                # list per-mode template files
 
 Exit codes:
-  0 — success
-  2 — usage error
-  3 — invalid mode string
-  4 — invalid content type
-  5 — existing mode configuration is invalid
+  0: success
+  2: usage error
+  3: invalid mode string
+  4: invalid content type
+  5: existing mode configuration is invalid
 """
 
 import argparse
@@ -267,7 +267,7 @@ def route_path(mode, content_type, name, cfg):
     if rejection is not None:
         # Was a bare SystemExit(4) for both cases: a caller could not tell a typo
         # from a valid page type that simply has no filing destination. The
-        # message says which, and so does the exit code — a script branching on
+        # message says which, and so does the exit code: a script branching on
         # `$?` gains the distinction too, not just a human reading stderr.
         print(f"ERR: {rejection.message}", file=sys.stderr)
         raise SystemExit(rejection.exit_code)

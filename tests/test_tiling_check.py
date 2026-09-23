@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test_tiling_check.py — unit tests for scripts/tiling-check.py.
+"""test_tiling_check.py: unit tests for scripts/tiling-check.py.
 
 Does NOT require ollama; tests cover parsing, cosine, inclusion logic,
 hash properties, cache schema, and the localhost-URL guard. Tests that

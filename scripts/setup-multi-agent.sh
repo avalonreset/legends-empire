@@ -14,13 +14,14 @@ HOST_COUNT=0
 usage() {
   cat <<'EOF'
 Usage: scripts/setup-multi-agent.sh [--check|--dry-run|--apply]
-       [--host grok|codex|muse|opencode|gemini|zcode|cursor|windsurf|all] [--workspace PATH]
+       [--host grok|codex|claude|metamuse|muse|opencode|gemini|zcode|cursor|windsurf|all] [--workspace PATH]
 
 Default: dry-run for Codex, OpenCode, and Gemini user-level per-skill links.
-Grok, ZCode, Cursor and Windsurf are opt-in and require an explicit --host
+Grok, Claude, MetaMuse, ZCode, Cursor and Windsurf are opt-in and require an explicit --host
 selection; Cursor and Windsurf also require an explicit --workspace destination.
 Existing files and links pointing elsewhere are never replaced.
-House hosts: grok -> ~/.grok/skills ; codex also writes ~/.codex/skills ; muse -> ~/.agents/skills (shared user-skill root, Codex-compatible).
+Grok -> ~/.grok/skills; Claude -> ~/.claude/skills; Codex also writes ~/.codex/skills.
+MetaMuse (alias muse) prints a manual entry point; native discovery is unverified.
 EOF
 }
 
@@ -55,8 +56,8 @@ fi
 expanded=()
 for host in "${HOSTS[@]}"; do
   case "$host" in
-    all) expanded+=(grok codex muse opencode gemini cursor windsurf) ;;
-    grok|codex|muse|opencode|gemini|zcode|cursor|windsurf) expanded+=("$host") ;;
+    all) expanded+=(grok codex claude metamuse opencode gemini cursor windsurf) ;;
+    grok|codex|claude|metamuse|muse|opencode|gemini|zcode|cursor|windsurf) expanded+=("$host") ;;
     *) echo "ERROR: unsupported host: $host" >&2; exit 2 ;;
   esac
 done
@@ -162,7 +163,13 @@ for host in "${expanded[@]}"; do
   case "$host" in
     grok) destination_roots=("$HOME/.grok/skills") ;;
     codex) destination_roots=("$HOME/.agents/skills" "$HOME/.codex/skills") ;;
-    muse) destination_roots=("$HOME/.agents/skills") ;;
+    claude) destination_roots=("$HOME/.claude/skills") ;;
+    metamuse|muse)
+      echo "MANUAL MetaMuse: native skill discovery is unverified; no installation performed."
+      echo "Read $SKILLS_DIR/legends-obsidian/SKILL.md using file access."
+      echo "Then run: python $REPO_ROOT/scripts/claude-obsidian.py package validate"
+      continue
+      ;;
     opencode) destination_roots=("$HOME/.config/opencode/skills") ;;
     gemini) destination_roots=("$HOME/.gemini/skills") ;;
     zcode) destination_roots=("$HOME/.zcode/skills") ;;

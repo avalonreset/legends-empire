@@ -1,5 +1,5 @@
 ---
-description: Legends Obsidian — multi-agent LLM Wiki for Obsidian vaults. Always-on context for this skill pack.
+description: Legends Obsidian: multi-agent LLM Wiki for Obsidian vaults. Always-on context for this skill pack.
 globs:
   - "wiki/**/*.md"
   - ".raw/**/*"
@@ -20,6 +20,6 @@ Multi-agent Obsidian wiki skill pack (Karpathy LLM Wiki). Brand name across Curs
 
 ## Skills
 
-When the user says Legends Obsidian, wiki, ingest, query, lint, save, canvas, or research — read the matching `skills/<name>/SKILL.md`.
+When the user says Legends Obsidian, wiki, ingest, query, lint, save, canvas, or research, read the matching `skills/<name>/SKILL.md`.
 
 Brand entry: `legends-obsidian` → orchestrator `wiki`.

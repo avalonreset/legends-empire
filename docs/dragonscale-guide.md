@@ -28,9 +28,9 @@ model, changes product scripts, probes a service, or modifies notes.
 `wiki-fold` creates a bounded rollup from recent `wiki/log.md` entries. A fold
 must be:
 
-- extractive—every statement points to a child entry;
-- additive—children remain unchanged;
-- structurally idempotent—the same input set produces the same fold identity;
+- extractive: every statement points to a child entry;
+- additive: children remain unchanged;
+- structurally idempotent: the same input set produces the same fold identity;
 - previewed before one transaction applies the fold, index, and log update.
 
 Folds are navigation aids, not new evidence. Delete or revert only the fold

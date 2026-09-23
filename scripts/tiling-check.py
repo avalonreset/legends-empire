@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""tiling-check.py — DragonScale Mechanism 3: semantic tiling lint.
+"""tiling-check.py: DragonScale Mechanism 3: semantic tiling lint.
 
 Computes per-page embeddings via a local ollama instance and reports
 candidate duplicate page pairs. Read-only; never modifies wiki pages.

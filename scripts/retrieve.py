@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""retrieve.py — hybrid retrieval orchestrator for the Compound Vault.
+"""retrieve.py: hybrid retrieval orchestrator for the Compound Vault.
 
 Pipeline:
   query  →  bm25-index.py query (top-K candidates by BM25 over contextualized chunks)
@@ -46,9 +46,9 @@ Usage:
   retrieve.py "query" --explain           # include per-stage diagnostics
 
 Exit codes:
-  0 — success
-  2 — usage error
-  10 — feature unavailable (missing/corrupt index or no chunks); caller falls
+  0: success
+  2: usage error
+  10: feature unavailable (missing/corrupt index or no chunks); caller falls
        back to the standard vault query path and may rebuild derived caches
 """
 

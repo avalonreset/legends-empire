@@ -2,7 +2,7 @@
 
 claude-obsidian has two independent parts:
 
-1. the product package—skills, portable core, Claude adapter, and templates;
+1. the product package (skills, portable core, Claude adapter, and templates);
 2. a user-owned Obsidian vault containing mutable knowledge.
 
 Do not use an installed plugin cache as the vault. A source clone is suitable
@@ -16,7 +16,7 @@ for development, but a normal user vault should be a separate directory.
 - Bash for installer and optional legacy-extension scripts
 - Git only for source development, release builds, or explicit checkpoints
 - On Windows: WSL for vault writes; native Windows supports read-only
-  inspection and dry-runs — see the [Windows and WSL guide](windows-wsl.md)
+  inspection and dry-runs: see the [Windows and WSL guide](windows-wsl.md)
 
 ## Claude Code marketplace
 
@@ -53,6 +53,13 @@ This mode is for testing uninstalled changes. Skills remain namespaced. It does
 not convert the product repository into a user vault.
 
 ## Portable Agent Skills hosts
+
+Grok, Codex, Gemini, Claude, Cursor and MetaMuse use the same canonical skill.
+See [the host matrix](AGENTS-MATRIX.md) for exact adapters and verification
+limits. MetaMuse prints a manual entry point rather than installing to an
+unverified native directory. The PowerShell helper prints safe file-based
+instructions on Windows; use the Bash installer on POSIX/WSL for skill links.
+
 
 The installer defaults to a no-write preview for Codex, OpenCode, and Gemini:
 
@@ -117,14 +124,14 @@ python3 scripts/claude-obsidian.py init <new-vault> \
 
 The generated vault contains:
 
-- `.gitignore`—privacy-safe defaults excluding `.vault-meta/` runtime state,
+- `.gitignore`: privacy-safe defaults excluding `.vault-meta/` runtime state,
   Obsidian workspace state, and live `.mcp.json` launch configuration;
-- `.claude-obsidian.json`—workspace identity and vault selection;
-- `inbox/`—visible source intake;
-- `.raw/`—immutable source payloads and legacy delta manifest;
-- `wiki/`—index, log, hot cache, overview, and generated notes;
-- `.obsidian/`—minimal non-destructive Obsidian defaults;
-- `.vault-meta/`—ignored runtime state created when needed.
+- `.claude-obsidian.json`: workspace identity and vault selection;
+- `inbox/`: visible source intake;
+- `.raw/`: immutable source payloads and legacy delta manifest;
+- `wiki/`: index, log, hot cache, overview, and generated notes;
+- `.obsidian/`: minimal non-destructive Obsidian defaults;
+- `.vault-meta/`: ignored runtime state created when needed.
 
 Initialization does not add an upstream Git remote or install community
 plugins. Open the new directory through Obsidian's vault picker.

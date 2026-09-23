@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test_bm25_index.py — hermetic tests for scripts/bm25-index.py.
+"""test_bm25_index.py: hermetic tests for scripts/bm25-index.py.
 
 Covers tokenization (stopwords, punctuation, case), index construction from
 synthetic chunk fixtures, and BM25 scoring correctness against a hand-computed

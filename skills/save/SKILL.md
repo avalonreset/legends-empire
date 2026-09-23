@@ -44,7 +44,7 @@ selected vault's `wiki/` directory.
    duplicate. Obtain explicit approval before replacing an existing canonical
    note.
 4. Select the smallest useful note type from the declared vocabulary
-   (`claude_obsidian/page_schema.py`, documented in WIKI.md) — usually
+   (`claude_obsidian/page_schema.py`, documented in WIKI.md), usually
    `question` for an answered analysis, `concept` for an idea worth naming,
    `source` for material summary, or `session` for approved conversation
    content. Use declarative prose, Obsidian wikilinks, and honest frontmatter.

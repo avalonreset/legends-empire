@@ -36,7 +36,7 @@ vault at or above the current directory. Fail closed when no vault is selected.
 
 ## Canonical skills
 
-All 15 skills live at `skills/<name>/SKILL.md`. They use the portable Agent
+All 16 skills live at `skills/<name>/SKILL.md`. They use the portable Agent
 Skills frontmatter subset: exactly `name` and `description`. Do not add mirrored
 files under `commands/`; Claude invokes plugin skills by namespaced names such
 as `/legends-obsidian:wiki`.

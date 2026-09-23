@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# test_concurrent_write.sh — verify multi-writer safety with wiki-lock.sh.
+# test_concurrent_write.sh: verify multi-writer safety with wiki-lock.sh.
 #
 # The critical correctness gate from v1.7 §3.4. Spawns N background workers,
 # each acquires a lock on the same file, appends a uniquely-tagged line, and

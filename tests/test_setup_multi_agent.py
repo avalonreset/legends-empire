@@ -114,6 +114,50 @@ class SetupMultiAgentTests(unittest.TestCase):
             self.assertEqual("preserve", marker.read_text(encoding="utf-8"))
             self.assertTrue((home / ".zcode/skills/save/SKILL.md").is_file())
 
+    def test_six_requested_hosts_share_canonical_skills(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            workspace = home / "project"
+            workspace.mkdir()
+            result = self.invoke(home, "--apply", "--host", "grok", "--host", "codex",
+                "--host", "gemini", "--host", "claude", "--host", "cursor",
+                "--host", "metamuse", "--workspace", str(workspace))
+            self.assertEqual(0, result.returncode, result.stderr)
+            for relative in (".grok/skills", ".agents/skills", ".codex/skills",
+                             ".gemini/skills", ".claude/skills", "project/.cursor/skills"):
+                link = home / relative / "legends-obsidian"
+                self.assertEqual(ROOT / "skills/legends-obsidian", link.resolve())
+            self.assertIn("MANUAL MetaMuse", result.stdout)
+            self.assertIn("native skill discovery is unverified", result.stdout)
+            self.assertFalse((home / ".metamuse").exists())
+
+    def test_requested_host_conflicts_never_overwrite(self) -> None:
+        for host, relative in (("grok", ".grok/skills"), ("codex", ".agents/skills"),
+                               ("gemini", ".gemini/skills"), ("claude", ".claude/skills"),
+                               ("cursor", "project/.cursor/skills")):
+            with self.subTest(host=host), tempfile.TemporaryDirectory() as directory:
+                home = Path(directory)
+                workspace = home / "project"
+                workspace.mkdir()
+                conflict = home / relative / "legends-obsidian"
+                conflict.mkdir(parents=True)
+                marker = conflict / "personal.md"
+                marker.write_text("preserve", encoding="utf-8")
+                result = self.invoke(home, "--apply", "--host", host,
+                                     "--workspace", str(workspace))
+                self.assertEqual(2, result.returncode, result.stderr)
+                self.assertEqual("preserve", marker.read_text(encoding="utf-8"))
+
+    def test_metamuse_aliases_are_no_write_manual_fallback(self) -> None:
+        for host in ("metamuse", "muse"):
+            with self.subTest(host=host), tempfile.TemporaryDirectory() as directory:
+                home = Path(directory)
+                result = self.invoke(home, "--apply", "--host", host)
+                self.assertEqual(0, result.returncode, result.stderr)
+                self.assertIn("MANUAL MetaMuse", result.stdout)
+                self.assertIn("skills/legends-obsidian/SKILL.md", result.stdout)
+                self.assertEqual([], list(home.iterdir()))
+
     def test_workspace_hosts_are_explicit(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             base = Path(directory)

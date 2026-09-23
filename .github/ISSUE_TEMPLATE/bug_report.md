@@ -34,8 +34,8 @@ Paste relevant terminal output or error messages here.
 ```
 
 ## What you tried
-- [ ] Ran the relevant regression test or `make test` — Yes / No
-- [ ] Confirmed the product repository and user vault are separate — Yes / No
+- [ ] Ran the relevant regression test or `make test`: Yes / No
+- [ ] Confirmed the product repository and user vault are separate: Yes / No
 - [ ] Checked CHANGELOG for known issues at your version
 - [ ] Searched existing issues for similar reports
 

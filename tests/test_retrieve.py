@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test_retrieve.py — hermetic tests for scripts/retrieve.py and scripts/rerank.py.
+"""test_retrieve.py: hermetic tests for scripts/retrieve.py and scripts/rerank.py.
 
 No network, no ollama, no LLM calls. Tests cover:
   - import_sibling resolves hyphenated module names

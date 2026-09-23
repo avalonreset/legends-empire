@@ -132,8 +132,8 @@ class SetupVaultTests(unittest.TestCase):
         # lint's dead/ambiguous-link detection) resolves wikilinks by exact
         # vault-relative path with no fuzzy or duplicate-basename resolution,
         # so a link Obsidian's own UI inserts under the default setting can
-        # resolve fine inside Obsidian while being unresolvable — or silently
-        # wrong once a second file shares a basename — to every other tool
+        # resolve fine inside Obsidian while being unresolvable (or silently
+        # wrong once a second file shares a basename) to every other tool
         # in the pipeline. The scaffolded vault must pin the setting to
         # "absolute" so links created through Obsidian's own UI are already
         # in the form the rest of the product expects.

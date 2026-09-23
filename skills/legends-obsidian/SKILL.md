@@ -58,3 +58,9 @@ Native Windows supports retrieval, inspection and dry runs. Recoverable vault
 mutation requires WSL or another supported POSIX host; never bypass the
 transaction protocol with direct writes. Do not infer full host support from
 successful skill discovery alone.
+
+## Writing style
+
+Do not use em dashes in generated notes, summaries, reports, headings or public
+documentation. Use periods, commas, colons or parentheses as the sentence requires.
+Preserve exact quotations, legal notices and immutable source evidence unchanged.

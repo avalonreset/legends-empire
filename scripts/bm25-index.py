@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""bm25-index.py — sparse BM25 inverted index over contextualized wiki chunks.
+"""bm25-index.py: sparse BM25 inverted index over contextualized wiki chunks.
 
 Pure stdlib (no rank_bm25 dep). Standard Okapi BM25 with k1=1.5, b=0.75.
 Indexes the `contextualized_text` field of every chunk under .vault-meta/chunks/,
@@ -42,11 +42,11 @@ Build interface:
   bm25-index.py stats               # print index stats
 
 Exit codes:
-  0 — success
-  1 — lock acquisition failed
-  2 — usage error
-  3 — index file missing or corrupt (query mode)
-  4 — chunks directory missing
+  0: success
+  1: lock acquisition failed
+  2: usage error
+  3: index file missing or corrupt (query mode)
+  4: chunks directory missing
 """
 
 import argparse
@@ -118,7 +118,7 @@ def configure_vault(explicit=None):
 K1 = 1.5
 B = 0.75
 
-# Small high-frequency-stopword list (English). Conservative — keep recall high.
+# Small high-frequency-stopword list (English). Conservative: keep recall high.
 STOPWORDS = frozenset("""
 a an and are as at be by for from has have he her him his i if in is it its
 of on or that the their them they this to was were will with you your
@@ -274,7 +274,7 @@ def _pinned_chunk_documents(meta_fd):
                         assert raw is not None
                         data = json.loads(raw.decode("utf-8"))
                     except (UnicodeDecodeError, json.JSONDecodeError, OSError, TransactionError) as exc:
-                        log(f"  skip (unreadable): {CHUNKS_DIR / address / name} — {exc}")
+                        log(f"  skip (unreadable): {CHUNKS_DIR / address / name}: {exc}")
                         continue
                     yield address, name, data
             finally:
@@ -468,7 +468,7 @@ def discover_chunks(*, meta_fd=None, vault_root_fd=None):
             try:
                 data = json.loads(chunk_file.read_text(encoding="utf-8"))
             except (json.JSONDecodeError, OSError) as e:
-                log(f"  skip (unreadable): {chunk_file} — {e}")
+                log(f"  skip (unreadable): {chunk_file}: {e}")
                 continue
             candidates.append((chunk_file.parent.name, chunk_file.name, data))
     else:
@@ -488,7 +488,7 @@ def discover_chunks(*, meta_fd=None, vault_root_fd=None):
             vault_root_fd=vault_root_fd,
         )
         if not current:
-            log(f"  skip (stale): {chunk_file} — {reason}")
+            log(f"  skip (stale): {chunk_file}: {reason}")
             continue
         chunk_id = f"{address}:{idx}"
         rel_path = str(chunk_file.relative_to(rel_root))
@@ -511,7 +511,7 @@ def build_index(*, meta_fd=None, vault_root_fd=None):
             tokens = tokenize(text)
         except TokenGrowthLimitError as exc:
             log(
-                f"  skip (token growth limit): {rel_path} — {exc}. "
+                f"  skip (token growth limit): {rel_path}: {exc}. "
                 "Regenerate bounded chunks with contextual-prefix.py, then rebuild."
             )
             continue

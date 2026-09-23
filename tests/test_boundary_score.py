@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test_boundary_score.py — unit tests for scripts/boundary-score.py.
+"""test_boundary_score.py: unit tests for scripts/boundary-score.py.
 
 Exercises parser, recency weight, wikilink extraction (including the
 code-block guard), graph construction, and top-N selection against a
@@ -186,7 +186,7 @@ def test_graph_and_scoring_on_temp_vault():
             # recency floor, very-old hubs have near-zero weight, so their
             # score approaches zero (not strongly negative). A fresh hub
             # with the same topology WOULD score strongly negative; this
-            # is intentional — stale hubs do not pollute the frontier.
+            # is intentional: stale hubs do not pollute the frontier.
             assert_true(
                 "Frontier outranks Hub", frontier_score["score"] > hub_score["score"]
             )

@@ -54,7 +54,7 @@ NON_ROUTABLE_TYPES: tuple[str, ...] = (
     "fold",
 )
 
-# Derived, never restated — this module exists because two copies of a list drift,
+# Derived, never restated: this module exists because two copies of a list drift,
 # and writing ROUTABLE_TYPES out by hand would have reintroduced exactly that one
 # level up: nothing stopped a value from being routable without being a valid page
 # type, in which case `route_rejection` would clear a `type:` the frontmatter
@@ -79,7 +79,7 @@ LEGACY_TYPE_ALIASES: dict[str, str] = {"research": "concept"}
 # code of its own: the whole argument for this change is that a typo and a valid
 # page type with no filing destination are *different problems with different
 # fixes*, and a message alone only tells a human. A script still branched on one
-# number, so the distinction stopped at the terminal — the fix applied halfway.
+# number, so the distinction stopped at the terminal: the fix applied halfway.
 # `6` because 2, 3, 4 and 5 are already taken in `scripts/wiki-mode.py`.
 UNKNOWN_TYPE_EXIT = 4
 UNROUTABLE_TYPE_EXIT = 6
@@ -97,7 +97,7 @@ def route_rejection(content_type: str) -> RouteRejection | None:
 
     The router used to exit on an unroutable type with no message, so a caller
     could not tell a typo from a valid type that has no filing destination. Those
-    are different problems with different fixes — which is why the exit code
+    are different problems with different fixes: which is why the exit code
     differs too, not only the text.
     """
 

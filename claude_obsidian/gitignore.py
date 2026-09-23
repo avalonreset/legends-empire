@@ -15,7 +15,7 @@ semantics that matter for link resolution:
   files inside excluded directories are not read).
 
 Scope is deliberately narrow and deterministic: only ``.gitignore`` files
-within the scan root are consulted — never ``.git/info/exclude``, the global
+within the scan root are consulted: never ``.git/info/exclude``, the global
 ``core.excludesFile``, or a ``git`` subprocess. Matching is always
 case-sensitive (git's default), even on case-insensitive filesystems where
 git with ``core.ignorecase=true`` would fold case; reading git config would

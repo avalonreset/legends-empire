@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# wiki-lock.sh — thin launcher for deprecated v1 page-lock compatibility.
+# wiki-lock.sh: thin launcher for deprecated v1 page-lock compatibility.
 #
 # New workflows use one reviewed claude-obsidian transaction. This launcher
 # remains for old integrations that still call acquire/release/list/

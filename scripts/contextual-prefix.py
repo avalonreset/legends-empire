@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""contextual-prefix.py — chunk wiki pages and generate per-chunk contextual prefixes.
+"""contextual-prefix.py: chunk wiki pages and generate per-chunk contextual prefixes.
 
 Implements the ingest-side of Anthropic's Sept 2024 Contextual Retrieval pattern
 (https://www.anthropic.com/news/contextual-retrieval). For each chunk of a wiki
@@ -65,12 +65,12 @@ Usage:
   contextual-prefix.py PATH --peek        # print what would happen; write nothing
 
 Exit codes:
-  0 — success
-  2 — usage error
-  3 — page file missing or unreadable
-  4 — chunk dir creation failed
-  5 — duplicate page address detected; no chunks were changed
-  6 — another vault writer holds the operation lock
+  0: success
+  2: usage error
+  3: page file missing or unreadable
+  4: chunk dir creation failed
+  5: duplicate page address detected; no chunks were changed
+  6: another vault writer holds the operation lock
 """
 
 import argparse
@@ -145,13 +145,13 @@ ANTHROPIC_RESPONSE_MAX_BYTES = 256 * 1024
 CLAUDE_CLI_TIMEOUT_SEC = 60
 
 # Anthropic prompt caching ignores any cached prefix below the model's minimum
-# cacheable size — 4,096 tokens for Haiku 4.5 (verified against the prompt-caching
+# cacheable size: 4,096 tokens for Haiku 4.5 (verified against the prompt-caching
 # docs, 2026-05). At ~4 chars/token that is ~16 KB. We attach cache_control only
 # when the body clears this floor so the marker reflects reality: below the floor
 # the API treats it as a silent no-op. The per-call local cache statistics in
 # anthropic_api_prefix() is what actually measures hit rate. The check counts the
-# body only — a deliberately conservative ~370-char underestimate that ignores the
-# system_msg + <page> wrapper also inside the cached prefix — so near the boundary
+# body only: a deliberately conservative ~370-char underestimate that ignores the
+# system_msg + <page> wrapper also inside the cached prefix: so near the boundary
 # it errs toward not-marking, never toward a wrongly-attached marker.
 HAIKU_CACHE_MIN_CHARS = 16384  # 4096 tokens * 4 chars/token
 
@@ -534,7 +534,7 @@ def chunk_body(
         if not overlap_only:
             chunks.append(trailing)
     if not chunks and body.strip():
-        # tiny page — single chunk
+        # tiny page: single chunk
         chunks = [body.strip()]
     bounded = []
     for chunk in chunks:
@@ -548,7 +548,7 @@ def synthetic_prefix(fm, body, chunk_text):
     re-injection into the chunk corpus.
     """
     title = (fm.get("title") or "").strip() or "(untitled)"
-    # First sentence of the body (not the chunk — gives the chunk a page-level frame)
+    # First sentence of the body (not the chunk: gives the chunk a page-level frame)
     first_sentence = re.split(r"(?<=[.!?])\s+", body.strip(), maxsplit=1)
     first = first_sentence[0][:300] if first_sentence else ""
     return f'This passage is from the wiki page "{title}". The page opens: {first}'
@@ -570,13 +570,13 @@ def anthropic_api_prefix(api_key, page_title, page_body, chunk_text):
     The page body is the stable prefix shared by every chunk of a page, so it
     goes in `system` behind a cache breakpoint and the variable chunk goes in
     `messages`. Cache reads only land because chunks are processed sequentially
-    (chunk 0 warms the prefix) — see the loop note in process_page().
+    (chunk 0 warms the prefix): see the loop note in process_page().
     """
     system_msg = (
         "You are a retrieval-augmentation assistant. Given a wiki page and one "
         "chunk extracted from it, write a single short sentence (under 35 words) "
         "that situates the chunk within the page's scope and topic. Output only "
-        "the sentence — no prefix, no quotation marks, no commentary."
+        "the sentence: no prefix, no quotation marks, no commentary."
     )
     page_block = {
         "type": "text",
@@ -937,7 +937,7 @@ def process_selection(args, pages, *, root_fd=None, meta_fd=None):
     """Process one validated selection while the caller owns the writer lock."""
 
     # Filter to actual files up front so progress counter is meaningful
-    # (v1.7.2; closes audit L2: tier-2 over 47 pages can take 5+ min — the
+    # (v1.7.2; closes audit L2: tier-2 over 47 pages can take 5+ min: the
     # user needs a count, not just per-page log lines).
     files = [p for p in pages if p.is_file()]
     skipped_non_files = len(pages) - len(files)

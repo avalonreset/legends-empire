@@ -16,8 +16,8 @@ Closes #<issue-number> (if applicable)
 
 ## Changes
 List the files and surfaces touched:
-- `skills/<name>/SKILL.md` — what changed
-- `scripts/<name>.py` — what changed
+- `skills/<name>/SKILL.md`: what changed
+- `scripts/<name>.py`: what changed
 - ...
 
 ## Safety self-review

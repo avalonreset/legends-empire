@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test_contextual_prefix.py — hermetic tests for scripts/contextual-prefix.py.
+"""test_contextual_prefix.py: hermetic tests for scripts/contextual-prefix.py.
 
 Covers the Haiku cache-floor decision (cache_control_for). The network paths
 (tier-1 Anthropic API, tier-2 claude CLI) are egress-gated and excluded from

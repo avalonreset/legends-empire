@@ -202,7 +202,7 @@ def _portable_name_key(value: str) -> str:
 
 # Portable-vault write-path rules (enforced on every platform so an inspect
 # verdict means the same thing everywhere).  ``:`` names an NTFS alternate data
-# stream — invisible to directory enumeration, so the alias audit could never
+# stream: invisible to directory enumeration, so the alias audit could never
 # see it; the rest are Win32-invalid filename characters.  Mirrors the capture
 # layer's filename policy (capture._RESERVED_WINDOWS_NAMES).
 _UNPORTABLE_PATH_CHARACTERS = frozenset(':<>|?*"')
@@ -288,7 +288,7 @@ def _normalize_vault_path(value: Any) -> str:
 def _assert_portable_write_path(value: str) -> None:
     """Reject NEW write destinations that portable filesystems cannot host.
 
-    Applies only where a plan proposes writes — never to reads of existing
+    Applies only where a plan proposes writes: never to reads of existing
     vault content, so pre-existing files with historically accepted names stay
     readable, indexable, and recoverable.
     """
@@ -306,7 +306,7 @@ def _assert_portable_write_path(value: str) -> None:
             continue
         if component.endswith((".", " ")):
             # Win32 strips trailing dots/spaces at the syscall boundary, so such
-            # a name silently aliases its stripped form — an alias class the
+            # a name silently aliases its stripped form: an alias class the
             # casefold audit cannot observe.  Reject it everywhere.
             raise TransactionValidationError(
                 "UNPORTABLE_WRITE_PATH",
@@ -1109,8 +1109,8 @@ def _is_leaf_itself(parent: int | Path, name: str, self_lstat: os.stat_result) -
     Deliberate tolerance: two directory entries naming the same object (a
     case-insensitive volume's single entry, or a same-parent bind mount) are
     one vault, so treating them as a CASEFOLD_PATH_ALIAS would reject the
-    vault itself.  Distinct objects — including a junction pointing at the
-    vault, whose reparse point lstats with its own identity — still flag.
+    vault itself.  Distinct objects (including a junction pointing at the
+    vault, whose reparse point lstats with its own identity) still flag.
     """
 
     try:
@@ -1387,7 +1387,7 @@ def _require_lock_dirfd_support() -> None:
 
 _UNSUPPORTED_PLATFORM_MESSAGE = (
     "vault writes require directory-descriptor confinement (WSL/Linux or "
-    "supported macOS); on native Windows run this command inside WSL — "
+    "supported macOS); on native Windows run this command inside WSL: "
     "read-only inspection and dry-runs work natively; if WSL itself "
     "misbehaves, see docs/windows-wsl.md"
 )

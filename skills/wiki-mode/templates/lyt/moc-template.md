@@ -8,7 +8,7 @@ tags:
   - moc
 ---
 
-# {{title}} — Map of Content
+# {{title}}: Map of Content
 
 > A Map of Content (MOC) links into a cluster of related atomic notes. It is a navigation hub, not a container. Notes are not stored under this MOC; they live flat under `wiki/notes/` and are reached by following these links.
 
