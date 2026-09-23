@@ -10,7 +10,7 @@
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $entry = Join-Path $repoRoot 'skills/legends-obsidian/SKILL.md'
-if ($env:OS -eq 'Windows_NT') {
+if ([Environment]::OSVersion.Platform -eq 'Win32NT') {
     Write-Output 'Native Windows: no host paths changed.'
     Write-Output "For Grok, Codex, Gemini, Claude, Cursor or MetaMuse, ask the agent to read: $entry"
     Write-Output 'For automatic links, run scripts/setup-multi-agent.sh in WSL against a POSIX product copy.'
