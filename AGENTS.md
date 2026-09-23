@@ -39,7 +39,7 @@ vault at or above the current directory. Fail closed when no vault is selected.
 All 15 skills live at `skills/<name>/SKILL.md`. They use the portable Agent
 Skills frontmatter subset: exactly `name` and `description`. Do not add mirrored
 files under `commands/`; Claude invokes plugin skills by namespaced names such
-as `/claude-obsidian:wiki`.
+as `/legends-obsidian:wiki`.
 
 Core workflows are `wiki`, `save`, `wiki-ingest`, `wiki-query`, and
 `wiki-lint`. Extensions are `autoresearch`, `canvas`, `defuddle`, `wiki-fold`,

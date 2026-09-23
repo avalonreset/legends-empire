@@ -95,8 +95,8 @@ mutating setup command previews its exact operation before it can apply.
 ### 1. Get the product
 
 ```bash
-git clone https://github.com/AgriciDaniel/claude-obsidian.git
-cd claude-obsidian
+git clone https://github.com/avalonreset/legends-obsidian.git
+cd legends-obsidian
 ```
 
 The checkout contains the product. It is not your knowledge vault.
@@ -130,18 +130,18 @@ with the local plugin:
 
 ```bash
 cd "$HOME/Documents/MyKnowledgeVault"
-claude --plugin-dir /absolute/path/to/claude-obsidian
+claude --plugin-dir /absolute/path/to/legends-obsidian
 ```
 
 Start with:
 
 ```text
-/claude-obsidian:wiki
+/legends-obsidian:wiki
 ```
 
 Then place a source in `inbox/` and invoke
-`/claude-obsidian:wiki-ingest`. Save an answer explicitly with
-`/claude-obsidian:save`; ask the vault with `/claude-obsidian:wiki-query`.
+`/legends-obsidian:wiki-ingest`. Save an answer explicitly with
+`/legends-obsidian:save`; ask the vault with `/legends-obsidian:wiki-query`.
 
 For Codex, OpenCode, Gemini, or ZCode, preview and then apply the portable
 skill links from the product checkout:
@@ -191,7 +191,7 @@ the same evidence, vault-selection, and mutation rules.
 | `think` | A structured observe, listen, connect, create, and grow review loop |
 
 Claude Code exposes namespaced invocations such as
-`/claude-obsidian:wiki-lint`; other hosts use their native Agent Skills
+`/legends-obsidian:wiki-lint`; other hosts use their native Agent Skills
 invocation. Trigger phrases and exact contracts live in each
 `skills/<name>/SKILL.md`.
 
