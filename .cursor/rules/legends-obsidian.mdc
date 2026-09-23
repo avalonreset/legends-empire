@@ -15,7 +15,7 @@ Multi-agent Obsidian wiki skill pack (Karpathy LLM Wiki). Brand name across Curs
 
 - **Skill pack root**: `skills/<name>/SKILL.md` (Agent Skills format)
 - **Demo vault**: `wiki/` + `.raw/`
-- **Life monobrain** (user org): usually `E:\empire` — not this repo
+- **User vault**: explicitly selected directory, never this product checkout
 - **Matrix**: `docs/AGENTS-MATRIX.md`
 
 ## Skills

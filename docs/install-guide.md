@@ -23,8 +23,8 @@ for development, but a normal user vault should be a separate directory.
 Add the artifact-clean public catalog and install the namespaced plugin:
 
 ```bash
-claude plugin marketplace add AgriciDaniel/claude-obsidian
-claude plugin install claude-obsidian@agricidaniel-claude-obsidian
+claude plugin marketplace add avalonreset/legends-obsidian
+claude plugin install legends-obsidian@legends-obsidian
 claude plugin list
 ```
 
@@ -35,8 +35,8 @@ that manifest only into its audited output. The public default branch must be
 promoted from the extracted audited artifact before these marketplace commands
 are advertised for a new version.
 
-Invoke skills as `/claude-obsidian:wiki`,
-`/claude-obsidian:wiki-ingest`, and `/claude-obsidian:save`.
+Invoke skills as `/legends-obsidian:wiki`,
+`/legends-obsidian:wiki-ingest`, and `/legends-obsidian:save`.
 
 The plugin cache contains read-only product assets. Run Claude from the user
 vault, set `CLAUDE_OBSIDIAN_VAULT`, or pass `--vault` to portable commands.
@@ -251,8 +251,8 @@ from its vault-local pending record.
 Remove the host integration, not the vault:
 
 ```bash
-claude plugin uninstall claude-obsidian@agricidaniel-claude-obsidian
-claude plugin marketplace remove agricidaniel-claude-obsidian
+claude plugin uninstall legends-obsidian@legends-obsidian
+claude plugin marketplace remove legends-obsidian
 ```
 
 For portable hosts, remove only the per-skill links that the installer reported.
