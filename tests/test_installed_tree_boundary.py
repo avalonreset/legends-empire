@@ -91,10 +91,10 @@ class InstalledTreeBoundaryTests(unittest.TestCase):
                     )
                     if (position := source.find(marker)) >= 0
                 ]
-                self.assertTrue(
-                    local_imports, f"no local import surface found in {launcher}"
-                )
-                self.assertLess(guard, min(local_imports))
+                # Standalone standard-library helpers have no product imports.
+                # Every helper still sets the guard; importing helpers must set it first.
+                if local_imports:
+                    self.assertLess(guard, min(local_imports))
 
     def test_shell_launchers_export_the_bytecode_policy(self) -> None:
         self.assertTrue(SHELL_LAUNCHERS)
