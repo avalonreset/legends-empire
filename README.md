@@ -6,13 +6,31 @@ Your digital reality is already there: folders, repositories, tools, knowledge, 
 
 `legends-empire` brings that into one navigable map, backed by a Markdown knowledge base you own. Obsidian is the visual interface. AI agents help maintain the knowledge and work from it.
 
-## The structure
+## The seven provinces
 
-**The Map records what exists. The Blueprint records what you want to build.** Keep them separate. A plan is not a working system, and an empty page is better than invented certainty.
+An empire needs a map. These are its seven provinces:
 
-Seven provinces give the map its coverage: **Work, Money, Craft, Home, People, Self, and Dreams.** Underneath are the sources, connected concepts, and machinery that make the knowledge usable.
+| Province | What lives here |
+|---|---|
+| **Work** | The operations, ventures, and commitments consuming your attention. |
+| **Money** | Resources, obligations, ownership, and the room you have to maneuver. |
+| **Craft** | The things you make and the skills you pursue because mastery and taste matter. |
+| **Home** | The physical world you inhabit and the machinery that keeps it running. |
+| **People** | Relationships, promises, and the people who matter beyond a transaction. |
+| **Self** | Health, identity, capacity, and the person operating all this machinery. |
+| **Dreams** | What the machinery is for. The intentions that reach across the whole empire. |
 
-Other vaults, code repositories, and infrastructure are territories. Map their locations and relationships. They do not need to be moved into one giant folder.
+Every province has **the Map** and **the Blueprint**. The Map records reality. The Blueprint records intention. A planned system is not a working system. An unwritten ambition stays unwritten until you decide what it is.
+
+## The Throne Room, the library, and the machinery
+
+The **Throne Room** is the visual overview: the provinces and their connections on an Obsidian canvas. The **library** holds sources, concepts, and accumulated knowledge. The **machinery** keeps the index, history, and navigation useful.
+
+The **hot wiki index** is the agent's way into the empire. What matters now? Where is the relevant knowledge? What has already been established? Keep that doorway short; keep the detail behind it.
+
+Repositories, other vaults, tools, and infrastructure are **territories**. Record where they live and how they connect. You do not need to uproot everything to draw the map.
+
+The names are deliberate. So is the structure underneath them. An agent should be able to find the actual file, the actual source, and the actual state of the thing you are talking about.
 
 ## What belongs in the knowledge base
 
@@ -21,7 +39,7 @@ Other vaults, code repositories, and infrastructure are territories. Map their l
 - Decisions and the reasons for them.
 - What is working, what is missing, and what comes next.
 
-Keep one canonical home for each fact. Link to it from the other places that need it. The hot wiki index gives an agent a short route into current context; the detail stays behind those links.
+Keep one canonical home for each fact. Link to it from the other places that need it.
 
 This is personal knowledge management across your whole digital environment. Its structure should reflect your reality and change as you build.
 
@@ -35,7 +53,7 @@ The released memory tools support source capture, linked wiki notes, retrieval, 
 
 Follow the [installation guide](docs/install-guide.md) with the [current release](https://github.com/avalonreset/legends-empire/releases). Keep the software checkout separate from your own `Empire` folder.
 
-**Release boundary:** the published package supplies the memory tools. Unified onboarding for the province structure, territory maps, and hot index is still being integrated. The structure described above is the direction, not a claim that the current installer sets up all of it.
+**Release boundary:** the published package supplies the memory tools. The seven-province starter, Throne Room canvas, territory maps, and unified onboarding exist in the local candidate but are not bundled in that public release yet. The structure described above is the direction, not a claim that the current installer sets up all of it.
 
 Native Windows supports inspection and previews. Transactional writes require WSL or a supported POSIX host. See [platform setup](docs/windows-wsl.md).
 
