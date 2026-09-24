@@ -4,7 +4,7 @@
 
 **Your business, research, and projects. One workspace. Knowledge that compounds.**
 
-[Get started](#start-building-your-empire) · [Releases](https://github.com/avalonreset/legends-empire/releases) · [Documentation](docs/install-guide.md) · [Attribution](#built-on-exceptional-work)
+[Get started](#start-building-your-empire) · [Releases](https://github.com/avalonreset/legends-empire/releases) · [Documentation](docs/install-guide.md) · [Attribution](#attribution)
 
 ## Everything connects here
 
@@ -84,17 +84,11 @@ The product source and your personal Empire are separate. Installing the tools d
 
 ---
 
-## Built on exceptional work
+## Attribution
 
-**A major thank-you to Daniel Agrici ([AgriciDaniel](https://github.com/AgriciDaniel)) and his original [claude-obsidian](https://github.com/AgriciDaniel/claude-obsidian) project.**
+The Empire workspace concept and Legends ecosystem direction are Benjamin's. `legends-empire` incorporates source-cited wiki and memory tooling from [claude-obsidian](https://github.com/AgriciDaniel/claude-obsidian) by Daniel Agrici ([AgriciDaniel](https://github.com/AgriciDaniel)), under the MIT license.
 
-Its source-cited wiki workflows, retrieval tools, and recoverable knowledge operations are the foundation of this distribution. `legends-empire` builds on that work under the MIT license. Daniel and the upstream contributors deserve clear credit for the work that makes this foundation possible.
-
-The Empire workspace philosophy and Legends ecosystem integration build upon that foundation. They do not replace its authorship or erase its history.
-
-Original copyright notices, contributor credits, and license terms remain in [LICENSE](LICENSE), [ATTRIBUTION.md](ATTRIBUTION.md), and [CITATION.cff](CITATION.cff).
-
-Explore Daniel's work through [AI Marketing Hub Pro](https://www.skool.com/ai-marketing-hub-pro).
+Original copyright, license, and contributor notices are preserved in [LICENSE](LICENSE), [ATTRIBUTION.md](ATTRIBUTION.md), and [CITATION.cff](CITATION.cff).
 
 ---
 
