@@ -1,41 +1,43 @@
-<p align="left">
-  <img src="assets/legends-empire-banner.webp" alt="legends-empire" width="100%">
-</p>
+# ![legends-empire](assets/legends-empire-banner.webp)
 
-**Empire Craft. A living map of your world and what you are building.**
+[install](docs/install-guide.md) · [releases](https://github.com/avalonreset/legends-empire/releases) · [attribution](#attribution)
 
-[Releases](https://github.com/avalonreset/legends-empire/releases) · [Setup](docs/install-guide.md) · [Attribution](#attribution)
+Your digital reality is already there: folders, repositories, tools, knowledge, infrastructure, and half-built ideas. The problem is keeping track of what exists, how it connects, and what you meant to do with it.
 
-## Empire Craft
+`legends-empire` brings that into one navigable map, backed by a Markdown knowledge base you own. Obsidian is the visual interface. AI agents help maintain the knowledge and work from it.
 
-Start with a folder called `Empire`.
+## The structure
 
-Give what you build a place in the map: your tools, knowledge, projects, infrastructure, and the relationships between them. Keep the reasons behind decisions. Bring useful discoveries back into the wiki so the next session can start from what you already know.
+**The Map records what exists. The Blueprint records what you want to build.** Keep them separate. A plan is not a working system, and an empty page is better than invented certainty.
 
-Two views keep the work grounded:
+Seven provinces give the map its coverage: **Work, Money, Craft, Home, People, Self, and Dreams.** Underneath are the sources, connected concepts, and machinery that make the knowledge usable.
 
-- **The Map:** what exists, supported by evidence.
-- **The Blueprint:** what you intend to build.
+Other vaults, code repositories, and infrastructure are territories. Map their locations and relationships. They do not need to be moved into one giant folder.
 
-The hot wiki index is the intended starting point for an agent: a compact view of current priorities and links to deeper context. The whole archive does not belong in every prompt.
+## What belongs in the knowledge base
 
-One home for the map does not require moving every file. Repositories, external folders, and other vaults can keep their own locations. Empire records how they fit together.
+- What a system does, where it lives, and what depends on it.
+- Sources behind a finding, not just an agent's summary.
+- Decisions and the reasons for them.
+- What is working, what is missing, and what comes next.
 
-## Tools and memory
+Keep one canonical home for each fact. Link to it from the other places that need it. The hot wiki index gives an agent a short route into current context; the detail stays behind those links.
 
-[cto-legends](https://github.com/avalonreset/cto-legends) helps an agent find and operate the right Legends module. `legends-empire` is where the resulting knowledge can accumulate.
+This is personal knowledge management across your whole digital environment. Its structure should reflect your reality and change as you build.
 
-Markdown keeps the knowledge readable. Obsidian provides a visual interface. The memory tools capture sources, connect notes, retrieve evidence, and apply recoverable updates. Each module remains independently usable.
+## Where the tools fit
 
-Empire Craft is the organizing philosophy. It takes shape through the work you actually do.
+[cto-legends](https://github.com/avalonreset/cto-legends) discovers the appropriate module and loads its instructions. The modules do the work. `legends-empire` keeps the evidence and context available for the next session.
 
-## Get started
+The released memory tools support source capture, linked wiki notes, retrieval, and recoverable updates. You choose the vault. Installing the product does not give an agent permission to reorganize your files.
 
-Use the [current release](https://github.com/avalonreset/legends-empire/releases) and [installation guide](docs/install-guide.md). Keep the product installation separate from your personal `Empire` folder.
+## Install and use
 
-The published release provides the source-cited memory foundation. Unified workspace onboarding, territory mapping, and hot-index setup are still being integrated. Those parts of the direction are not yet shipped as one complete experience.
+Follow the [installation guide](docs/install-guide.md) with the [current release](https://github.com/avalonreset/legends-empire/releases). Keep the software checkout separate from your own `Empire` folder.
 
-Native Windows supports inspection and previews; transactional writes currently require WSL or a supported POSIX host. See [platform setup](docs/windows-wsl.md).
+**Release boundary:** the published package supplies the memory tools. Unified onboarding for the province structure, territory maps, and hot index is still being integrated. The structure described above is the direction, not a claim that the current installer sets up all of it.
+
+Native Windows supports inspection and previews. Transactional writes require WSL or a supported POSIX host. See [platform setup](docs/windows-wsl.md).
 
 ---
 
