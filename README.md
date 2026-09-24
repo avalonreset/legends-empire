@@ -41,7 +41,7 @@ Native Windows supports inspection and previews; transactional writes currently 
 
 ## Attribution
 
-The Empire workspace concept and Legends ecosystem direction are Benjamin's. `legends-empire` incorporates source-cited wiki and memory tooling from [claude-obsidian](https://github.com/AgriciDaniel/claude-obsidian) by Daniel Agrici ([AgriciDaniel](https://github.com/AgriciDaniel)), under the MIT license.
+`legends-empire` incorporates source-cited wiki and memory tooling from [claude-obsidian](https://github.com/AgriciDaniel/claude-obsidian) by Daniel Agrici ([AgriciDaniel](https://github.com/AgriciDaniel)), under the MIT license.
 
 Original copyright, license, and contributor notices are preserved in [LICENSE](LICENSE), [ATTRIBUTION.md](ATTRIBUTION.md), and [CITATION.cff](CITATION.cff).
 
