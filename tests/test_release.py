@@ -86,10 +86,7 @@ class CanonicalReleasePolicyTests(unittest.TestCase):
                 )
             ),
         )
-        self.assertEqual(
-            {".claude-plugin/marketplace.json": "config/public-marketplace.json"},
-            config["archive_overlays"],
-        )
+        self.assertEqual({}, config["archive_overlays"])
 
 
 class ReleaseRepo(unittest.TestCase):
@@ -576,9 +573,7 @@ class BuildTests(ReleaseRepo):
 
 class CanonicalPolicyTests(unittest.TestCase):
     def test_release_version_and_date_surfaces_are_coordinated(self) -> None:
-        plugin = json.loads(
-            (ROOT / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8")
-        )
+        version = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
         marketplace = json.loads(
             (ROOT / "config" / "public-marketplace.json").read_text(
                 encoding="utf-8"
@@ -590,8 +585,6 @@ class CanonicalPolicyTests(unittest.TestCase):
         citation = (ROOT / "CITATION.cff").read_text(encoding="utf-8")
         changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
-
-        version = plugin["version"]
         package_match = re.search(r'^__version__ = "([^"]+)"$', package_source, re.M)
         citation_version = re.search(r"^version: ([^\s]+)$", citation, re.M)
         citation_date = re.search(r"^date-released: '([^']+)'$", citation, re.M)
@@ -620,6 +613,7 @@ class CanonicalPolicyTests(unittest.TestCase):
         reviewed = config["reviewed_binaries"]
         expected_binaries = [
             "assets/cover.png",
+            "assets/legends-empire-banner.webp",
             "assets/screenshots/graph-view.png",
             "assets/screenshots/wiki-map-view.png",
             "tests/fixtures/capture/sample.pdf",

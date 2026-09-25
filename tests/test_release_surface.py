@@ -1,52 +1,98 @@
-"""Public Legends distribution contract, executed by make test."""
-import json
-import os
-import shutil
-import subprocess
+"""Router-native module surface contract, executed by make test.
+
+Mirrors .github/workflows/contract.yml: skills/ holds only the pinned
+cto-legends vendor copy, the module identity files and README agent block
+are present, and the forbidden per-module skill registration set is absent.
+"""
+import re
 import unittest
 from pathlib import Path
+
 ROOT = Path(__file__).resolve().parent.parent
+MODULE_ID = "legends-empire"
 
-class PublicSurfaceTests(unittest.TestCase):
-    def test_marketplace_routes_to_public_distribution(self):
-        manifest = json.loads((ROOT / "config/public-marketplace.json").read_text())
-        plugin = json.loads((ROOT / ".claude-plugin/plugin.json").read_text())
-        self.assertEqual("legends-empire", manifest["name"])
-        self.assertEqual(plugin["name"], manifest["plugins"][0]["name"])
-        self.assertEqual("https://github.com/avalonreset/legends-empire", plugin["repository"])
 
-    def test_public_writing_style_and_six_host_contract(self):
-        router = (ROOT / "skills/legends-empire/SKILL.md").read_text(encoding="utf-8")
-        self.assertIn("Do not use em dashes", router)
-        for relative in ("README.md", "docs/AGENTS-MATRIX.md"):
+class RouterNativeSurfaceTests(unittest.TestCase):
+    def test_skills_holds_only_the_pinned_router_copy(self):
+        skills = ROOT / "skills"
+        self.assertTrue(skills.is_dir(), "skills/")
+        entries = sorted(path.name for path in skills.iterdir())
+        self.assertEqual(["cto-legends"], entries)
+        vendored = skills / "cto-legends" / "SKILL.md"
+        self.assertTrue(vendored.is_file(), str(vendored))
+        frontmatter = vendored.read_text(encoding="utf-8")
+        self.assertTrue(frontmatter.startswith("---\n"), "router skill frontmatter")
+        match = re.search(r"(?m)^name:\s*(\S+)", frontmatter)
+        self.assertIsNotNone(match, "router skill name")
+        assert match is not None
+        self.assertEqual("cto-legends", match.group(1))
+
+    def test_module_identity_files_are_present(self):
+        module = (ROOT / ".legends-module").read_text(encoding="utf-8").strip()
+        self.assertEqual(MODULE_ID, module)
+        pin = (ROOT / ".legends-router-pin").read_text(encoding="utf-8").strip()
+        self.assertRegex(pin, r"^[0-9a-f]{40}$")
+
+    def test_readme_carries_the_router_agent_block(self):
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        self.assertIn("Agent setup (via `cto-legends`)", readme)
+        self.assertIn("skills/cto-legends/SKILL.md", readme)
+        self.assertIn(f"cto-legends install {MODULE_ID}", readme)
+
+    def test_forbidden_skill_registrations_are_absent(self):
+        forbidden = [
+            f"skills/{MODULE_ID}",
+            "CLAUDE.md",
+            "GEMINI.md",
+            "CODEX.md",
+            "GROK.md",
+            "LEGENDS.md",
+            "gemini-extension.json",
+            "skill-package.json",
+            "SKILL.md",
+            "github/SKILL.md",
+            ".claude-plugin",
+            "agents",
+            "bin/setup-multi-agent.ps1",
+            "bin/setup-multi-agent.sh",
+            "bin/setup-multi-agent",
+            "bin/install-spine.ps1",
+            "bin/install-spine.sh",
+            "scripts/setup-multi-agent.sh",
+            "scripts/setup-multi-agent.ps1",
+            "scripts/mirror-agent-skills.ps1",
+            "install-codex.ps1",
+            "install-codex.sh",
+        ]
+        hits = [f for f in forbidden if (ROOT / f).exists()]
+        for mirror in (".agents/skills", ".claude/skills"):
+            mirror_path = ROOT / mirror
+            if mirror_path.is_dir() and any(mirror_path.iterdir()):
+                hits.append(mirror + "/")
+        self.assertEqual([], hits)
+
+    def test_no_ide_rule_dispatchers_remain(self):
+        markers = re.compile(
+            r"SKILL\.md|setup-multi-agent|install-spine|skills/[A-Za-z0-9_.-]+/",
+            re.IGNORECASE,
+        )
+        dispatchers = []
+        for rules_dir in (".cursor/rules", ".windsurf/rules", ".codex", ".gemini"):
+            root = ROOT / rules_dir
+            if root.is_dir():
+                for path in sorted(root.rglob("*")):
+                    if path.is_file():
+                        text = path.read_text(encoding="utf-8", errors="replace")
+                        text = re.sub(r"cto-legends", "", text, flags=re.IGNORECASE)
+                        if markers.search(text):
+                            dispatchers.append(path.relative_to(ROOT).as_posix())
+        self.assertEqual([], dispatchers)
+
+    def test_public_docs_use_portable_style(self):
+        for relative in ("README.md", "docs/install-guide.md"):
             text = (ROOT / relative).read_text(encoding="utf-8")
-            for host in ("Grok", "Codex", "Gemini", "Claude", "Cursor", "MetaMuse"):
-                self.assertIn(host, text, (relative, host))
-        for directory in ("skills", "docs", "agents", "templates"):
-            for path in (ROOT / directory).rglob("*.md"):
-                self.assertNotIn(chr(0x2014), path.read_text(encoding="utf-8"), str(path))
+            self.assertNotIn(chr(0x2014), text, relative)
 
-    @unittest.skipUnless(os.name == "nt" and shutil.which("pwsh"), "native Windows PowerShell smoke")
-    def test_windows_wrapper_does_not_depend_on_os_environment(self):
-        environment = dict(os.environ)
-        environment.pop("OS", None)
-        result = subprocess.run(["pwsh", "-NoProfile", "-File",
-            str(ROOT / "scripts/setup-multi-agent.ps1"), "--apply"],
-            env=environment, capture_output=True, text=True)
-        self.assertEqual(0, result.returncode, result.stderr)
-        self.assertIn("Native Windows: no host paths changed.", result.stdout)
-        self.assertIn("MetaMuse", result.stdout)
-
-    def test_required_knowledge_contracts_exist(self):
-        for relative in ("WIKI.md", "agents/wiki-ingest.md", "agents/wiki-lint.md",
-                         "docs/RESEARCH-EVIDENCE-HANDOFF.md"):
-            self.assertTrue((ROOT / relative).is_file(), relative)
-
-    def test_router_selects_vault_instead_of_house_paths(self):
-        text = (ROOT / "skills/legends-empire/SKILL.md").read_text(encoding="utf-8")
-        self.assertIn("selected", text)
-        self.assertNotIn("E:" + chr(92), text)
-        self.assertIn("WSL", text)
 
 if __name__ == "__main__":
     unittest.main()

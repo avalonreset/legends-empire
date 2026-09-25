@@ -16,7 +16,7 @@ Closes #<issue-number> (if applicable)
 
 ## Changes
 List the files and surfaces touched:
-- `skills/<name>/SKILL.md`: what changed
+- `skills/cto-legends/SKILL.md`: pin refresh only, no edits
 - `scripts/<name>.py`: what changed
 - ...
 
@@ -43,7 +43,9 @@ All tests passed.
 ```
 
 ## Verifier
-For non-trivial changes, dispatch `agents/verifier.md` on the declared worktree or path scope and paste its verdict:
+For non-trivial changes, paste the hermetic evidence (`make test` tail plus
+`contracts --check-only` and `package validate` results for contract or
+release changes):
 
 - Verdict: SHIP / HOLD-FIX-FIRST / NEEDS-REWORK
 - BLOCKER: N / HIGH: N / MEDIUM: N / LOW: N

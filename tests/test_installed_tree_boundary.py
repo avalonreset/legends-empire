@@ -19,7 +19,6 @@ SETUP_SCRIPT_NAMES = frozenset(
     {
         "setup-dragonscale.sh",
         "setup-mode.sh",
-        "setup-multi-agent.sh",
         "setup-retrieve.sh",
         "setup-vault.sh",
     }
@@ -33,8 +32,6 @@ SHELL_LAUNCHERS = tuple(
     )
 )
 PRODUCT_DIRS = (
-    ".claude-plugin",
-    "agents",
     "claude_empire",
     "config",
     "hooks",
@@ -156,16 +153,6 @@ class InstalledTreeBoundaryTests(unittest.TestCase):
                             "--vault",
                             str(vault),
                             "--check",
-                        ],
-                        {0},
-                    ),
-                    (
-                        [
-                            "bash",
-                            str(installed / "scripts/setup-multi-agent.sh"),
-                            "--dry-run",
-                            "--host",
-                            "codex",
                         ],
                         {0},
                     ),

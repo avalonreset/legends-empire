@@ -9,21 +9,19 @@ recoverable operation transactions.
 
 | Role | Contains | Mutation policy |
 |---|---|---|
-| Product package | Skills, Python core, scripts, hooks, templates | Changed by product development only |
+| Product package | Pinned router copy, Python core, scripts, hooks, templates | Changed by product development only |
 | User vault | Notes, sources, ledgers, Obsidian settings | Changed by reviewed vault operations |
 | Derived runtime | Locks, journals, retrieval indexes, capture queue | Vault-local, ignored, recoverable/regenerable |
 | Public artifact | Allowlisted product files and synthetic samples | Rebuilt from a clean Git snapshot |
 
-An installed plugin cache is always product code. It never becomes the user
+An installed module copy is always product code. It never becomes the user
 vault. Resolve vault state through `--vault`, `CLAUDE_EMPIRE_VAULT`, workspace
 config, or current-directory discovery.
 
-The development checkout and public marketplace root are distinct roles even
-when they share history. Development source stores the reviewed marketplace
-template under `config/`; the release builder injects it at
-`.claude-plugin/marketplace.json` only after selecting and auditing the clean
-artifact. Public default-branch promotion uses the extracted artifact and
-requires owner approval.
+The development checkout and the public release artifact are distinct roles
+even when they share history. The deterministic release builder selects and
+audits the clean artifact from a Git snapshot. Public default-branch
+promotion uses the extracted artifact and requires owner approval.
 
 ## Knowledge layers
 
@@ -84,7 +82,8 @@ writes, but their destination mode is create-only. Address allocation, page
 frontmatter, address map, source manifest, index, log, and hot cache can move in
 the same journaled operation.
 
-Read [the transaction reference](../skills/wiki/references/operation-transactions.md).
+The transaction contract lives in the portable core
+(`claude_empire/transaction.py`) and is pinned by the hermetic suite.
 
 ## Read paths and transport
 
@@ -141,7 +140,8 @@ support, contradictions, confidence, risk, and assessment.
 - Contradictions remain visible.
 - Unsupported is a valid state; invented citations are not.
 
-Read [the provenance reference](../skills/wiki/references/provenance.md).
+Provenance behavior is pinned by the ledger contracts in the portable core
+(`claude_empire/ledgers.py`) and the hermetic suite.
 
 ## Hooks
 

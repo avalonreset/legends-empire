@@ -39,7 +39,7 @@ content safely.
 
 ## Defensive invariants
 
-- Mutable vault paths resolve independently from the plugin installation.
+- Mutable vault paths resolve independently from the product installation.
 - Vault-relative paths are containment-checked after symlink resolution.
 - One logical mutation holds one process-lifetime vault lock, journals expected
   hashes and backups, writes with fsync plus atomic replace, and rolls back or

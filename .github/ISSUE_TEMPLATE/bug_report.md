@@ -25,8 +25,8 @@ What you expected to happen instead.
 - Vault selection source: (`doctor --vault <vault>` output, with private paths redacted)
 - Transport state: (`bash scripts/detect-transport.sh --peek --vault <vault>` output)
 
-## Skill / agent / script involved
-Which surface is affected? (e.g. `/wiki-ingest`, `scripts/wiki-mode.py`, `agents/verifier.md`)
+## Module recipe / script involved
+Which surface is affected? (e.g. router recipe step, `scripts/wiki-mode.py`, `scripts/claude-empire.py contracts`)
 
 ## Logs / output
 ```

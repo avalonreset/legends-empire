@@ -591,8 +591,8 @@ def test_cli_set_is_unavailable():
     )
 
 
-# ─── CLI subprocess: templates listing returns all 6 ───────────────────────
-def test_cli_templates_lists_six():
+# ─── CLI subprocess: removed per-module templates fail closed ──────────────
+def test_cli_templates_missing_dir_fails_closed():
     with tempfile.TemporaryDirectory() as directory:
         vault = Path(directory)
         (vault / "wiki").mkdir()
@@ -602,9 +602,16 @@ def test_cli_templates_lists_six():
             text=True,
             timeout=5,
         )
-        assert_eq("cli templates rc=0", 0, result.returncode)
-        lines = [line for line in result.stdout.strip().split("\n") if line]
-        assert_eq("cli templates returns 6 paths", 6, len(lines))
+        assert_true(
+            "cli templates fails closed without per-module copies",
+            result.returncode != 0,
+            hint=f"rc={result.returncode}",
+        )
+        assert_true(
+            "cli templates names the missing dir",
+            "templates dir missing" in result.stderr,
+            hint=result.stderr,
+        )
 
 
 # ─── Single-source page vocabulary (claude_empire.page_schema) ─────────────
@@ -858,7 +865,7 @@ def main():
     test_cli_id_returns_timestamp()
     test_cli_route_returns_path()
     test_cli_set_is_unavailable()
-    test_cli_templates_lists_six()
+    test_cli_templates_missing_dir_fails_closed()
     test_routable_types_are_derived_not_restated()
     test_routable_types_cannot_escape_the_page_vocabulary()
     test_question_is_routable_in_every_mode()

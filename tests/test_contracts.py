@@ -3,9 +3,7 @@
 
 from __future__ import annotations
 
-import fnmatch
 import json
-import os
 import shutil
 import subprocess
 import sys
@@ -22,7 +20,6 @@ from claude_empire.contracts import (
     validate_contracts,
 )
 from claude_empire.transaction import OPERATION_TYPES
-from claude_empire.vault_ops import build_vault_bundle
 
 
 FIXTURE = ROOT / "tests" / "fixtures" / "contracts" / "valid"
@@ -76,7 +73,7 @@ class CanonicalContractTests(unittest.TestCase):
         contracted = {item["id"] for item in document["capabilities"]}
         discovered = {path.parent.name for path in (ROOT / "skills").glob("*/SKILL.md")}
         self.assertEqual(discovered, contracted)
-        self.assertEqual(16, len(contracted))
+        self.assertEqual({"cto-legends"}, contracted)
 
     def test_product_contract_locks_privacy_compatibility_and_release_authority(
         self,
@@ -113,12 +110,6 @@ class CanonicalContractTests(unittest.TestCase):
     def test_canonical_core_capabilities_report_only_behavioral_verification(
         self,
     ) -> None:
-        if os.name == "nt":
-            self.skipTest(
-                "wiki/wiki-lint verifiers exercise vault mutation, which native "
-                "Windows refuses by design (UNSUPPORTED_PLATFORM), so verified "
-                "capabilities report degraded here"
-            )
         report = evaluate_capabilities(ROOT, verify=True)
         core = {
             item["id"]: item
@@ -126,24 +117,14 @@ class CanonicalContractTests(unittest.TestCase):
             if item["tier"] == "core"
         }
         self.assertEqual(
-            {
-                "legends-empire": "configured",
-                "save": "configured",
-                "wiki": "verified",
-                "wiki-ingest": "configured",
-                "wiki-lint": "verified",
-                "wiki-query": "configured",
-            },
+            {"cto-legends": "configured"},
             {capability_id: item["state"] for capability_id, item in core.items()},
         )
-        for capability_id in ("save", "wiki-ingest", "wiki-query"):
-            self.assertTrue(
-                any(
-                    "no automated" in reason
-                    for reason in core[capability_id]["reasons"]
-                ),
-                core[capability_id],
-            )
+        router = core["cto-legends"]
+        self.assertTrue(
+            any("no automated" in reason for reason in router["reasons"]),
+            router,
+        )
         self.assertEqual(0, report["summary"]["degraded"])
 
     def test_canonical_verifiers_are_behavioral_or_explain_their_absence(self) -> None:
@@ -166,81 +147,22 @@ class CanonicalContractTests(unittest.TestCase):
                     capability.get("verification_reason", "").strip(), capability["id"]
                 )
 
-    def test_wiki_cli_and_lint_scopes_are_least_privilege(self) -> None:
+    def test_router_capability_scope_is_read_only(self) -> None:
         document = _read(ROOT / "config" / "capabilities.json")
         capabilities = {item["id"]: item for item in document["capabilities"]}
-        cli = capabilities["wiki-cli"]
-        self.assertEqual(
-            {
-                "vault:.vault-meta",
-                "vault:.vault-meta/.transport.json.tmp.*",
-                "vault:.vault-meta/transport.json",
-            },
-            {item["pattern"] for item in cli["write_scope"]},
+        router = capabilities["cto-legends"]
+        self.assertIn(
+            "skills/cto-legends/SKILL.md", router["implementation_paths"]
         )
-        self.assertNotIn("vault:.raw/**", cli["read_scope"])
-        self.assertTrue(all(item["access"] == "runtime" for item in cli["write_scope"]))
-        self.assertEqual("forbidden", cli["confirmation"]["destructive"])
-
-        lint = capabilities["wiki-lint"]
-        self.assertIn("claude_empire/lint_engine.py", lint["implementation_paths"])
-        self.assertNotIn("scripts/tiling-check.py", lint["implementation_paths"])
-        self.assertEqual([], lint["write_scope"])
-        self.assertEqual("none", lint["transaction_type"])
-        self.assertEqual("not_applicable", lint["confirmation"]["mutation"])
-        self.assertEqual("forbidden", lint["confirmation"]["destructive"])
-        self.assertNotIn("vault:.raw/**", lint["read_scope"])
-        self.assertNotIn("vault:.vault-meta/**", lint["read_scope"])
-
-        retrieve = capabilities["wiki-retrieve"]
-        self.assertEqual(
-            {
-                "vault:.vault-meta/mutation.lock/**",
-                "vault:.vault-meta/.embed-cache.lock",
-                "vault:.vault-meta/bm25/**",
-                "vault:.vault-meta/chunks/**",
-                "vault:.vault-meta/embed-cache.*.tmp",
-                "vault:.vault-meta/embed-cache.json",
-                "vault:.vault-meta/hook.log",
-            },
-            {item["pattern"] for item in retrieve["write_scope"]},
-        )
-        self.assertTrue(
-            all(item["access"] == "runtime" for item in retrieve["write_scope"])
-        )
-
-    def test_verified_wiki_contract_covers_every_init_target(self) -> None:
-        document = _read(ROOT / "config" / "capabilities.json")
-        wiki = next(item for item in document["capabilities"] if item["id"] == "wiki")
-        write_patterns = [
-            item["pattern"].removeprefix("vault:") for item in wiki["write_scope"]
-        ]
-        read_patterns = [
-            item.removeprefix("vault:")
-            for item in wiki["read_scope"]
-            if item.startswith("vault:")
-        ]
-        with tempfile.TemporaryDirectory() as td:
-            bundle = build_vault_bundle(
-                Path(td) / "vault",
-                operation_id="contract-scope",
-                operation_type="setup",
-                generated_at="2026-07-11T00:00:00Z",
-                adopt=False,
-            )
-        targets = {item["path"] for item in bundle["writes"]}
-        unmatched_writes = sorted(
-            path
-            for path in targets
-            if not any(fnmatch.fnmatchcase(path, pattern) for pattern in write_patterns)
-        )
-        unmatched_reads = sorted(
-            path
-            for path in targets
-            if not any(fnmatch.fnmatchcase(path, pattern) for pattern in read_patterns)
-        )
-        self.assertEqual([], unmatched_writes)
-        self.assertEqual([], unmatched_reads)
+        self.assertEqual([], router["write_scope"])
+        self.assertEqual("none", router["transaction_type"])
+        self.assertEqual("not_applicable", router["confirmation"]["mutation"])
+        self.assertEqual("not_applicable", router["confirmation"]["network_egress"])
+        self.assertEqual("forbidden", router["confirmation"]["destructive"])
+        self.assertFalse(router["needs"]["shell"])
+        self.assertFalse(router["needs"]["network"])
+        self.assertNotIn("vault:.raw/**", router["read_scope"])
+        self.assertNotIn("vault:.vault-meta/**", router["read_scope"])
 
     def test_cli_check_only_and_unknown_capability(self) -> None:
         valid = subprocess.run(

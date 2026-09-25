@@ -7,6 +7,34 @@ implementation record for older releases.
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-09-25 (Router-native contract patch)
+
+Post-reset patch: the hermetic suite, contract probes, release builder, and
+docs now assert the router-native surface instead of the removed per-module
+skill registrations. No behavior change to the memory tools.
+
+### Fixed
+
+- `contracts --check-only` is valid again: `config/capabilities.json`
+  contracts exactly the one registered skill (`cto-legends`, read-only,
+  no writes), and `config/product-contract.json` host and installation
+  paths point at the vendored router copy instead of the deleted
+  per-host skill installer and plugin manifest.
+- `package validate` accepts the `VERSION` file as the version authority
+  when no plugin manifest ships; the public marketplace template tracks it.
+- Release builder includes the approved README banner hash and no longer
+  injects a marketplace manifest for the removed plugin distribution.
+- Tests assert the router-native surface (skills allowlist, module
+  identity files, README agent block, forbidden set); assertions tied to
+  removed skill paths updated, everything else kept.
+
+### Removed
+
+- IDE skill-dispatcher rules (`.cursor/rules/`, `.windsurf/rules/`),
+  `docs/AGENTS-MATRIX.md` (host notes folded into the install guide),
+  per-module `agents/` definitions, and the per-host skill installer
+  references from docs and contributor templates.
+
 ## [0.1.0] - 2026-09-25 (Router-native generation reset)
 
 Contract reset: single registered skill (`cto-legends`, vendored pinned copy

@@ -16,10 +16,11 @@ GeoGrid, content tools and other consumers remain separate products.
    The exporter also provides `python -m legends_dataforseo.evidence verify`.
 3. Stage reviewed sources in `inbox/research/<evidence_id>` without overwrite.
    Staging is not an accepted finding. Preserve the raw payload unchanged.
-4. Follow `skills/wiki-ingest/SKILL.md`: bounded capture, immutable source
-   locators, source/claim provenance, preconditions and one ingest transaction.
-   Platform restrictions remain in effect. Never substitute direct canonical
-   writes when the transaction engine cannot apply on the current host.
+4. Run the ingest through the module recipe the router loads: bounded
+   capture, immutable source locators, source/claim provenance,
+   preconditions and one ingest transaction. Platform restrictions remain
+   in effect. Never substitute direct canonical writes when the
+   transaction engine cannot apply on the current host.
 5. Link reviewed knowledge to an existing business or research subject. Record
    source dates, locale/settings, uncertainties, contradictions and proposed
    actions separately from outcomes. Create no new page if indexing the source

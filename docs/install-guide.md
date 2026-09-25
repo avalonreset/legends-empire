@@ -1,108 +1,58 @@
-# Install claude-empire
+# Install legends-empire
 
-claude-empire has two independent parts:
+legends-empire has two independent parts:
 
-1. the product package (skills, portable core, Claude adapter, and templates);
+1. the module package (pinned `cto-legends` router copy, portable core,
+   and vault templates), installed through the router;
 2. a user-owned Obsidian vault containing mutable knowledge.
 
-Do not use an installed plugin cache as the vault. A source clone is suitable
+Do not use a module checkout as the vault. A source clone is suitable
 for development, but a normal user vault should be a separate directory.
 
 ## Requirements
 
 - Python 3.11 or newer
-- an Agent Skills compatible host, or Claude Code for the plugin adapter
+- `cto-legends` (the only registered skill; this repo vendors a pinned
+  copy at `skills/cto-legends/SKILL.md`)
 - Obsidian when you want its visual editor
-- Bash for installer and optional legacy-extension scripts
+- Bash for the vault helper scripts
 - Git only for source development, release builds, or explicit checkpoints
 - On Windows: WSL for vault writes; native Windows supports read-only
   inspection and dry-runs: see the [Windows and WSL guide](windows-wsl.md)
 
-## Claude Code marketplace
+## Router install
 
-Add the artifact-clean public catalog and install the namespaced plugin:
-
-```bash
-claude plugin marketplace add avalonreset/legends-empire
-claude plugin install legends-empire@legends-empire
-claude plugin list
-```
-
-The private development tree deliberately has no
-`.claude-plugin/marketplace.json`; it can contain contributor-vault state and
-must not be added as a marketplace. The deterministic release builder injects
-that manifest only into its audited output. The public default branch must be
-promoted from the extracted audited artifact before these marketplace commands
-are advertised for a new version.
-
-Invoke skills as `/legends-empire:wiki`,
-`/legends-empire:wiki-ingest`, and `/legends-empire:save`.
-
-The plugin cache contains read-only product assets. Run Claude from the user
-vault, set `CLAUDE_EMPIRE_VAULT`, or pass `--vault` to portable commands.
-
-## Local Claude plugin development
-
-From a product clone:
+`cto-legends` is the only registered skill. Do not register this module
+as its own skill and do not link per-module skills into host skill
+directories.
 
 ```bash
-claude --plugin-dir <product-repository>
+cto-legends install legends-empire
 ```
 
-This mode is for testing uninstalled changes. Skills remain namespaced. It does
-not convert the product repository into a user vault.
+Follow the module recipe the router loads. The recipe lives in the
+module README plus `docs/`; there is no per-host skill installer.
 
-## Portable Agent Skills hosts
+## Host support
 
-Grok, Codex, Gemini, Claude, Cursor and MetaMuse use the same canonical skill.
-See [the host matrix](AGENTS-MATRIX.md) for exact adapters and verification
-limits. MetaMuse prints a manual entry point rather than installing to an
-unverified native directory. The PowerShell helper prints safe file-based
-instructions on Windows; use the Bash installer on POSIX/WSL for skill links.
+One canonical router copy and the Python core serve Grok, Codex, Gemini,
+Claude, Cursor, Windsurf, OpenCode, ZCode, and MetaMuse. No separate
+per-model implementation is necessary. Ask the host to read the absolute
+path to `skills/cto-legends/SKILL.md`, then run
+`python scripts/claude-empire.py package validate` from the product
+directory. A chat-only service cannot execute this workflow.
 
+Linux and macOS run the full POSIX suite. Native Windows supports
+inspection, retrieval and dry-run planning. Recoverable canonical
+mutation uses WSL or a supported POSIX host; never bypass this boundary
+with generic direct writes. Read `windows-wsl.md` before promising full
+Windows execution.
 
-The installer defaults to a no-write preview for Codex, OpenCode, and Gemini:
+## Product versus vault
 
-```bash
-bash scripts/setup-multi-agent.sh
-bash scripts/setup-multi-agent.sh --apply
-```
-
-It links each canonical `skills/<name>/` directory into the host's direct
-`<skill-root>/<name>/SKILL.md` discovery layout. Destinations are created only
-when absent; an existing skill or link is never replaced. Check readiness
-without writing:
-
-```bash
-bash scripts/setup-multi-agent.sh --check
-```
-
-Cursor and Windsurf use workspace-local discovery and require an explicit
-workspace:
-
-```bash
-bash scripts/setup-multi-agent.sh --host cursor --host windsurf \
-  --workspace <workspace> --apply
-```
-
-ZCode is opt-in and user-level (no `--workspace` needed):
-
-```bash
-bash scripts/setup-multi-agent.sh --host zcode
-bash scripts/setup-multi-agent.sh --host zcode --apply
-```
-
-You can also create equivalent per-skill links manually. For each `<name>` under
-the product's `skills/` directory, link that directory at:
-
-```text
-Codex:     ~/.agents/skills/<name>          -> <product-repository>/skills/<name>
-OpenCode:  ~/.config/opencode/skills/<name> -> <product-repository>/skills/<name>
-Gemini:    ~/.gemini/skills/<name>          -> <product-repository>/skills/<name>
-ZCode:     ~/.zcode/skills/<name>           -> <product-repository>/skills/<name>
-Cursor:    <workspace>/.cursor/skills/<name>   -> <product-repository>/skills/<name>
-Windsurf:  <workspace>/.windsurf/skills/<name> -> <product-repository>/skills/<name>
-```
+The extracted product is code. A user vault is separate mutable data. No
+machine-specific vault is selected by default. Resolve an explicit path
+or configured workspace before research ingestion, indexing or changes.
 
 ## Create a new vault
 
@@ -175,7 +125,7 @@ Mutable commands use this precedence:
 3. nearest `.claude-empire.json`
 4. nearest unambiguous initialized vault from the current directory
 
-If selection fails, the command exits without mutation. The product/plugin root
+If selection fails, the command exits without mutation. The product root
 is rejected as an implicit vault.
 
 Verify a selected vault:
@@ -224,9 +174,10 @@ python3 scripts/claude-empire.py capture apply --vault <vault> \
   --approved-plan-sha256 <reviewed-sha256> --apply
 ```
 
-Then invoke the host's `wiki-ingest` skill. Image, PDF, and EPUB semantic
-extraction is not built into the core; those formats currently receive bounded
-metadata unless a separately configured adapter is explicitly approved.
+Then ask the host to route the ingest through `cto-legends`. Image, PDF,
+and EPUB semantic extraction is not built into the core; those formats
+currently receive bounded metadata unless a separately configured adapter
+is explicitly approved.
 
 ## Upgrade and rollback
 
@@ -255,23 +206,18 @@ from its vault-local pending record.
 
 ## Uninstall
 
-Remove the host integration, not the vault:
+Remove the module through the router, not the vault: ask `cto-legends`
+to drop the `legends-empire` registration.
 
-```bash
-claude plugin uninstall legends-empire@legends-empire
-claude plugin marketplace remove legends-empire
-```
-
-For portable hosts, remove only the per-skill links that the installer reported.
 User notes, sources, ledgers, and Obsidian settings remain untouched.
 
 ## Troubleshooting
 
 | Symptom | Check |
 |---|---|
-| Skill is not discovered | Confirm `<host-skill-root>/<name>/SKILL.md` resolves to the matching product skill; rerun installer `--check`. |
+| Skill is not discovered | Confirm the host read `skills/cto-legends/SKILL.md` from the product checkout; run `python scripts/claude-empire.py package validate` from the product directory. |
 | Command says no vault selected | Run from the vault, pass `--vault`, or set `CLAUDE_EMPIRE_VAULT`. |
-| Plugin-root refusal | Select a separate user vault; plugin cache writes are unsupported. |
+| Product-root refusal | Select a separate user vault; product checkout writes are unsupported. |
 | Transaction conflict / exit 75 | Another operation is active or a target changed; reread, rebuild, and inspect a new bundle. |
 | Obsidian CLI is unavailable | Use filesystem reads; start/update Obsidian before retrying CLI transport. |
 | Capture adapter is not implemented | Inspect `capture adapters`; configure a separate runner only with explicit consent. |

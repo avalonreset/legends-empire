@@ -48,10 +48,9 @@ Behavior changes should include:
 3. updated user and contract documentation;
 4. an entry under `## [Unreleased]` in `CHANGELOG.md`.
 
-Run the read-only fresh-context verifier in `agents/verifier.md` for non-trivial
-changes. It may inspect the full worktree or a declared path scope; it never
-stages, commits, pushes, or modifies files. Resolve BLOCKER and HIGH findings
-before requesting review.
+For non-trivial changes, review the full worktree or a declared path scope
+read-only: never stage, commit, push, or modify files during verification.
+Resolve BLOCKER and HIGH findings before requesting review.
 
 Use Conventional Commits where practical. The pull request should explain the
 problem, behavior, compatibility/rollback story, exact verification run, and

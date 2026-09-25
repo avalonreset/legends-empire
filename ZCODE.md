@@ -1,22 +1,16 @@
 # claude-empire: ZCode instructions
 
-Read `AGENTS.md` as the canonical host-neutral contract. Skills live in
-`skills/<name>/SKILL.md` and the portable core lives in `claude_empire/`.
+Read `AGENTS.md` as the canonical host-neutral contract. The only
+registered skill is the vendored `cto-legends` router copy at
+`skills/cto-legends/SKILL.md`; the portable core lives in `claude_empire/`.
+Do not register this module as its own skill and do not link per-module
+skills into host skill directories.
 
 ZCode reads `AGENTS.md` at the workspace and user scope natively (per the
 ZCode Agent documentation, https://zcode.z.ai/en/docs/agents), so no mirrored
-rules file is needed. User-level skills are discovered at
-`~/.zcode/skills/<skill-name>/SKILL.md` (https://zcode.z.ai/en/docs/skill).
-Install skill discovery with:
-
-```bash
-bash scripts/setup-multi-agent.sh --host zcode
-bash scripts/setup-multi-agent.sh --host zcode --apply
-```
-
-The first command previews the links; the second applies that reviewed scope.
-Links land in `~/.zcode/skills/` (user-level), so every ZCode workspace can
-invoke the skills without per-project setup.
+rules file is needed. Route module work through `cto-legends`
+(`cto-legends install legends-empire`) and point ZCode at the vendored
+router copy by path when a skill reference is needed.
 
 This repository is product source, not the default user vault. Create a
 separate vault with the dry-run-first `init` command or adopt an existing vault.

@@ -452,11 +452,100 @@ def _validate_hooks(root: Path) -> list[dict[str, str]]:
     return findings
 
 
+VERSION_FILE = "VERSION"
+VERSION_RE = re.compile(r"^\d+\.\d+\.\d+$")
+
+
+def _read_version_file(root: Path) -> str | None:
+    try:
+        first = (root / VERSION_FILE).read_text(encoding="utf-8").strip().splitlines()
+    except (FileNotFoundError, UnicodeDecodeError):
+        return None
+    if first and VERSION_RE.fullmatch(first[0].strip()):
+        return first[0].strip()
+    return None
+
+
+def _validate_router_versions(
+    root: Path, marketplace: Any, version: str
+) -> list[dict[str, str]]:
+    """Version check for router-native modules without a plugin manifest."""
+
+    del root
+    findings: list[dict[str, str]] = []
+    entries = marketplace.get("plugins") if isinstance(marketplace, dict) else None
+    entry = entries[0] if isinstance(entries, list) and len(entries) == 1 else None
+    marketplace_name = (
+        marketplace.get("name") if isinstance(marketplace, dict) else None
+    )
+    if (
+        not isinstance(marketplace_name, str)
+        or NAME_RE.fullmatch(marketplace_name) is None
+    ):
+        findings.append(
+            _finding("invalid_plugin_name", MARKETPLACE_TEMPLATE, "name")
+        )
+    if marketplace.get("version") != version:
+        findings.append(
+            _finding(
+                "version_drift",
+                MARKETPLACE_TEMPLATE,
+                "VERSION file and public marketplace versions must match",
+            )
+        )
+    if not isinstance(entry, dict):
+        findings.append(
+            _finding(
+                "invalid_marketplace",
+                MARKETPLACE_TEMPLATE,
+                "exactly one plugin entry is required",
+            )
+        )
+    else:
+        if entry.get("name") != marketplace_name:
+            findings.append(
+                _finding(
+                    "marketplace_name_drift",
+                    MARKETPLACE_TEMPLATE,
+                    "plugin names must match",
+                )
+            )
+        if entry.get("source") != "./":
+            findings.append(
+                _finding(
+                    "unsafe_marketplace_source",
+                    MARKETPLACE_TEMPLATE,
+                    "the generated public marketplace must use its audited artifact root",
+                )
+            )
+        if "version" in entry:
+            findings.append(
+                _finding(
+                    "duplicate_version_authority",
+                    MARKETPLACE_TEMPLATE,
+                    "VERSION is the sole module-version authority",
+                )
+            )
+    return findings
+
+
 def _validate_versions(root: Path) -> list[dict[str, str]]:
     plugin, errors = _load_json(root, ".claude-plugin/plugin.json")
     marketplace, marketplace_errors = _load_json(root, MARKETPLACE_TEMPLATE)
     errors.extend(marketplace_errors)
     if errors:
+        # Router-native modules ship no Claude plugin manifest; the VERSION
+        # file is the version authority and the marketplace template must
+        # track it. Only fall back when the plugin manifest is simply absent;
+        # malformed JSON in either file is still an error above.
+        missing_plugin = any(
+            item["code"] == "missing_file"
+            and item["path"] == ".claude-plugin/plugin.json"
+            for item in errors
+        )
+        version = _read_version_file(root)
+        if missing_plugin and version is not None and marketplace is not None:
+            return _validate_router_versions(root, marketplace, version)
         return errors
     findings: list[dict[str, str]] = []
     plugin_name = plugin.get("name") if isinstance(plugin, dict) else None

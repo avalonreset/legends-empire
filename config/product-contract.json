@@ -19,16 +19,17 @@
    "support_level": "compatible",
    "implementation_paths": [
     "AGENTS.md",
-    "skills"
+    "skills",
+    "skills/cto-legends/SKILL.md"
    ]
   },
   {
    "id": "claude-code",
    "support_level": "native",
    "implementation_paths": [
-    ".claude-plugin/plugin.json",
     "hooks/hooks.json",
-    "skills"
+    "skills",
+    "skills/cto-legends/SKILL.md"
    ]
   },
   {
@@ -36,23 +37,24 @@
    "support_level": "compatible",
    "implementation_paths": [
     "AGENTS.md",
-    "skills"
+    "skills",
+    "skills/cto-legends/SKILL.md"
    ]
   },
   {
    "id": "cursor",
    "support_level": "compatible",
    "implementation_paths": [
-    "scripts/setup-multi-agent.sh",
-    "skills"
+    "skills",
+    "skills/cto-legends/SKILL.md"
    ]
   },
   {
    "id": "gemini-cli",
    "support_level": "compatible",
    "implementation_paths": [
-    "scripts/setup-multi-agent.sh",
-    "skills"
+    "skills",
+    "skills/cto-legends/SKILL.md"
    ]
   },
   {
@@ -60,15 +62,16 @@
    "support_level": "compatible",
    "implementation_paths": [
     "AGENTS.md",
-    "skills"
+    "skills",
+    "skills/cto-legends/SKILL.md"
    ]
   },
   {
    "id": "windsurf",
    "support_level": "compatible",
    "implementation_paths": [
-    "scripts/setup-multi-agent.sh",
-    "skills"
+    "skills",
+    "skills/cto-legends/SKILL.md"
    ]
   }
  ],
@@ -77,23 +80,22 @@
    "id": "agent-skills-link",
    "host": "agent-skills-compatible",
    "implementation_paths": [
-    "scripts/setup-multi-agent.sh",
-    "skills"
+    "skills",
+    "skills/cto-legends/SKILL.md"
    ]
   },
   {
    "id": "claude-local-plugin",
    "host": "claude-code",
    "implementation_paths": [
-    ".claude-plugin/plugin.json",
-    "skills"
+    "skills",
+    "skills/cto-legends/SKILL.md"
    ]
   },
   {
    "id": "claude-marketplace",
    "host": "claude-code",
    "implementation_paths": [
-    ".claude-plugin/plugin.json",
     "claude_empire/release.py",
     "config/public-marketplace.json",
     "config/release-allowlist.json"
@@ -103,40 +105,40 @@
    "id": "codex-skills-link",
    "host": "codex-cli",
    "implementation_paths": [
-    "scripts/setup-multi-agent.sh",
-    "skills"
+    "skills",
+    "skills/cto-legends/SKILL.md"
    ]
   },
   {
    "id": "cursor-workspace-skills-link",
    "host": "cursor",
    "implementation_paths": [
-    "scripts/setup-multi-agent.sh",
-    "skills"
+    "skills",
+    "skills/cto-legends/SKILL.md"
    ]
   },
   {
    "id": "gemini-skills-link",
    "host": "gemini-cli",
    "implementation_paths": [
-    "scripts/setup-multi-agent.sh",
-    "skills"
+    "skills",
+    "skills/cto-legends/SKILL.md"
    ]
   },
   {
    "id": "opencode-skills-link",
    "host": "opencode",
    "implementation_paths": [
-    "scripts/setup-multi-agent.sh",
-    "skills"
+    "skills",
+    "skills/cto-legends/SKILL.md"
    ]
   },
   {
    "id": "windsurf-workspace-skills-link",
    "host": "windsurf",
    "implementation_paths": [
-    "scripts/setup-multi-agent.sh",
-    "skills"
+    "skills",
+    "skills/cto-legends/SKILL.md"
    ]
   }
  ],
