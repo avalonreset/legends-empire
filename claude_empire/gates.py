@@ -25,7 +25,7 @@ def evaluate_release_gates(
     errors = validate_contracts(root)
     if errors:
         return {
-            "schema": "claude-obsidian.release-gates.v1",
+            "schema": "claude-empire.release-gates.v1",
             "ok": False,
             "ready": False,
             "errors": errors,
@@ -37,7 +37,7 @@ def evaluate_release_gates(
         )
     except (OSError, json.JSONDecodeError, ValueError) as exc:
         return {
-            "schema": "claude-obsidian.release-gates.v1",
+            "schema": "claude-empire.release-gates.v1",
             "ok": False,
             "ready": False,
             "errors": [{"code": "invalid_product_contract", "message": str(exc)}],
@@ -48,7 +48,7 @@ def evaluate_release_gates(
     unknown = sorted(requested - known)
     if unknown:
         return {
-            "schema": "claude-obsidian.release-gates.v1",
+            "schema": "claude-empire.release-gates.v1",
             "ok": False,
             "ready": False,
             "errors": [{"code": "unknown_gate", "gate": value} for value in unknown],
@@ -137,7 +137,7 @@ def evaluate_release_gates(
         and item["status"] in {"manual-review", "planned", "not-selected"}
     ]
     return {
-        "schema": "claude-obsidian.release-gates.v1",
+        "schema": "claude-empire.release-gates.v1",
         "ok": not failures,
         "ready": execute and not failures and not pending,
         "executed": execute,

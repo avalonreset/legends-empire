@@ -1,7 +1,7 @@
-# legends-obsidian agent compatibility
+# legends-empire agent compatibility
 
 One canonical skill suite and Python core serve Grok, Codex, Gemini, Claude,
-Cursor and MetaMuse. Start with `skills/legends-obsidian/SKILL.md`; select a
+Cursor and MetaMuse. Start with `skills/legends-empire/SKILL.md`; select a
 user vault explicitly. No separate per-model implementation is necessary.
 
 ## Discovery adapters
@@ -24,8 +24,8 @@ configuration; on POSIX it forwards to the same Bash installer.
 
 All six can use the same manual fallback when their application provides file
 and terminal access: ask it to read the absolute path to
-`skills/legends-obsidian/SKILL.md`, then run
-`python scripts/claude-obsidian.py package validate` from the product directory.
+`skills/legends-empire/SKILL.md`, then run
+`python scripts/claude-empire.py package validate` from the product directory.
 A chat-only service cannot execute this workflow. An orchestrator may inject
 the same skill into its supported hosts; that does not certify standalone
 native discovery. No guessed MetaMuse directory is installed.

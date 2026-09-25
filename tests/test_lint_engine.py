@@ -19,18 +19,18 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
-ENGINE_PATH = ROOT / "claude_obsidian" / "lint_engine.py"
+ENGINE_PATH = ROOT / "claude_empire" / "lint_engine.py"
 FIXTURE = ROOT / "tests" / "fixtures" / "lint" / "vault"
 
 spec = importlib.util.spec_from_file_location(
-    "claude_obsidian_lint_engine", ENGINE_PATH
+    "claude_empire_lint_engine", ENGINE_PATH
 )
 lint_engine = importlib.util.module_from_spec(spec)
 sys.modules[spec.name] = lint_engine
 assert spec.loader is not None
 spec.loader.exec_module(lint_engine)
 
-from claude_obsidian.ledgers import stable_source_id
+from claude_empire.ledgers import stable_source_id
 
 
 def _snapshot(root: Path) -> dict[str, str]:
@@ -338,7 +338,7 @@ tags:
                 ],
                 [
                     sys.executable,
-                    str(ROOT / "scripts/claude-obsidian.py"),
+                    str(ROOT / "scripts/claude-empire.py"),
                     "lint",
                     "--vault",
                     str(vault),
@@ -349,7 +349,7 @@ tags:
                 ],
                 [
                     sys.executable,
-                    str(ROOT / "scripts/claude-obsidian.py"),
+                    str(ROOT / "scripts/claude-empire.py"),
                     "lint",
                     "--vault",
                     str(vault),
@@ -461,7 +461,7 @@ tags:
             (ledgers / "source-ledger.json").write_text(
                 json.dumps(
                     {
-                        "schema": "claude-obsidian.source-ledger.v1",
+                        "schema": "claude-empire.source-ledger.v1",
                         "generated_at": "2026-07-11T00:00:00Z",
                         "sources": {},
                     }
@@ -471,7 +471,7 @@ tags:
             (ledgers / "claim-ledger.json").write_text(
                 json.dumps(
                     {
-                        "schema": "claude-obsidian.claim-ledger.v1",
+                        "schema": "claude-empire.claim-ledger.v1",
                         "generated_at": "2026-07-11T00:00:00Z",
                         "claims": {
                             "clm-unsafe": {
@@ -503,7 +503,7 @@ tags:
             ledgers = copy / "wiki/meta/ledgers"
             ledgers.mkdir(parents=True)
             duplicate = (
-                '{"schema":"claude-obsidian.source-ledger.v1",'
+                '{"schema":"claude-empire.source-ledger.v1",'
                 '"generated_at":"2026-07-11T00:00:00Z",'
                 '"sources":{"src-a":{},"src-a":{}}}'
             )
@@ -525,7 +525,7 @@ tags:
             ledgers.mkdir(parents=True)
             source_id = stable_source_id("url", "https://example.com/old", None)
             source = {
-                "schema": "claude-obsidian.source-ledger.v1",
+                "schema": "claude-empire.source-ledger.v1",
                 "generated_at": "2020-01-01T00:00:00Z",
                 "sources": {
                     source_id: {
@@ -545,7 +545,7 @@ tags:
                 },
             }
             claim = {
-                "schema": "claude-obsidian.claim-ledger.v1",
+                "schema": "claude-empire.claim-ledger.v1",
                 "generated_at": "2020-01-01T00:00:00Z",
                 "claims": {
                     "clm-old": {
@@ -591,7 +591,7 @@ tags:
             locator = json.loads('"https://example.com/\\ud800"')
             source_id = stable_source_id("url", locator, None)
             document = {
-                "schema": "claude-obsidian.source-ledger.v1",
+                "schema": "claude-empire.source-ledger.v1",
                 "generated_at": "2026-07-11T00:00:00Z",
                 "sources": {
                     source_id: {
@@ -629,7 +629,7 @@ tags:
             ledgers.mkdir(parents=True)
             source_id = json.loads('"src-\\ud800"')
             document = {
-                "schema": "claude-obsidian.source-ledger.v1",
+                "schema": "claude-empire.source-ledger.v1",
                 "generated_at": "2026-07-11T00:00:00Z",
                 "sources": {
                     source_id: {
@@ -669,7 +669,7 @@ tags:
                 ],
                 [
                     sys.executable,
-                    str(ROOT / "scripts/claude-obsidian.py"),
+                    str(ROOT / "scripts/claude-empire.py"),
                     "lint",
                     "--vault",
                     str(copy),
@@ -705,7 +705,7 @@ tags:
             (ledgers / "claim-ledger.json").write_text(
                 json.dumps(
                     {
-                        "schema": "claude-obsidian.claim-ledger.v1",
+                        "schema": "claude-empire.claim-ledger.v1",
                         "claims": {
                             "clm-bad": {
                                 "text": "Bad evidence.",
@@ -823,7 +823,7 @@ class WalkScopeTests(unittest.TestCase):
             completed = subprocess.run(
                 [
                     sys.executable,
-                    str(ROOT / "scripts" / "claude-obsidian.py"),
+                    str(ROOT / "scripts" / "claude-empire.py"),
                     "lint",
                     "--vault",
                     str(vault),

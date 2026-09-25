@@ -18,8 +18,8 @@ from .transaction import BUNDLE_SCHEMA, _safe_hash, read_vault_regular, sha256_b
 from .url_safety import url_credential_issue
 
 
-SOURCE_SCHEMA = "claude-obsidian.source-ledger.v1"
-CLAIM_SCHEMA = "claude-obsidian.claim-ledger.v1"
+SOURCE_SCHEMA = "claude-empire.source-ledger.v1"
+CLAIM_SCHEMA = "claude-empire.claim-ledger.v1"
 SOURCE_PATH = "wiki/meta/ledgers/source-ledger.json"
 CLAIM_PATH = "wiki/meta/ledgers/claim-ledger.json"
 SOURCE_KINDS = {"file", "url", "manual"}
@@ -109,15 +109,15 @@ def validate_existing_canonical_state(
 
     root = canonical(vault_root)
     errors: list[dict[str, str]] = []
-    workspace = _existing_json(root, ".claude-obsidian.json")
+    workspace = _existing_json(root, ".claude-empire.json")
     if workspace is not None:
-        if workspace.get("schema") != "claude-obsidian.workspace.v1":
+        if workspace.get("schema") != "claude-empire.workspace.v1":
             _error(
-                errors, ".claude-obsidian.json.schema", "unsupported workspace schema"
+                errors, ".claude-empire.json.schema", "unsupported workspace schema"
             )
         configured = workspace.get("vault")
         if not isinstance(configured, str) or not configured.strip():
-            _error(errors, ".claude-obsidian.json.vault", "must be a non-empty path")
+            _error(errors, ".claude-empire.json.vault", "must be a non-empty path")
         else:
             supplied = Path(configured).expanduser()
             selected = canonical(
@@ -126,7 +126,7 @@ def validate_existing_canonical_state(
             if selected != root:
                 _error(
                     errors,
-                    ".claude-obsidian.json.vault",
+                    ".claude-empire.json.vault",
                     "must resolve to the vault being adopted",
                 )
 
@@ -1323,8 +1323,8 @@ def migration_bundle(
     values = {
         SOURCE_PATH: sources,
         CLAIM_PATH: claims,
-        ".claude-obsidian.json": {
-            "schema": "claude-obsidian.workspace.v1",
+        ".claude-empire.json": {
+            "schema": "claude-empire.workspace.v1",
             "vault": ".",
             "role": "vault",
             "source_inbox": "inbox",

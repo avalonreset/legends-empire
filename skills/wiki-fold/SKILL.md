@@ -10,12 +10,12 @@ delete child entries or their pages. Do not perform fold-of-folds or trigger a
 fold automatically.
 
 Resolve the portable core from this skill's installation. Resolve the user vault
-by explicit `--vault`, `CLAUDE_OBSIDIAN_VAULT`, workspace config, then
+by explicit `--vault`, `CLAUDE_EMPIRE_VAULT`, workspace config, then
 current-directory discovery. Never treat the plugin/product root as a vault.
 
 ```bash
-PRODUCT_ROOT=/absolute/path/to/installed/claude-obsidian
-CORE="$PRODUCT_ROOT/scripts/claude-obsidian.py"
+PRODUCT_ROOT=/absolute/path/to/installed/claude-empire
+CORE="$PRODUCT_ROOT/scripts/claude-empire.py"
 test -f "$CORE"
 ```
 
@@ -77,7 +77,7 @@ return extracts, but only the orchestrator assembles the fold; workers never
 write.
 
 When the user explicitly says to apply or commit the fold, build one
-`claude-obsidian.transaction.v1` bundle with `operation_type: fold`. Read
+`claude-empire.transaction.v1` bundle with `operation_type: fold`. Read
 [the transaction contract](../wiki/references/operation-transactions.md). Couple:
 
 - `wiki/folds/{FOLD_ID}.md` in `create` mode by default;

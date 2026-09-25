@@ -98,8 +98,8 @@ jobs:
 
       - name: Run portable validators
         run: |
-          python scripts/claude-obsidian.py package validate
-          python scripts/claude-obsidian.py contracts --check-only
+          python scripts/claude-empire.py package validate
+          python scripts/claude-empire.py contracts --check-only
 
       - name: Prove tests did not mutate or create product files
         run: |
@@ -125,7 +125,7 @@ jobs:
 
       - name: Build and audit the public artifact twice
         run: |
-          python3 scripts/claude-obsidian.py release build --output "$RUNNER_TEMP/first.zip"
-          python3 scripts/claude-obsidian.py release build --output "$RUNNER_TEMP/second.zip"
+          python3 scripts/claude-empire.py release build --output "$RUNNER_TEMP/first.zip"
+          python3 scripts/claude-empire.py release build --output "$RUNNER_TEMP/second.zip"
           cmp "$RUNNER_TEMP/first.zip" "$RUNNER_TEMP/second.zip"
-          python3 scripts/claude-obsidian.py release audit "$RUNNER_TEMP/first.zip"
+          python3 scripts/claude-empire.py release audit "$RUNNER_TEMP/first.zip"

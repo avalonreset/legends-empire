@@ -25,7 +25,7 @@ if hasattr(sys.stdout, "reconfigure"):
 
 ROOT = Path(__file__).resolve().parent.parent
 HELPER = ROOT / "scripts" / "wiki-mode.py"
-os.environ["CLAUDE_OBSIDIAN_VAULT"] = str(ROOT)
+os.environ["CLAUDE_EMPIRE_VAULT"] = str(ROOT)
 
 spec = importlib.util.spec_from_file_location("wiki_mode", HELPER)
 wm = importlib.util.module_from_spec(spec)
@@ -607,7 +607,7 @@ def test_cli_templates_lists_six():
         assert_eq("cli templates returns 6 paths", 6, len(lines))
 
 
-# ─── Single-source page vocabulary (claude_obsidian.page_schema) ─────────────
+# ─── Single-source page vocabulary (claude_empire.page_schema) ─────────────
 def test_routable_types_are_derived_not_restated():
     """Regression: VALID_TYPES was a fifth hand-maintained copy of the vocabulary.
 
@@ -615,7 +615,7 @@ def test_routable_types_are_derived_not_restated():
     the save skill, and this router: with a union of twelve values and an
     intersection of two. The router must now read the one declaration.
     """
-    from claude_obsidian.page_schema import LEGACY_TYPE_ALIASES, ROUTABLE_TYPES
+    from claude_empire.page_schema import LEGACY_TYPE_ALIASES, ROUTABLE_TYPES
 
     assert_eq(
         "VALID_TYPES derives from page_schema",
@@ -647,7 +647,7 @@ def test_unroutable_valid_type_is_distinguished_from_unknown_type():
     caller branching on `$?` learns nothing from a message on stderr. Asserting
     only the text would have left the fix applied halfway.
     """
-    from claude_obsidian.page_schema import (
+    from claude_empire.page_schema import (
         UNKNOWN_TYPE_EXIT,
         UNROUTABLE_TYPE_EXIT,
         route_rejection,
@@ -705,7 +705,7 @@ def test_routable_types_cannot_escape_the_page_vocabulary():
     direction subtraction cannot: a typo in NON_ROUTABLE_TYPES silently leaves a
     type routable, and nothing else would notice.
     """
-    from claude_obsidian.page_schema import (
+    from claude_empire.page_schema import (
         NON_ROUTABLE_TYPES,
         PAGE_TYPES,
         ROUTABLE_TYPES,
@@ -776,7 +776,7 @@ def test_legacy_mode_json_on_disk_routes_through_both_callers():
         )
 
         core = subprocess.run(
-            [sys.executable, str(ROOT / "scripts" / "claude-obsidian.py"),
+            [sys.executable, str(ROOT / "scripts" / "claude-empire.py"),
              "mode", "get", "--vault", str(vault)],
             capture_output=True, text=True, timeout=15,
         )
@@ -817,7 +817,7 @@ def test_page_vocabulary_matches_the_documented_table():
     code rejects: which is the very defect this PR was opened to fix, in the
     other direction.
     """
-    from claude_obsidian.page_schema import PAGE_TYPES
+    from claude_empire.page_schema import PAGE_TYPES
 
     documented = _documented_page_types()
     assert_true(

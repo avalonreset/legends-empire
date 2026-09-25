@@ -1,5 +1,5 @@
 {
-  "schema": "claude-obsidian.capture-adapters.v1",
+  "schema": "claude-empire.capture-adapters.v1",
   "privacy_default": "offline",
   "maturity_states": {
     "implemented": "Runs deterministically in the portable stdlib core.",

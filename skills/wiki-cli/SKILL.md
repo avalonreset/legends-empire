@@ -1,6 +1,6 @@
 ---
 name: wiki-cli
-description: "Detect and use the official Obsidian command-line interface for read-only vault access; use for wiki-cli, Obsidian CLI, Obsidian read, Obsidian search, vault transport, which transport, transport detection, backlinks, tags, or Obsidian command line. Mutations always go through the claude-obsidian transaction core."
+description: "Detect and use the official Obsidian command-line interface for read-only vault access; use for wiki-cli, Obsidian CLI, Obsidian read, Obsidian search, vault transport, which transport, transport detection, backlinks, tags, or Obsidian command line. Mutations always go through the claude-empire transaction core."
 ---
 
 # Obsidian CLI read transport
@@ -13,7 +13,7 @@ Resolve the installed product root from this skill's own location, not from the
 vault or current working directory:
 
 ```bash
-PRODUCT_ROOT=/absolute/path/to/installed/claude-obsidian
+PRODUCT_ROOT=/absolute/path/to/installed/claude-empire
 DETECT_TRANSPORT="$PRODUCT_ROOT/scripts/detect-transport.sh"
 test -f "$DETECT_TRANSPORT"
 ```

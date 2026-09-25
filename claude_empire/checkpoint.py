@@ -30,8 +30,8 @@ from .transaction import (
 )
 
 
-CHECKPOINT_SCHEMA = "claude-obsidian.checkpoint.v1"
-PENDING_SCHEMA = "claude-obsidian.checkpoint-pending.v1"
+CHECKPOINT_SCHEMA = "claude-empire.checkpoint.v1"
+PENDING_SCHEMA = "claude-empire.checkpoint-pending.v1"
 PENDING_NAME = "checkpoint.pending.json"
 FINAL_NAME = "checkpoint.json"
 MAX_CHECKPOINT_STATE_BYTES = 8 * 1024 * 1024
@@ -54,7 +54,7 @@ class CheckpointError(TransactionError):
 
 
 _ACTIVE_ROOT: ContextVar[tuple[Path, int] | None] = ContextVar(
-    "claude_obsidian_checkpoint_root",
+    "claude_empire_checkpoint_root",
     default=None,
 )
 
@@ -923,7 +923,7 @@ def _build_pending(
     )
     _assert_index_clean(root, base_tree)
 
-    with tempfile.TemporaryDirectory(prefix="claude-obsidian-checkpoint-") as temporary:
+    with tempfile.TemporaryDirectory(prefix="claude-empire-checkpoint-") as temporary:
         index = Path(temporary) / "index"
         environment = {"GIT_INDEX_FILE": str(index)}
         _git(root, ["read-tree", parent], environment=environment)

@@ -14,12 +14,12 @@ import unittest
 from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-CLI = ROOT / "scripts" / "claude-obsidian.py"
+CLI = ROOT / "scripts" / "claude-empire.py"
 
 from unittest import mock
 
-import claude_obsidian.cli as cli_module
-from claude_obsidian.transaction import TransactionValidationError, inspect_bundle
+import claude_empire.cli as cli_module
+from claude_empire.transaction import TransactionValidationError, inspect_bundle
 
 
 class CliApprovalTests(unittest.TestCase):
@@ -246,7 +246,7 @@ class CliApprovalTests(unittest.TestCase):
             (lock / "owner.json").write_text(
                 json.dumps(
                     {
-                        "schema": "claude-obsidian.mutation-lock.v1",
+                        "schema": "claude-empire.mutation-lock.v1",
                         "pid": os.getpid(),
                         "token": "reused-pid",
                         "host": socket.gethostname(),
@@ -292,7 +292,7 @@ class CliApprovalTests(unittest.TestCase):
             (vault / ".raw").mkdir()
             bundle_path = base / "operation.json"
             operation = {
-                "schema": "claude-obsidian.transaction.v1",
+                "schema": "claude-empire.transaction.v1",
                 "operation_id": "cli-reviewed-bundle",
                 "operation_type": "generic",
                 "expected_hashes": {"wiki/A.md": None},

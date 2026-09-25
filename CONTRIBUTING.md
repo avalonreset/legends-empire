@@ -1,4 +1,4 @@
-# Contributing to claude-obsidian
+# Contributing to claude-empire
 
 Contributions are welcome in the public canonical repository:
 https://github.com/AgriciDaniel/claude-obsidian.

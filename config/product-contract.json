@@ -1,8 +1,8 @@
 {
  "schema_version": 1,
  "product": {
-  "id": "legends-obsidian",
-  "name": "legends-obsidian",
+  "id": "legends-empire",
+  "name": "legends-empire",
   "promise": "Build and maintain a local-first, source-cited, compounding Obsidian knowledge base through portable Agent Skills.",
   "non_promises": [
    "Automatic transcript capture",
@@ -94,7 +94,7 @@
    "host": "claude-code",
    "implementation_paths": [
     ".claude-plugin/plugin.json",
-    "claude_obsidian/release.py",
+    "claude_empire/release.py",
     "config/public-marketplace.json",
     "config/release-allowlist.json"
    ]
@@ -177,7 +177,7 @@
     "type": "command",
     "command": [
      "{python}",
-     "claude_obsidian/contracts.py",
+     "claude_empire/contracts.py",
      "--repo-root",
      ".",
      "--verify"

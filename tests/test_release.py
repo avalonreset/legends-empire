@@ -22,8 +22,8 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-import claude_obsidian.release as release_module
-from claude_obsidian.release import (
+import claude_empire.release as release_module
+from claude_empire.release import (
     _load_config,
     _selected,
     audit_artifact,
@@ -104,7 +104,7 @@ class ReleaseRepo(unittest.TestCase):
         (self.repo / "README.md").write_bytes(FIXTURE.read_bytes())
         (self.repo / "ATTRIBUTION.md").write_text(
             "Approved private mirror disclosure: https://github.com/"
-            "AI-Marketing-Hub/claude-obsidian\n",
+            "AI-Marketing-Hub/claude-empire\n",
             encoding="utf-8",
         )
         (self.repo / "src").mkdir()
@@ -277,11 +277,11 @@ class BuildTests(ReleaseRepo):
         }
         required = {
             ".claude-plugin/plugin.json": json.dumps(plugin).encode(),
-            "claude_obsidian/__init__.py": b"\n",
+            "claude_empire/__init__.py": b"\n",
             "config/capabilities.json": b"{}\n",
             "config/public-marketplace.json": json.dumps(marketplace).encode(),
             "hooks/hooks.json": b'{"hooks":{}}\n',
-            "scripts/claude-obsidian.py": b"#!/usr/bin/env python3\n",
+            "scripts/claude-empire.py": b"#!/usr/bin/env python3\n",
             "skills/wiki/SKILL.md": b"---\nname: wiki\ndescription: Wiki.\n---\n",
             "templates/vault/.gitignore": b".vault-meta/\n",
         }
@@ -296,7 +296,7 @@ class BuildTests(ReleaseRepo):
             set(self.config["include_roots"])
             | {
                 ".claude-plugin",
-                "claude_obsidian",
+                "claude_empire",
                 "hooks",
                 "scripts",
                 "skills",
@@ -386,7 +386,7 @@ class BuildTests(ReleaseRepo):
         self.assertIn("secret_material", _codes(report))
 
     def test_private_repo_url_needs_named_disclosure(self) -> None:
-        private_url = "https://github.com/" + "AI-Marketing-Hub/claude-obsidian"
+        private_url = "https://github.com/" + "AI-Marketing-Hub/claude-empire"
         (self.repo / "docs" / "guide.md").write_text(
             private_url + "\n", encoding="utf-8"
         )
@@ -584,7 +584,7 @@ class CanonicalPolicyTests(unittest.TestCase):
                 encoding="utf-8"
             )
         )
-        package_source = (ROOT / "claude_obsidian" / "__init__.py").read_text(
+        package_source = (ROOT / "claude_empire" / "__init__.py").read_text(
             encoding="utf-8"
         )
         citation = (ROOT / "CITATION.cff").read_text(encoding="utf-8")
@@ -640,7 +640,7 @@ class CanonicalPolicyTests(unittest.TestCase):
         self.assertFalse(_selected("docs/releases/v1.6.0.md", config))
         self.assertFalse(_selected("scripts/baseline-v16.py", config))
         self.assertFalse(_selected("scripts/benchmark-runner.py", config))
-        self.assertFalse(_selected("claude_obsidian/__pycache__/release.pyc", config))
+        self.assertFalse(_selected("claude_empire/__pycache__/release.pyc", config))
 
 
 class AuditTests(ReleaseRepo):

@@ -72,7 +72,7 @@ def sha256_text(text):
 def sandbox_env(vault):
     """Let copied helpers import the real package while selecting the sandbox."""
     env = os.environ.copy()
-    env["CLAUDE_OBSIDIAN_VAULT"] = str(vault)
+    env["CLAUDE_EMPIRE_VAULT"] = str(vault)
     existing = env.get("PYTHONPATH", "")
     env["PYTHONPATH"] = str(ROOT) + (os.pathsep + existing if existing else "")
     return env

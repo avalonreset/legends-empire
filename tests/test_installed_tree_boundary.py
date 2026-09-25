@@ -35,7 +35,7 @@ SHELL_LAUNCHERS = tuple(
 PRODUCT_DIRS = (
     ".claude-plugin",
     "agents",
-    "claude_obsidian",
+    "claude_empire",
     "config",
     "hooks",
     "scripts",
@@ -85,8 +85,8 @@ class InstalledTreeBoundaryTests(unittest.TestCase):
                 local_imports = [
                     position
                     for marker in (
-                        "from claude_obsidian",
-                        "import claude_obsidian",
+                        "from claude_empire",
+                        "import claude_empire",
                         "spec.loader.exec_module",
                     )
                     if (position := source.find(marker)) >= 0
@@ -130,7 +130,7 @@ class InstalledTreeBoundaryTests(unittest.TestCase):
             environment.pop("PYTHONPATH", None)
             environment["HOME"] = str(home)
             environment["CLAUDE_PLUGIN_ROOT"] = str(installed)
-            environment["CLAUDE_OBSIDIAN_VAULT"] = str(vault)
+            environment["CLAUDE_EMPIRE_VAULT"] = str(vault)
 
             before = fingerprint(installed)
 
@@ -222,7 +222,7 @@ class InstalledTreeBoundaryTests(unittest.TestCase):
                     (
                         [
                             sys.executable,
-                            str(installed / "scripts/claude-obsidian.py"),
+                            str(installed / "scripts/claude-empire.py"),
                             "hook",
                             "stop",
                         ],

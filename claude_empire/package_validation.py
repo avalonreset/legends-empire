@@ -258,7 +258,7 @@ def _validate_documented_apply_examples(root: Path) -> list[dict[str, str]]:
     paths.extend(sorted((root / "skills").glob("**/*.md")))
     findings: list[dict[str, str]] = []
     mutation = re.compile(
-        r"claude-obsidian\.py\s+(?:init|adopt|migrate|mode\s+set|extension\s+dragonscale|capture\s+apply)\b"
+        r"claude-empire\.py\s+(?:init|adopt|migrate|mode\s+set|extension\s+dragonscale|capture\s+apply)\b"
     )
     for path in paths:
         if not path.is_file():
@@ -576,7 +576,7 @@ def validate_package(root: Path) -> dict[str, Any]:
         key=lambda finding: (finding["path"], finding["code"], finding["message"]),
     )
     return {
-        "schema": "claude-obsidian.package-validation.v1",
+        "schema": "claude-empire.package-validation.v1",
         "ok": not findings,
         "skills": len(list((root / "skills").glob("*/SKILL.md"))),
         "findings": findings,

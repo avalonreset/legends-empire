@@ -53,7 +53,7 @@ PLUGIN_ROOT = Path(__file__).resolve().parent.parent
 if str(PLUGIN_ROOT) not in sys.path:
     sys.path.insert(0, str(PLUGIN_ROOT))
 
-from claude_obsidian.paths import VaultSelectionError, assert_within, resolve_vault_root
+from claude_empire.paths import VaultSelectionError, assert_within, resolve_vault_root
 
 VAULT_ROOT = Path.cwd().resolve()
 WIKI_DIR = VAULT_ROOT / "wiki"

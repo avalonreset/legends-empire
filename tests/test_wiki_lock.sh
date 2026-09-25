@@ -320,7 +320,7 @@ assert_eq "10 unique paths all acquired" "10" "$LIST_COUNT"
 wl clear-stale --max-age 0 >/dev/null
 
 # The deprecated helper must not fall back to its product installation.
-RC_PRODUCT=$( (unset WIKI_LOCK_VAULT CLAUDE_OBSIDIAN_VAULT; cd "$ROOT" || exit; bash "$LOCK_SH" list >/dev/null 2>&1); echo $? )
+RC_PRODUCT=$( (unset WIKI_LOCK_VAULT CLAUDE_EMPIRE_VAULT; cd "$ROOT" || exit; bash "$LOCK_SH" list >/dev/null 2>&1); echo $? )
 assert_eq "product tree rejected as lock vault" "2" "$RC_PRODUCT"
 
 # ── summary ──────────────────────────────────────────────────────────────────

@@ -12,7 +12,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from claude_obsidian.gitignore import GitignoreMatcher
+from claude_empire.gitignore import GitignoreMatcher
 
 
 class GitignoreMatcherTests(unittest.TestCase):

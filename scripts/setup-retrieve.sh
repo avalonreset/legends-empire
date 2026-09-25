@@ -61,7 +61,7 @@ set +e
 VAULT="$(PYTHONPATH="$PLUGIN_ROOT${PYTHONPATH:+:$PYTHONPATH}" python3 - "$VAULT_INPUT" "$PLUGIN_ROOT" <<'PY'
 import sys
 from pathlib import Path
-from claude_obsidian.paths import VaultSelectionError, resolve_vault_root
+from claude_empire.paths import VaultSelectionError, resolve_vault_root
 
 explicit = sys.argv[1] or None
 try:

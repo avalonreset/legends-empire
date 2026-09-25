@@ -12,8 +12,8 @@ Resolve the installed product root from this skill's own location, never from
 the selected vault or process working directory:
 
 ```bash
-PRODUCT_ROOT=/absolute/path/to/installed/claude-obsidian
-CORE="$PRODUCT_ROOT/scripts/claude-obsidian.py"
+PRODUCT_ROOT=/absolute/path/to/installed/claude-empire
+CORE="$PRODUCT_ROOT/scripts/claude-empire.py"
 test -f "$CORE"
 ```
 
@@ -99,7 +99,7 @@ When the user asks to retain the cleaned source:
 4. Use `expected_hashes: null` and `mode: create`. If that content-addressed
    payload already exists with the same bytes, report a no-op; never overwrite
    it.
-5. Build, inspect, and apply one `claude-obsidian.transaction.v1` capture
+5. Build, inspect, and apply one `claude-empire.transaction.v1` capture
    bundle as described in
    [operation-transactions.md](../wiki/references/operation-transactions.md).
 

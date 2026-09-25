@@ -15,12 +15,12 @@ from pathlib import Path
 
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
 SCRIPTS = PLUGIN_ROOT / "scripts"
-CORE_CLI = SCRIPTS / "claude-obsidian.py"
+CORE_CLI = SCRIPTS / "claude-empire.py"
 
 
 def _environment(**updates: str) -> dict[str, str]:
     env = os.environ.copy()
-    env.pop("CLAUDE_OBSIDIAN_VAULT", None)
+    env.pop("CLAUDE_EMPIRE_VAULT", None)
     env.update(updates)
     return env
 
@@ -228,7 +228,7 @@ class VaultRootSeparationTests(unittest.TestCase):
                 _set_mode(vault_b, "para", cwd=base).returncode,
             )
 
-            env_a = _environment(CLAUDE_OBSIDIAN_VAULT=str(vault_a))
+            env_a = _environment(CLAUDE_EMPIRE_VAULT=str(vault_a))
             from_env = _run_python("wiki-mode.py", "get", cwd=base, env=env_a)
             self.assertEqual("lyt", from_env.stdout.strip(), from_env.stderr)
             allocator_env = _run_allocator("--peek", cwd=base, env=env_a)

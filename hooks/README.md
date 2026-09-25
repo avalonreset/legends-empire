@@ -11,7 +11,7 @@ for native Windows setup.
 
 | Event | Matcher | Behavior |
 |---|---|---|
-| `SessionStart` | `startup|resume|clear|compact` | Silent by default. With `CLAUDE_OBSIDIAN_SESSION_CONTEXT=1`, resolves a real user vault and emits a bounded, sanitized `wiki/hot.md` data block. A workspace-configured vault outside that project also requires an exact `CLAUDE_OBSIDIAN_SESSION_CONTEXT_VAULT` path. |
+| `SessionStart` | `startup|resume|clear|compact` | Silent by default. With `CLAUDE_EMPIRE_SESSION_CONTEXT=1`, resolves a real user vault and emits a bounded, sanitized `wiki/hot.md` data block. A workspace-configured vault outside that project also requires an exact `CLAUDE_EMPIRE_SESSION_CONTEXT_VAULT` path. |
 | `Stop` | unsupported/omitted | Emits a bounded, aggregate JSON `systemMessage` when recovery is needed. It omits operation identifiers, paths, and note content; otherwise it is silent. |
 
 Both are `command` hooks using an executable plus an argument array and

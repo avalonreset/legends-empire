@@ -12,8 +12,8 @@ Resolve the installed product root from this skill's own location, not from the
 vault or current working directory:
 
 ```bash
-PRODUCT_ROOT=/absolute/path/to/installed/claude-obsidian
-CORE="$PRODUCT_ROOT/scripts/claude-obsidian.py"
+PRODUCT_ROOT=/absolute/path/to/installed/claude-empire
+CORE="$PRODUCT_ROOT/scripts/claude-empire.py"
 test -f "$CORE"
 ```
 
@@ -116,7 +116,7 @@ Validate before showing the preview:
 - file and background paths are safe, vault-relative, and present;
 - new nodes do not unintentionally overlap or overflow their requested group.
 
-Build one `claude-obsidian.transaction.v1` bundle with operation type `canvas`.
+Build one `claude-empire.transaction.v1` bundle with operation type `canvas`.
 Include the canvas and the catalog in that same bundle when the catalog changes.
 Read [operation-transactions.md](../wiki/references/operation-transactions.md),
 then inspect the bundle before applying it:

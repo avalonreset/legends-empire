@@ -5,7 +5,7 @@ set -euo pipefail
 export PYTHONDONTWRITEBYTECODE=1
 
 PLUGIN_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-CLI="$PLUGIN_ROOT/scripts/claude-obsidian.py"
+CLI="$PLUGIN_ROOT/scripts/claude-empire.py"
 VAULT=""
 MODE=""
 APPLY=false

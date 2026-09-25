@@ -12,7 +12,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-CLI = ROOT / "scripts/claude-obsidian.py"
+CLI = ROOT / "scripts/claude-empire.py"
 
 
 class ModeCliTests(unittest.TestCase):

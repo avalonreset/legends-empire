@@ -73,7 +73,7 @@ def dragonscale_bundle(
             }
         )
     return {
-        "schema": "claude-obsidian.transaction.v1",
+        "schema": "claude-empire.transaction.v1",
         "operation_id": operation_id,
         "operation_type": "setup",
         "expected_hashes": expected_hashes,

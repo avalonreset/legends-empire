@@ -16,17 +16,17 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from claude_obsidian.contracts import (
+from claude_empire.contracts import (
     CORE_TRANSACTION_TYPES,
     evaluate_capabilities,
     validate_contracts,
 )
-from claude_obsidian.transaction import OPERATION_TYPES
-from claude_obsidian.vault_ops import build_vault_bundle
+from claude_empire.transaction import OPERATION_TYPES
+from claude_empire.vault_ops import build_vault_bundle
 
 
 FIXTURE = ROOT / "tests" / "fixtures" / "contracts" / "valid"
-CONTRACTS_CLI = ROOT / "claude_obsidian" / "contracts.py"
+CONTRACTS_CLI = ROOT / "claude_empire" / "contracts.py"
 
 
 def _read(path: Path) -> dict:
@@ -127,7 +127,7 @@ class CanonicalContractTests(unittest.TestCase):
         }
         self.assertEqual(
             {
-                "legends-obsidian": "configured",
+                "legends-empire": "configured",
                 "save": "configured",
                 "wiki": "verified",
                 "wiki-ingest": "configured",
@@ -160,7 +160,7 @@ class CanonicalContractTests(unittest.TestCase):
             if command:
                 self.assertIn(command[1], behavioral_targets, capability["id"])
                 self.assertNotIn("--check-only", command)
-                self.assertNotIn("claude_obsidian/contracts.py", command)
+                self.assertNotIn("claude_empire/contracts.py", command)
             else:
                 self.assertTrue(
                     capability.get("verification_reason", "").strip(), capability["id"]
@@ -183,7 +183,7 @@ class CanonicalContractTests(unittest.TestCase):
         self.assertEqual("forbidden", cli["confirmation"]["destructive"])
 
         lint = capabilities["wiki-lint"]
-        self.assertIn("claude_obsidian/lint_engine.py", lint["implementation_paths"])
+        self.assertIn("claude_empire/lint_engine.py", lint["implementation_paths"])
         self.assertNotIn("scripts/tiling-check.py", lint["implementation_paths"])
         self.assertEqual([], lint["write_scope"])
         self.assertEqual("none", lint["transaction_type"])
@@ -342,7 +342,7 @@ class ValidationTests(FixtureRepo):
         self.update_capability(
             verification_command=[
                 "{python}",
-                "claude_obsidian/contracts.py",
+                "claude_empire/contracts.py",
                 "--check-only",
             ]
         )
@@ -352,7 +352,7 @@ class ValidationTests(FixtureRepo):
         self.update_capability(
             verification_command=[
                 "{python}",
-                "scripts/claude-obsidian.py",
+                "scripts/claude-empire.py",
                 "contracts",
                 "--verify",
             ]
@@ -369,7 +369,7 @@ class ValidationTests(FixtureRepo):
         self.update_capability(
             verification_command=[
                 "{python}",
-                "scripts/claude-obsidian.py",
+                "scripts/claude-empire.py",
                 "package",
                 "validate",
             ]

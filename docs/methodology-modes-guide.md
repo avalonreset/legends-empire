@@ -23,7 +23,7 @@ habits, not prestige:
 ## Read the current mode
 
 ```bash
-python3 scripts/claude-obsidian.py mode get --vault <vault>
+python3 scripts/claude-empire.py mode get --vault <vault>
 ```
 
 The compatibility router can preview a destination without writing:
@@ -40,9 +40,9 @@ include the chosen path in the operation preview.
 Mode changes use one configuration transaction and default to dry-run:
 
 ```bash
-python3 scripts/claude-obsidian.py mode set para --vault <vault> \
+python3 scripts/claude-empire.py mode set para --vault <vault> \
   --generated-at <ISO-UTC> --operation-id mode-reviewed
-python3 scripts/claude-obsidian.py mode set para --vault <vault> \
+python3 scripts/claude-empire.py mode set para --vault <vault> \
   --generated-at <ISO-UTC> --operation-id mode-reviewed \
   --approved-plan-sha256 <reviewed-sha256> --apply
 ```

@@ -1,7 +1,7 @@
 # Frontmatter conventions
 
 Preserve an existing vault's valid property vocabulary. For a new generic
-claude-obsidian page, use flat YAML properties, block lists, and explicit
+claude-empire page, use flat YAML properties, block lists, and explicit
 evidence fields where they apply.
 
 ## Common properties
@@ -24,7 +24,7 @@ claim_ids:
 ---
 ```
 
-Page types are declared once in `claude_obsidian/page_schema.py` and documented in
+Page types are declared once in `claude_empire/page_schema.py` and documented in
 [WIKI.md](../../../WIKI.md). This file previously restated a shorter list that
 omitted `session` and `fold`, which is how a vault ends up carrying values one
 document calls invalid. Statuses are still described in prose in both places and

@@ -1,4 +1,4 @@
-# claude-obsidian vault schema
+# claude-empire vault schema
 
 This is the compact human-readable schema for a user vault. Operational details
 live in the skills and executable contracts. Product code and user-vault data
@@ -9,7 +9,7 @@ must remain separate.
 ```text
 vault/
 ├── .gitignore                  # excludes vault-local runtime/session state
-├── .claude-obsidian.json       # workspace identity and vault selection
+├── .claude-empire.json       # workspace identity and vault selection
 ├── inbox/                      # visible source intake; never auto-deleted
 ├── .raw/                       # immutable source bytes
 │   └── .manifest.json          # backward-compatible delta/address metadata
@@ -81,7 +81,7 @@ Common page types:
 | `meta` | Index, log, cache, convention, or maintenance page |
 | `fold` | Extractive rollup of identified log entries |
 
-`claude_obsidian/page_schema.py` is the one declaration of this vocabulary. The
+`claude_empire/page_schema.py` is the one declaration of this vocabulary. The
 table above documents it for a reader; code reads the module rather than
 restating the values, and a test asserts the two stay in step.
 
@@ -166,7 +166,7 @@ One logical mutation is one bundle:
 
 ```json
 {
-  "schema": "claude-obsidian.transaction.v1",
+  "schema": "claude-empire.transaction.v1",
   "operation_id": "ingest-example",
   "operation_type": "ingest",
   "expected_hashes": {
@@ -193,8 +193,8 @@ and must match its declared hash. Raw payload paths are create-only.
 Inspect before apply:
 
 ```bash
-python3 scripts/claude-obsidian.py transaction inspect <bundle> --vault <vault>
-python3 scripts/claude-obsidian.py transaction apply <bundle> --vault <vault> \
+python3 scripts/claude-empire.py transaction inspect <bundle> --vault <vault>
+python3 scripts/claude-empire.py transaction apply <bundle> --vault <vault> \
   --approved-plan-sha256 <approval_sha256>
 ```
 

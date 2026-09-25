@@ -23,8 +23,8 @@ Resolve the installed product root from this skill's own location, not from the
 vault or current working directory:
 
 ```bash
-PRODUCT_ROOT=/absolute/path/to/installed/claude-obsidian
-CORE="$PRODUCT_ROOT/scripts/claude-obsidian.py"
+PRODUCT_ROOT=/absolute/path/to/installed/claude-empire
+CORE="$PRODUCT_ROOT/scripts/claude-empire.py"
 test -f "$CORE"
 ```
 
@@ -35,7 +35,7 @@ selected vault's `wiki/` directory.
 ## Prepare
 
 1. Resolve the user vault by explicit `--vault`, then
-   `CLAUDE_OBSIDIAN_VAULT`, workspace config, then current-directory discovery.
+   `CLAUDE_EMPIRE_VAULT`, workspace config, then current-directory discovery.
    The product/plugin root is never a vault.
 2. Read `wiki/hot.md`, `wiki/index.md`, the methodology configuration when
    present, and at most five directly relevant pages. Increase the read budget
@@ -44,7 +44,7 @@ selected vault's `wiki/` directory.
    duplicate. Obtain explicit approval before replacing an existing canonical
    note.
 4. Select the smallest useful note type from the declared vocabulary
-   (`claude_obsidian/page_schema.py`, documented in WIKI.md), usually
+   (`claude_empire/page_schema.py`, documented in WIKI.md), usually
    `question` for an answered analysis, `concept` for an idea worth naming,
    `source` for material summary, or `session` for approved conversation
    content. Use declarative prose, Obsidian wikilinks, and honest frontmatter.
@@ -81,7 +81,7 @@ MOC in this bundle. Update `wiki/index.md` only when it is that active catalog.
 Record SHA-256 preconditions for every target. Use `create` for a new note and
 `replace` only for a reviewed update. Parallel agents may inspect and draft but
 must not mutate the vault. The orchestrator creates one
-`claude-obsidian.transaction.v1` bundle with `operation_type: save`.
+`claude-empire.transaction.v1` bundle with `operation_type: save`.
 
 Never use host Write/Edit, Obsidian CLI writes, deprecated per-file locks, or
 per-worker mutations for these vault changes.

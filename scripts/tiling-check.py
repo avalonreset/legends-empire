@@ -54,8 +54,8 @@ PLUGIN_ROOT = Path(__file__).resolve().parent.parent
 if str(PLUGIN_ROOT) not in sys.path:
     sys.path.insert(0, str(PLUGIN_ROOT))
 
-from claude_obsidian.paths import VaultSelectionError, resolve_vault_root
-from claude_obsidian.transaction import (
+from claude_empire.paths import VaultSelectionError, resolve_vault_root
+from claude_empire.transaction import (
     MutationLock,
     TransactionError,
     _atomic_vault_write,
@@ -334,7 +334,7 @@ def run_check(
     if report_path is not None:
         log(
             "ERR: --report is disabled; capture stdout for review, then use a "
-            "claude-obsidian transaction to file a canonical report"
+            "claude-empire transaction to file a canonical report"
         )
         return EXIT_USAGE
     if not detect_ollama(ollama_url):

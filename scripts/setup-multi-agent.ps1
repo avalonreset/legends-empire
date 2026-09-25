@@ -9,7 +9,7 @@
 #>
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
-$entry = Join-Path $repoRoot 'skills/legends-obsidian/SKILL.md'
+$entry = Join-Path $repoRoot 'skills/legends-empire/SKILL.md'
 if ([Environment]::OSVersion.Platform -eq 'Win32NT') {
     Write-Output 'Native Windows: no host paths changed.'
     Write-Output "For Grok, Codex, Gemini, Claude, Cursor or MetaMuse, ask the agent to read: $entry"

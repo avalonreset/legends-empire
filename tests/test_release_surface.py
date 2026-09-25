@@ -11,12 +11,12 @@ class PublicSurfaceTests(unittest.TestCase):
     def test_marketplace_routes_to_public_distribution(self):
         manifest = json.loads((ROOT / "config/public-marketplace.json").read_text())
         plugin = json.loads((ROOT / ".claude-plugin/plugin.json").read_text())
-        self.assertEqual("legends-obsidian", manifest["name"])
+        self.assertEqual("legends-empire", manifest["name"])
         self.assertEqual(plugin["name"], manifest["plugins"][0]["name"])
-        self.assertEqual("https://github.com/avalonreset/legends-obsidian", plugin["repository"])
+        self.assertEqual("https://github.com/avalonreset/legends-empire", plugin["repository"])
 
     def test_public_writing_style_and_six_host_contract(self):
-        router = (ROOT / "skills/legends-obsidian/SKILL.md").read_text(encoding="utf-8")
+        router = (ROOT / "skills/legends-empire/SKILL.md").read_text(encoding="utf-8")
         self.assertIn("Do not use em dashes", router)
         for relative in ("README.md", "docs/AGENTS-MATRIX.md"):
             text = (ROOT / relative).read_text(encoding="utf-8")
@@ -43,7 +43,7 @@ class PublicSurfaceTests(unittest.TestCase):
             self.assertTrue((ROOT / relative).is_file(), relative)
 
     def test_router_selects_vault_instead_of_house_paths(self):
-        text = (ROOT / "skills/legends-obsidian/SKILL.md").read_text(encoding="utf-8")
+        text = (ROOT / "skills/legends-empire/SKILL.md").read_text(encoding="utf-8")
         self.assertIn("selected", text)
         self.assertNotIn("E:" + chr(92), text)
         self.assertIn("WSL", text)

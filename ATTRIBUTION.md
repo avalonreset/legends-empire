@@ -1,6 +1,6 @@
 # Attributions
 
-claude-obsidian is an original work. The following third-party patterns, tools, and creators informed its design.
+claude-empire is an original work. The following third-party patterns, tools, and creators informed its design.
 
 ---
 
@@ -8,7 +8,7 @@ claude-obsidian is an original work. The following third-party patterns, tools, 
 
 **Author:** Andrej Karpathy
 **Source:** https://github.com/karpathy
-**Use:** The core architecture of claude-obsidian (using an LLM to build and maintain a structured wiki from raw sources) is based on the LLM Wiki pattern Karpathy described publicly. claude-obsidian is an independent implementation; no code or content from Karpathy's repositories was copied.
+**Use:** The core architecture of claude-empire (using an LLM to build and maintain a structured wiki from raw sources) is based on the LLM Wiki pattern Karpathy described publicly. claude-empire is an independent implementation; no code or content from Karpathy's repositories was copied.
 
 ---
 
@@ -24,7 +24,7 @@ claude-obsidian is an original work. The following third-party patterns, tools, 
 These snippets exist only in the private contributor-vault state. They are not
 selected into the deterministic public product artifact and are not installed
 by the vault template. The project-owned `templates/vault/.obsidian/snippets/vault-colors.css`
-is the only snippet distributed by claude-obsidian.
+is the only snippet distributed by claude-empire.
 
 ---
 
@@ -61,7 +61,7 @@ the designs are theirs.
 
 ---
 
-## claude-obsidian
+## claude-empire
 
 **Author:** AgriciDaniel / AI Marketing Hub
 **License:** MIT (see [LICENSE](LICENSE))

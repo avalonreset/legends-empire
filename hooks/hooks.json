@@ -8,7 +8,7 @@
             "type": "command",
             "command": "python3",
             "args": [
-              "${CLAUDE_PLUGIN_ROOT}/scripts/claude-obsidian.py",
+              "${CLAUDE_PLUGIN_ROOT}/scripts/claude-empire.py",
               "hook",
               "session-start"
             ],
@@ -24,7 +24,7 @@
             "type": "command",
             "command": "python3",
             "args": [
-              "${CLAUDE_PLUGIN_ROOT}/scripts/claude-obsidian.py",
+              "${CLAUDE_PLUGIN_ROOT}/scripts/claude-empire.py",
               "hook",
               "stop"
             ],

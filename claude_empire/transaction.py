@@ -38,9 +38,9 @@ from .paths import (
 )
 
 
-BUNDLE_SCHEMA = "claude-obsidian.transaction.v1"
-RESULT_SCHEMA = "claude-obsidian.transaction-result.v1"
-JOURNAL_SCHEMA = "claude-obsidian.transaction-journal.v1"
+BUNDLE_SCHEMA = "claude-empire.transaction.v1"
+RESULT_SCHEMA = "claude-empire.transaction-result.v1"
+JOURNAL_SCHEMA = "claude-empire.transaction-journal.v1"
 OPERATION_TYPES = {
     "base",
     "save",
@@ -106,7 +106,7 @@ _DIRECT_MANAGED_METADATA_AUTHORITY = {
     ".vault-meta/address-counter.txt": {"setup"},
 }
 _BOOTSTRAP_COMMON_PATHS = {
-    ".claude-obsidian.json",
+    ".claude-empire.json",
     ".gitignore",
     ".obsidian/app.json",
     ".obsidian/appearance.json",
@@ -127,7 +127,7 @@ _SETUP_EXTENSION_PATHS = {
     ".vault-meta/tiling-thresholds.json",
 }
 _POLICY_ROOT_CASE = {
-    ".claude-obsidian.json": ".claude-obsidian.json",
+    ".claude-empire.json": ".claude-empire.json",
     ".git": ".git",
     ".obsidian": ".obsidian",
     ".raw": ".raw",
@@ -1296,7 +1296,7 @@ def plan_approval_sha256(
 
     return bundle_sha256(
         {
-            "schema": "claude-obsidian.plan-approval.v3",
+            "schema": "claude-empire.plan-approval.v3",
             "vault_root": vault_label
             if vault_label is not None
             else str(canonical(vault_root)),
@@ -2007,7 +2007,7 @@ class MutationLock:
                         "new mutation lock was concurrently replaced",
                     )
                 owner = {
-                    "schema": "claude-obsidian.mutation-lock.v1",
+                    "schema": "claude-empire.mutation-lock.v1",
                     "pid": os.getpid(),
                     "token": self.token,
                     "host": socket.gethostname(),
@@ -4427,7 +4427,7 @@ def inspect_bundle(
         _safe_directory(vault, ".vault-meta", create=False)
         expanded = _expand_managed_metadata(vault, bundle, bundle_dir, root_fd=root_fd)
         with tempfile.TemporaryDirectory(
-            prefix="claude-obsidian-inspect-"
+            prefix="claude-empire-inspect-"
         ) as directory:
             prepared = _prepare_writes(
                 vault,
@@ -4446,7 +4446,7 @@ def inspect_bundle(
             os.close(root_fd)
     expanded_hash = _canonical_json_hash(expanded)
     return {
-        "schema": "claude-obsidian.transaction-plan.v1",
+        "schema": "claude-empire.transaction-plan.v1",
         "operation_id": operation_id,
         "operation_type": operation_type,
         "valid": True,

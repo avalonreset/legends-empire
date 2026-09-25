@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 420" role="img" aria-labelledby="vault-flow-title vault-flow-desc">
-  <title id="vault-flow-title">codex-obsidian vault flow: sources to ingest to wiki pages to index to query</title>
+  <title id="vault-flow-title">codex-empire vault flow: sources to ingest to wiki pages to index to query</title>
   <desc id="vault-flow-desc">Horizontal architecture diagram showing source documents flowing into the wiki-ingest agent, which extracts entities, concepts, and sources into the wiki. The index is updated, and the wiki-query interface answers questions by reading the hot cache, index, and pages in order.</desc>
 
   <defs>

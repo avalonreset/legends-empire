@@ -1,4 +1,4 @@
-# claude-obsidian deterministic developer entry points.
+# claude-empire deterministic developer entry points.
 
 PYTHON ?= python3
 export PYTHONDONTWRITEBYTECODE := 1
@@ -7,7 +7,7 @@ export PYTHONDONTWRITEBYTECODE := 1
 	setup-dragonscale setup-retrieve setup-mode clean-test-state
 
 help:
-	@echo "claude-obsidian developer targets:"
+	@echo "claude-empire developer targets:"
 	@echo "  make test             Run every hermetic Python and shell test, then contracts"
 	@echo "  make test-python      Run each tests/test_*.py file in isolation"
 	@echo "  make test-shell       Run each tests/test_*.sh file in isolation"
@@ -32,11 +32,11 @@ test-shell:
 	done
 
 test-contracts:
-	@$(PYTHON) scripts/claude-obsidian.py contracts --check-only
-	@$(PYTHON) scripts/claude-obsidian.py contracts --verify
+	@$(PYTHON) scripts/claude-empire.py contracts --check-only
+	@$(PYTHON) scripts/claude-empire.py contracts --verify
 
 test-package:
-	@$(PYTHON) scripts/claude-obsidian.py package validate
+	@$(PYTHON) scripts/claude-empire.py package validate
 
 validate: test-contracts test-package
 

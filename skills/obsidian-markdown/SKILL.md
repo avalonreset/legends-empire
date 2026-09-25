@@ -14,8 +14,8 @@ Resolve the installed product root from this skill's own location, not from the
 vault or current working directory:
 
 ```bash
-PRODUCT_ROOT=/absolute/path/to/installed/claude-obsidian
-CORE="$PRODUCT_ROOT/scripts/claude-obsidian.py"
+PRODUCT_ROOT=/absolute/path/to/installed/claude-empire
+CORE="$PRODUCT_ROOT/scripts/claude-empire.py"
 test -f "$CORE"
 ```
 
@@ -25,7 +25,7 @@ selected vault's `wiki/` directory.
 
 Answer syntax questions read-only. If the user requests a vault edit, draft the
 complete note, read [operation-transactions.md](../wiki/references/operation-transactions.md),
-and build one `claude-obsidian.transaction.v1` bundle with
+and build one `claude-empire.transaction.v1` bundle with
 `operation_type: markdown` and only `wiki/` targets. Inspect it, then set
 `APPROVAL_SHA256` to the returned `approval_sha256` after review and apply it
 through the same vault-bound plan. A canonical page create or removal includes

@@ -1,14 +1,14 @@
 ---
-description: Portable rules for the claude-obsidian product and user vault workflows.
+description: Portable rules for the claude-empire product and user vault workflows.
 globs:
   - "skills/**/SKILL.md"
-  - "claude_obsidian/**/*.py"
+  - "claude_empire/**/*.py"
   - "wiki/**/*.md"
   - ".raw/**/*"
 alwaysApply: true
 ---
 
-# claude-obsidian
+# claude-empire
 
 Read `AGENTS.md` as the canonical contract. This repository is product source;
 mutable knowledge belongs in a separately resolved user vault.

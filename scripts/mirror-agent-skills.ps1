@@ -6,7 +6,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 $skillNames = @(
-  "codex-obsidian",
+  "codex-empire",
   "wiki",
   "wiki-ingest",
   "wiki-query",
@@ -23,7 +23,7 @@ $skillNames = @(
 $sourceRoot = Join-Path $CodexHome "skills"
 $targetRoot = Join-Path $CodexHome "agents\skills"
 $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
-$backupRoot = Join-Path $CodexHome "agents-skills-backup-codex-obsidian-$timestamp"
+$backupRoot = Join-Path $CodexHome "agents-skills-backup-codex-empire-$timestamp"
 
 if (-not (Test-Path -LiteralPath $sourceRoot)) {
   throw "Source skills directory not found: $sourceRoot"

@@ -1,6 +1,6 @@
 ---
 name: wiki
-description: "Initialize, adopt, and route work for a separate Obsidian knowledge vault through the portable claude-obsidian core. Use for vault setup, scaffolding, workspace selection, cross-project configuration, or choosing the correct wiki sub-skill. Triggers: /wiki, set up wiki, scaffold vault, create knowledge base, adopt this vault, Obsidian vault, second brain setup, persistent wiki."
+description: "Initialize, adopt, and route work for a separate Obsidian knowledge vault through the portable claude-empire core. Use for vault setup, scaffolding, workspace selection, cross-project configuration, or choosing the correct wiki sub-skill. Triggers: /wiki, set up wiki, scaffold vault, create knowledge base, adopt this vault, Obsidian vault, second brain setup, persistent wiki."
 ---
 
 # Wiki orchestration
@@ -13,12 +13,12 @@ Resolve the portable core from this skill's installation and invoke it by absolu
 path:
 
 ```bash
-CORE=/absolute/product/root/scripts/claude-obsidian.py
+CORE=/absolute/product/root/scripts/claude-empire.py
 python3 "$CORE" --help
 ```
 
 Resolve a vault in this order: explicit `--vault`,
-`CLAUDE_OBSIDIAN_VAULT`, the nearest `.claude-obsidian.json`, then an
+`CLAUDE_EMPIRE_VAULT`, the nearest `.claude-empire.json`, then an
 unambiguous initialized vault at or above the current directory. Fail closed when
 selection is missing or ambiguous.
 
@@ -82,7 +82,7 @@ because a session ended.
 
 Read [operation-transactions.md](references/operation-transactions.md) before
 any custom scaffold or mutation. One logical operation must produce one inspected
-and recoverable `claude-obsidian.transaction.v1` bundle. Parallel agents may
+and recoverable `claude-empire.transaction.v1` bundle. Parallel agents may
 return drafts and evidence only; the orchestrator merges them and applies once.
 Every canonical page create or removal includes an active index or MOC update
 in that bundle; update the overview only when the stable high-level picture

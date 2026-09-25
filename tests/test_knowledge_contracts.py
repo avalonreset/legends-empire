@@ -16,7 +16,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from claude_obsidian.lint_engine import lint_vault
+from claude_empire.lint_engine import lint_vault
 
 
 def _frontmatter(path: Path) -> str:
@@ -131,7 +131,7 @@ class KnowledgeContractTests(unittest.TestCase):
 
         self.assertEqual(
             {
-                "vault:.claude-obsidian.json",
+                "vault:.claude-empire.json",
                 "vault:.gitignore",
                 "vault:.obsidian/app.json",
                 "vault:.obsidian/appearance.json",
@@ -173,8 +173,8 @@ class KnowledgeContractTests(unittest.TestCase):
 
     def test_agents_resolve_helpers_and_return_bounded_packets(self) -> None:
         lint_agent = (ROOT / "agents/wiki-lint.md").read_text(encoding="utf-8")
-        self.assertIn('CORE="$PRODUCT_ROOT/scripts/claude-obsidian.py"', lint_agent)
-        self.assertNotIn("python3 scripts/claude-obsidian.py", lint_agent)
+        self.assertIn('CORE="$PRODUCT_ROOT/scripts/claude-empire.py"', lint_agent)
+        self.assertNotIn("python3 scripts/claude-empire.py", lint_agent)
 
         ingest_agent = (ROOT / "agents/wiki-ingest.md").read_text(encoding="utf-8")
         self.assertRegex(ingest_agent, r"(?m)^maxTurns:\s*60$")
@@ -218,7 +218,7 @@ class KnowledgeContractTests(unittest.TestCase):
         corpus = json.loads(
             (ROOT / "tests/fixtures/forward/scenarios.json").read_text(encoding="utf-8")
         )
-        self.assertEqual("claude-obsidian.forward-evaluations.v1", corpus["schema"])
+        self.assertEqual("claude-empire.forward-evaluations.v1", corpus["schema"])
         scenarios = {item["skill"]: item for item in corpus["scenarios"]}
         self.assertEqual({"save", "wiki-ingest", "wiki-query"}, set(scenarios))
         for scenario in scenarios.values():

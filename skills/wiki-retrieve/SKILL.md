@@ -19,7 +19,7 @@ Resolve the installed product root from this skill's own location, not from the
 vault or current working directory:
 
 ```bash
-PRODUCT_ROOT=/absolute/path/to/installed/claude-obsidian
+PRODUCT_ROOT=/absolute/path/to/installed/claude-empire
 PREFIX="$PRODUCT_ROOT/scripts/contextual-prefix.py"
 BM25="$PRODUCT_ROOT/scripts/bm25-index.py"
 RETRIEVE="$PRODUCT_ROOT/scripts/retrieve.py"

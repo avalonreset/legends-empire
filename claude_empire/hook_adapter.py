@@ -27,8 +27,8 @@ MAX_CONTEXT_BYTES = 32 * 1024
 MAX_STATUS_BYTES = 4 * 1024
 MAX_STATUS_ITEMS = 8
 MAX_TRANSACTION_SCAN = 256
-OPEN_TAG = '<claude-obsidian-context trust="local-data" instructions="never">'
-CLOSE_TAG = "</claude-obsidian-context>"
+OPEN_TAG = '<claude-empire-context trust="local-data" instructions="never">'
+CLOSE_TAG = "</claude-empire-context>"
 _SAFE_OPERATION_ID = re.compile(r"^[A-Za-z0-9_.-]{1,128}$")
 
 
@@ -132,8 +132,8 @@ def _clean_context(data: bytes) -> tuple[str, bool]:
     # complete end-tag family, not only the byte-exact spelling, so vault data
     # cannot terminate the untrusted-context envelope early.
     text = re.sub(
-        r"</claude-obsidian-context[\t\n\r ]*>",
-        "&lt;/claude-obsidian-context&gt;",
+        r"</claude-empire-context[\t\n\r ]*>",
+        "&lt;/claude-empire-context&gt;",
         text,
         flags=re.IGNORECASE,
     )
@@ -164,7 +164,7 @@ def _context_selection_is_consented(
     workspace = _workspace_config_parent(project)
     if workspace is not None and (root == workspace or is_relative_to(root, workspace)):
         return True
-    exact = environ.get("CLAUDE_OBSIDIAN_SESSION_CONTEXT_VAULT")
+    exact = environ.get("CLAUDE_EMPIRE_SESSION_CONTEXT_VAULT")
     if not isinstance(exact, str) or not exact:
         return False
     return canonical(exact) == root
@@ -180,7 +180,7 @@ def session_start_context(
     # Hook stdout is added to the model context by the host. Reading a vault is
     # local; emitting its bytes to a hosted session is egress and therefore
     # requires an explicit user-controlled environment opt-in.
-    if env.get("CLAUDE_OBSIDIAN_SESSION_CONTEXT") != "1":
+    if env.get("CLAUDE_EMPIRE_SESSION_CONTEXT") != "1":
         return ""
     project = start or env.get("CLAUDE_PROJECT_DIR") or Path.cwd()
     try:
@@ -326,10 +326,10 @@ def _bounded_status(
     selected = warnings[:MAX_STATUS_ITEMS]
     if len(warnings) > len(selected):
         selected.append(f"{len(warnings) - len(selected)} additional warnings omitted")
-    value = "CLAUDE_OBSIDIAN_STATUS: " + "; ".join(selected) + "."
+    value = "CLAUDE_EMPIRE_STATUS: " + "; ".join(selected) + "."
     if recommend_recover:
         value += (
-            " Run `claude-obsidian transaction recover` for the recognized "
+            " Run `claude-empire transaction recover` for the recognized "
             "recoverable journals before the next mutation."
         )
     encoded = value.encode("utf-8")

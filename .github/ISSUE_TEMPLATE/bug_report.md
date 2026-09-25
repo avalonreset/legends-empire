@@ -18,7 +18,7 @@ What you expected to happen instead.
 3. ...
 
 ## Environment
-- Product version: (run `python3 scripts/claude-obsidian.py --version`)
+- Product version: (run `python3 scripts/claude-empire.py --version`)
 - Claude Code version: (run `claude --version`)
 - OS: (e.g. macOS 14.5, Pop!_OS 24.04, Windows 11)
 - Obsidian version: (if relevant)

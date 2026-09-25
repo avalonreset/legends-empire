@@ -2,7 +2,7 @@
 # Read-only compatibility diagnostic for the legacy address allocator.
 #
 # Address reservation now belongs exclusively to a reviewed
-# claude-obsidian.transaction.v1 operation with address_requests. This helper
+# claude-empire.transaction.v1 operation with address_requests. This helper
 # only prints the next observed counter value and never creates locks, counters,
 # directories, or files.
 #
@@ -47,8 +47,8 @@ import re
 import sys
 from pathlib import Path
 
-from claude_obsidian.paths import VaultSelectionError, resolve_vault_root
-from claude_obsidian.transaction import TransactionError, read_vault_regular
+from claude_empire.paths import VaultSelectionError, resolve_vault_root
+from claude_empire.transaction import TransactionError, read_vault_regular
 
 explicit = sys.argv[1] or None
 plugin_root = Path(sys.argv[2])

@@ -1,7 +1,7 @@
 ---
 name: verifier
 description: >
-  Fresh-context, read-only verifier for a proposed claude-obsidian change or
+  Fresh-context, read-only verifier for a proposed claude-empire change or
   release. Inspects the requested staged diff, unstaged worktree, explicit
   paths, or existing release artifact; runs safe deterministic tests and
   contracts; and reports evidence-ranked findings without modifying Git or

@@ -68,8 +68,8 @@ PLUGIN_ROOT = Path(__file__).resolve().parent.parent
 if str(PLUGIN_ROOT) not in sys.path:
     sys.path.insert(0, str(PLUGIN_ROOT))
 
-from claude_obsidian.paths import VaultSelectionError, resolve_vault_root
-from claude_obsidian.transaction import TransactionError, _safe_vault_path
+from claude_empire.paths import VaultSelectionError, resolve_vault_root
+from claude_empire.transaction import TransactionError, _safe_vault_path
 
 VAULT_ROOT = Path.cwd().resolve()
 SCRIPTS_DIR = PLUGIN_ROOT / "scripts"

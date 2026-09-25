@@ -1,6 +1,6 @@
 {
-  "description": "Audited public distribution channel for claude-obsidian",
-  "name": "legends-obsidian",
+  "description": "Audited public distribution channel for claude-empire",
+  "name": "legends-empire",
   "owner": {
     "name": "avalonreset"
   },
@@ -11,12 +11,12 @@
         "url": "https://github.com/AgriciDaniel"
       },
       "description": "Local-first Agent Skills package and Claude Code plugin for source-cited Obsidian knowledge bases. Includes recoverable transactions, deterministic lint and retrieval, provenance ledgers, explicit vault adoption, offline-first capture foundations, and methodology modes.",
-      "homepage": "https://github.com/avalonreset/legends-obsidian",
+      "homepage": "https://github.com/avalonreset/legends-empire",
       "license": "MIT",
-      "name": "legends-obsidian",
-      "repository": "https://github.com/avalonreset/legends-obsidian",
+      "name": "legends-empire",
+      "repository": "https://github.com/avalonreset/legends-empire",
       "source": "./"
     }
   ],
-  "version": "2.3.0"
+  "version": "3.0.0"
 }

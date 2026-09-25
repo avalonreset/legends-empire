@@ -13,7 +13,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from claude_obsidian.package_validation import validate_package
+from claude_empire.package_validation import validate_package
 
 
 class PackageValidationTests(unittest.TestCase):
@@ -231,7 +231,7 @@ class PackageValidationTests(unittest.TestCase):
             skill = root / "skills/sample/SKILL.md"
             skill.write_text(
                 skill.read_text(encoding="utf-8")
-                + "\n```bash\nclaude-obsidian transaction apply bundle.json --vault vault\n```\n",
+                + "\n```bash\nclaude-empire transaction apply bundle.json --vault vault\n```\n",
                 encoding="utf-8",
             )
             codes = {item["code"] for item in validate_package(root)["findings"]}
@@ -251,7 +251,7 @@ class PackageValidationTests(unittest.TestCase):
                 root, frontmatter="---\nname: sample\ndescription: Sample.\n---"
             )
             (root / "CLAUDE.md").write_text(
-                "```bash\npython3 scripts/claude-obsidian.py init /tmp/v --apply\n```\n",
+                "```bash\npython3 scripts/claude-empire.py init /tmp/v --apply\n```\n",
                 encoding="utf-8",
             )
             codes = {item["code"] for item in validate_package(root)["findings"]}
@@ -300,7 +300,7 @@ class PackageValidationTests(unittest.TestCase):
             reference = root / "skills/sample/references/workflow.md"
             reference.parent.mkdir()
             reference.write_text(
-                '```bash\npython3 scripts/claude-obsidian.py lint --vault "$VAULT"\n```\n',
+                '```bash\npython3 scripts/claude-empire.py lint --vault "$VAULT"\n```\n',
                 encoding="utf-8",
             )
             findings = validate_package(root)["findings"]
@@ -315,7 +315,7 @@ class PackageValidationTests(unittest.TestCase):
 
             (root / "agents").mkdir()
             (root / "agents" / "reviewer.md").write_text(
-                "Run `python3 scripts/claude-obsidian.py lint --vault .`.\n",
+                "Run `python3 scripts/claude-empire.py lint --vault .`.\n",
                 encoding="utf-8",
             )
             findings = validate_package(root)["findings"]

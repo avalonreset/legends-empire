@@ -12,8 +12,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from claude_obsidian.extensions import dragonscale_bundle
-from claude_obsidian.transaction import apply_bundle, inspect_bundle
+from claude_empire.extensions import dragonscale_bundle
+from claude_empire.transaction import apply_bundle, inspect_bundle
 
 
 class ExtensionTests(unittest.TestCase):

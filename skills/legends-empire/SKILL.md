@@ -1,18 +1,18 @@
 ---
-name: legends-obsidian
-description: "Portable Legends Obsidian entry point for source-cited vault setup, ingest, query, save, lint, research and research-evidence handoff. Load the matching canonical skill and select a user vault explicitly."
+name: legends-empire
+description: "Portable Legends Empire entry point for source-cited vault setup, ingest, query, save, lint, research and research-evidence handoff. Load the matching canonical skill and select a user vault explicitly."
 ---
 
-# Legends Obsidian
+# Legends Empire
 
-**Brand:** Legends Obsidian  
+**Brand:** Legends Empire  
 **Vault:** explicitly selected user directory, never the product checkout.  
-**Capability:** `2.3.0`  
+**Capability:** `3.0.0`  
 **Matrix:** `docs/AGENTS-MATRIX.md`
 
-Retired names: **Codex Obsidian** / `codex-obsidian`, spoken **Claude Obsidian**. Same suite. One name for every coding agent.
+Retired names: **Codex Obsidian** / `codex-obsidian`, spoken **Claude Obsidian**, suite `legends-obsidian`. Same suite. One name for every coding agent.
 
-Internal Python package remains `claude_obsidian`. Do not ask the user to say that.
+Internal Python package remains `claude_empire`. Do not ask the user to say that.
 
 ## Philosophy
 
@@ -52,7 +52,7 @@ Load sibling skill `wiki` as orchestrator, then:
 Read `../../docs/install-guide.md`. On POSIX hosts, run
 `bash "$PRODUCT_ROOT/scripts/setup-multi-agent.sh" --dry-run --host codex` from the extracted
 product directory; review before `--apply`. The CLI is
-`python "$PRODUCT_ROOT/scripts/claude-obsidian.py" --help`, with PRODUCT_ROOT resolved from this installed skill.
+`python "$PRODUCT_ROOT/scripts/claude-empire.py" --help`, with PRODUCT_ROOT resolved from this installed skill.
 
 Native Windows supports retrieval, inspection and dry runs. Recoverable vault
 mutation requires WSL or another supported POSIX host; never bypass the

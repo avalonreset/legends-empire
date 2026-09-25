@@ -18,8 +18,8 @@ Resolve the installed product root from this skill's own location, not from the
 vault or current working directory:
 
 ```bash
-PRODUCT_ROOT=/absolute/path/to/installed/claude-obsidian
-CORE="$PRODUCT_ROOT/scripts/claude-obsidian.py"
+PRODUCT_ROOT=/absolute/path/to/installed/claude-empire
+CORE="$PRODUCT_ROOT/scripts/claude-empire.py"
 test -f "$CORE"
 ```
 
@@ -40,7 +40,7 @@ selected vault's `wiki/` directory.
 7. If an edit was requested, read
    [operation-transactions.md](../wiki/references/operation-transactions.md),
    keep the `.base` file under `wiki/`, and build one
-   `claude-obsidian.transaction.v1` bundle with `operation_type: base`. Inspect
+   `claude-empire.transaction.v1` bundle with `operation_type: base`. Inspect
    it, then set `APPROVAL_SHA256` to the returned `approval_sha256` only after
    review and apply once:
 

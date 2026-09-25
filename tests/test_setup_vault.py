@@ -90,7 +90,7 @@ class SetupVaultTests(unittest.TestCase):
             self.assertEqual(0, result.returncode, result.stderr)
             payload = json.loads(result.stdout)
             self.assertEqual(
-                "claude-obsidian.initialization-plan.v1", payload["schema"]
+                "claude-empire.initialization-plan.v1", payload["schema"]
             )
             self.assertEqual("dry-run", payload["status"])
             self.assertFalse(vault.exists())
@@ -103,7 +103,7 @@ class SetupVaultTests(unittest.TestCase):
             result = _run("--dry-run", cwd=parent, env={"PWD": str(parent)})
             self.assertEqual(0, result.returncode, result.stderr)
             self.assertEqual(
-                "claude-obsidian.adoption-plan.v1", json.loads(result.stdout)["schema"]
+                "claude-empire.adoption-plan.v1", json.loads(result.stdout)["schema"]
             )
             self.assertEqual(before, _snapshot(parent))
 
@@ -121,7 +121,7 @@ class SetupVaultTests(unittest.TestCase):
             result = _run("--check", "--vault", str(vault))
             self.assertEqual(0, result.returncode, result.stderr)
             report = json.loads(result.stdout)
-            self.assertEqual("claude-obsidian.doctor.v1", report["schema"])
+            self.assertEqual("claude-empire.doctor.v1", report["schema"])
             self.assertTrue(report["ok"])
             self.assertEqual(before, _snapshot(vault))
 
@@ -321,11 +321,11 @@ class SetupVaultTests(unittest.TestCase):
             automatic = _run("--dry-run", "--vault", str(existing))
             explicit = _run("--dry-run", "--init", "--vault", str(existing))
             self.assertEqual(
-                "claude-obsidian.adoption-plan.v1",
+                "claude-empire.adoption-plan.v1",
                 json.loads(automatic.stdout)["schema"],
             )
             self.assertEqual(
-                "claude-obsidian.initialization-plan.v1",
+                "claude-empire.initialization-plan.v1",
                 json.loads(explicit.stdout)["schema"],
             )
 
@@ -356,7 +356,7 @@ class SetupVaultTests(unittest.TestCase):
             self.assertEqual(2, applied.returncode)
             self.assertIn("PLAN_CHANGED", applied.stderr)
             self.assertEqual("user-created\n", marker_file.read_text(encoding="utf-8"))
-            self.assertFalse((vault / ".claude-obsidian.json").exists())
+            self.assertFalse((vault / ".claude-empire.json").exists())
 
 
 if __name__ == "__main__":

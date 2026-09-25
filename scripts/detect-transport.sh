@@ -92,7 +92,7 @@ VAULT_ROOT="$(PYTHONPATH="$PLUGIN_ROOT${PYTHONPATH:+:$PYTHONPATH}" python3 - "$R
 import sys
 from pathlib import Path
 
-from claude_obsidian.paths import VaultSelectionError, resolve_vault_root
+from claude_empire.paths import VaultSelectionError, resolve_vault_root
 
 try:
     selected = resolve_vault_root(
@@ -298,8 +298,8 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, os.environ["PLUGIN_ROOT"])
-from claude_obsidian.json_utils import strict_json_loads
-from claude_obsidian.transaction import TransactionError, read_vault_regular
+from claude_empire.json_utils import strict_json_loads
+from claude_empire.transaction import TransactionError, read_vault_regular
 
 vault = os.environ["VAULT_ROOT"]
 expected_vault_identity = (
@@ -501,7 +501,7 @@ if [ "$MODE" = "peek" ]; then
   exit 0
 fi
 
-ACTIVE_TMP="$(mktemp "${TMPDIR:-/tmp}/claude-obsidian-transport.XXXXXX")"
+ACTIVE_TMP="$(mktemp "${TMPDIR:-/tmp}/claude-empire-transport.XXXXXX")"
 snapshot > "$ACTIVE_TMP"
 if ! PYTHONPATH="$PLUGIN_ROOT${PYTHONPATH:+:$PYTHONPATH}" python3 -B -P - \
   "$VAULT_ROOT" "$ACTIVE_TMP" 2>/dev/null <<'PY'
@@ -510,7 +510,7 @@ import stat
 import sys
 from pathlib import Path
 
-from claude_obsidian.transaction import MutationLock, _atomic_vault_write
+from claude_empire.transaction import MutationLock, _atomic_vault_write
 
 vault = Path(sys.argv[1])
 source = Path(sys.argv[2])

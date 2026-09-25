@@ -166,8 +166,8 @@ for host in "${expanded[@]}"; do
     claude) destination_roots=("$HOME/.claude/skills") ;;
     metamuse|muse)
       echo "MANUAL MetaMuse: native skill discovery is unverified; no installation performed."
-      echo "Read $SKILLS_DIR/legends-obsidian/SKILL.md using file access."
-      echo "Then run: python $REPO_ROOT/scripts/claude-obsidian.py package validate"
+      echo "Read $SKILLS_DIR/legends-empire/SKILL.md using file access."
+      echo "Then run: python $REPO_ROOT/scripts/claude-empire.py package validate"
       continue
       ;;
     opencode) destination_roots=("$HOME/.config/opencode/skills") ;;

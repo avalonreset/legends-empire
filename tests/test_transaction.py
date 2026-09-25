@@ -16,8 +16,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-import claude_obsidian.transaction as transaction_module
-from claude_obsidian.transaction import (
+import claude_empire.transaction as transaction_module
+from claude_empire.transaction import (
     BUNDLE_SCHEMA,
     MutationLock,
     TransactionConflict,
@@ -291,7 +291,7 @@ def test_paths_require_nfc_and_file_bundles_reject_duplicate_json_keys() -> None
         bundle_path = base / "ambiguous.json"
         bundle_path.write_text(
             "{"
-            '"schema":"claude-obsidian.transaction.v1",'
+            '"schema":"claude-empire.transaction.v1",'
             '"operation_id":"duplicate-json",'
             '"operation_type":"generic",'
             '"expected_hashes":{"wiki/A.md":null},'
@@ -1852,7 +1852,7 @@ def test_explicit_recovery_can_reap_stale_pid_reuse_lock() -> None:
         (lock / "owner.json").write_text(
             json.dumps(
                 {
-                    "schema": "claude-obsidian.mutation-lock.v1",
+                    "schema": "claude-empire.mutation-lock.v1",
                     "pid": os.getpid(),
                     "token": "stale-owner",
                     "host": socket.gethostname(),
@@ -1889,7 +1889,7 @@ def test_force_stale_lock_reaps_dead_same_host_owner_before_stale_after() -> Non
         (lock / "owner.json").write_text(
             json.dumps(
                 {
-                    "schema": "claude-obsidian.mutation-lock.v1",
+                    "schema": "claude-empire.mutation-lock.v1",
                     "pid": 999999,
                     "token": "dead-owner",
                     "host": socket.gethostname(),
@@ -1929,7 +1929,7 @@ def test_force_stale_lock_does_not_reap_a_live_same_host_owner() -> None:
         (lock / "owner.json").write_text(
             json.dumps(
                 {
-                    "schema": "claude-obsidian.mutation-lock.v1",
+                    "schema": "claude-empire.mutation-lock.v1",
                     "pid": os.getpid(),
                     "token": "live-owner",
                     "host": socket.gethostname(),
@@ -1961,7 +1961,7 @@ def test_force_stale_lock_keeps_the_age_gate_for_a_foreign_host_owner() -> None:
         (lock / "owner.json").write_text(
             json.dumps(
                 {
-                    "schema": "claude-obsidian.mutation-lock.v1",
+                    "schema": "claude-empire.mutation-lock.v1",
                     "pid": 999999,
                     "token": "foreign-owner",
                     "host": f"not-{socket.gethostname()}",
@@ -2024,7 +2024,7 @@ def test_mutation_lock_release_and_reaping_ignore_replaced_external_alias() -> N
         outside_owner.write_text(
             json.dumps(
                 {
-                    "schema": "claude-obsidian.mutation-lock.v1",
+                    "schema": "claude-empire.mutation-lock.v1",
                     "pid": os.getpid(),
                     "token": lock.token,
                     "host": socket.gethostname(),
@@ -2080,7 +2080,7 @@ def test_mutation_lock_serializes_across_meta_directory_replacement() -> None:
         replacement_owner.write_text(
             json.dumps(
                 {
-                    "schema": "claude-obsidian.mutation-lock.v1",
+                    "schema": "claude-empire.mutation-lock.v1",
                     "pid": 999999,
                     "token": first.token,
                     "host": socket.gethostname(),
@@ -2174,8 +2174,8 @@ def test_meta_managed_targets_rollback_inside_pinned_namespace() -> None:
         (
             "configuration",
             ".vault-meta/mode.json",
-            '{"schema":"claude-obsidian.vault-mode.v1","mode":"generic"}\n',
-            '{"schema":"claude-obsidian.vault-mode.v1","mode":"para"}\n',
+            '{"schema":"claude-empire.vault-mode.v1","mode":"generic"}\n',
+            '{"schema":"claude-empire.vault-mode.v1","mode":"para"}\n',
         ),
         ("setup", ".vault-meta/address-counter.txt", "1\n", "2\n"),
     )
@@ -2232,7 +2232,7 @@ def test_recovery_never_reads_a_replaced_external_operation() -> None:
         transaction = vault / f".vault-meta/transactions/{operation_id}"
         (transaction / "backups").mkdir(parents=True)
         benign = {
-            "schema": "claude-obsidian.transaction-journal.v1",
+            "schema": "claude-empire.transaction-journal.v1",
             "operation_id": operation_id,
             "operation_type": "generic",
             "state": "applying",
@@ -2295,7 +2295,7 @@ def _seed_runtime_read_probe(base: Path) -> tuple[Path, bytes]:
     """Write one bounded runtime file used by the stability read probes."""
 
     target = base / "runtime-file.json"
-    payload = b'{"schema": "claude-obsidian.runtime-read-probe.v1"}\n'
+    payload = b'{"schema": "claude-empire.runtime-read-probe.v1"}\n'
     target.write_bytes(payload)
     return target, payload
 
@@ -2535,7 +2535,7 @@ def test_recover_interrupted_journal() -> None:
         (backups / "0000.original").write_text("old\n")
         original.write_text("new\n")
         journal = {
-            "schema": "claude-obsidian.transaction-journal.v1",
+            "schema": "claude-empire.transaction-journal.v1",
             "operation_id": "crashed",
             "operation_type": "generic",
             "state": "applying",
@@ -2589,7 +2589,7 @@ def test_recovery_rejects_unbound_or_indirect_backups_before_any_write() -> None
                 backup_value = "0001.original"
 
             journal = {
-                "schema": "claude-obsidian.transaction-journal.v1",
+                "schema": "claude-empire.transaction-journal.v1",
                 "operation_id": f"recovery-{attack}",
                 "operation_type": "generic",
                 "state": "applying",

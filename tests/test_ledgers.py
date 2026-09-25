@@ -15,7 +15,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from claude_obsidian.ledgers import (
+from claude_empire.ledgers import (
     CLAIM_SCHEMA,
     LedgerValidationError,
     SOURCE_SCHEMA,
@@ -26,14 +26,14 @@ from claude_obsidian.ledgers import (
     validate_claim_ledger,
     validate_source_ledger,
 )
-from claude_obsidian.transaction import (
+from claude_empire.transaction import (
     BUNDLE_SCHEMA,
     TransactionConflict,
     TransactionValidationError,
     apply_bundle,
     inspect_bundle,
 )
-import claude_obsidian.transaction as transaction_module
+import claude_empire.transaction as transaction_module
 
 
 def make_vault(root: Path) -> Path:
@@ -1508,7 +1508,7 @@ def test_transaction_rejects_duplicate_provenance_json_keys() -> None:
         vault = make_vault(Path(td) / "vault")
         source_path = "wiki/meta/ledgers/source-ledger.json"
         duplicate = (
-            '{"schema":"claude-obsidian.source-ledger.v1",'
+            '{"schema":"claude-empire.source-ledger.v1",'
             '"generated_at":"2026-07-11T00:00:00Z",'
             '"sources":{"src-a":{},"src-a":{}}}'
         )

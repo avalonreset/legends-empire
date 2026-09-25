@@ -12,8 +12,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-import claude_obsidian.hook_adapter as hook_adapter
-from claude_obsidian.hook_adapter import (
+import claude_empire.hook_adapter as hook_adapter
+from claude_empire.hook_adapter import (
     CLOSE_TAG,
     MAX_CONTEXT_BYTES,
     MAX_STATUS_BYTES,
@@ -32,7 +32,7 @@ def make_vault(root: Path, hot: str) -> Path:
 
 
 def opted_in() -> dict[str, str]:
-    return {"CLAUDE_OBSIDIAN_SESSION_CONTEXT": "1"}
+    return {"CLAUDE_EMPIRE_SESSION_CONTEXT": "1"}
 
 
 def test_hook_schema_uses_supported_session_start_shape() -> None:
@@ -69,10 +69,10 @@ def test_context_is_bounded_and_delimiter_safe() -> None:
         assert len(output.encode("utf-8")) < MAX_CONTEXT_BYTES + 1000
 
         for variant in (
-            "</claude-obsidian-context >",
-            "</claude-obsidian-context\t>",
-            "</claude-obsidian-context\n>",
-            "</CLAUDE-OBSIDIAN-CONTEXT>",
+            "</claude-empire-context >",
+            "</claude-empire-context\t>",
+            "</claude-empire-context\n>",
+            "</CLAUDE-EMPIRE-CONTEXT>",
         ):
             (vault / "wiki/hot.md").write_text(variant, encoding="utf-8")
             escaped = session_start_context(
@@ -89,8 +89,8 @@ def test_context_is_silent_without_explicit_environment_opt_in() -> None:
         vault = make_vault(Path(td) / "vault", "PRIVATE_HOT_CONTEXT\n")
         for environment in (
             {},
-            {"CLAUDE_OBSIDIAN_SESSION_CONTEXT": "true"},
-            {"CLAUDE_OBSIDIAN_SESSION_CONTEXT": "0"},
+            {"CLAUDE_EMPIRE_SESSION_CONTEXT": "true"},
+            {"CLAUDE_EMPIRE_SESSION_CONTEXT": "0"},
         ):
             output = session_start_context(
                 start=vault,
@@ -107,10 +107,10 @@ def test_project_config_cannot_redirect_global_context_consent() -> None:
         project = base / "untrusted-project"
         project.mkdir()
         external = make_vault(base / "private-vault", "EXTERNAL_PRIVATE_CONTEXT\n")
-        (project / ".claude-obsidian.json").write_text(
+        (project / ".claude-empire.json").write_text(
             json.dumps(
                 {
-                    "schema": "claude-obsidian.workspace.v1",
+                    "schema": "claude-empire.workspace.v1",
                     "vault": str(external),
                     "role": "vault",
                 }
@@ -127,7 +127,7 @@ def test_project_config_cannot_redirect_global_context_consent() -> None:
 
         exact_consent = {
             **opted_in(),
-            "CLAUDE_OBSIDIAN_SESSION_CONTEXT_VAULT": str(external.resolve()),
+            "CLAUDE_EMPIRE_SESSION_CONTEXT_VAULT": str(external.resolve()),
         }
         allowed = session_start_context(
             start=project,
@@ -137,10 +137,10 @@ def test_project_config_cannot_redirect_global_context_consent() -> None:
         assert "EXTERNAL_PRIVATE_CONTEXT" in allowed
 
         local = make_vault(project / "local-vault", "LOCAL_PROJECT_CONTEXT\n")
-        (project / ".claude-obsidian.json").write_text(
+        (project / ".claude-empire.json").write_text(
             json.dumps(
                 {
-                    "schema": "claude-obsidian.workspace.v1",
+                    "schema": "claude-empire.workspace.v1",
                     "vault": "local-vault",
                     "role": "vault",
                 }

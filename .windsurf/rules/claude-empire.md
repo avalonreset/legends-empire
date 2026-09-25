@@ -1,4 +1,4 @@
-# claude-obsidian: Windsurf rules
+# claude-empire: Windsurf rules
 
 Read `AGENTS.md` as the canonical host-neutral contract. Preview and then
 install Cascade skill links with

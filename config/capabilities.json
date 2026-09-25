@@ -116,10 +116,10 @@
    "verification_reason": "the external defuddle adapter has no bundled behavioral verifier"
   },
   {
-   "id": "legends-obsidian",
+   "id": "legends-empire",
    "tier": "core",
    "implementation_paths": [
-    "skills/legends-obsidian/SKILL.md",
+    "skills/legends-empire/SKILL.md",
     "docs/AGENTS-MATRIX.md"
    ],
    "read_scope": [
@@ -288,7 +288,7 @@
    ],
    "read_scope": [
     "plugin:skills/**",
-    "vault:.claude-obsidian.json",
+    "vault:.claude-empire.json",
     "vault:.gitignore",
     "vault:.obsidian/**",
     "vault:.raw/**",
@@ -298,7 +298,7 @@
    ],
    "write_scope": [
     {
-     "pattern": "vault:.claude-obsidian.json",
+     "pattern": "vault:.claude-empire.json",
      "access": "transactional"
     },
     {
@@ -524,7 +524,7 @@
    "id": "wiki-lint",
    "tier": "core",
    "implementation_paths": [
-    "claude_obsidian/lint_engine.py",
+    "claude_empire/lint_engine.py",
     "skills/wiki-lint/SKILL.md"
    ],
    "read_scope": [

@@ -1,6 +1,6 @@
 # Windows and WSL guide
 
-claude-obsidian supports native Windows as a read-only platform and WSL as the
+claude-empire supports native Windows as a read-only platform and WSL as the
 full-capability platform. This guide covers what works where, why the boundary
 exists, and how to unstick WSL when it misbehaves.
 
@@ -41,9 +41,9 @@ not:
   or WSL and confirm the real interpreter is on `PATH`.
 
 When `python3` cannot be resolved, Claude Code fails to spawn the hook
-process, so claude-obsidian's own code never runs and cannot emit a
+process, so claude-empire's own code never runs and cannot emit a
 diagnostic. SessionStart context and Stop recovery warnings are both silently
-absent in that case; the rest of claude-obsidian (skills and the CLI) is
+absent in that case; the rest of claude-empire (skills and the CLI) is
 unaffected, since only the optional hook path depends on `python3`.
 
 ## Why writes require WSL

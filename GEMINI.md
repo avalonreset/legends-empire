@@ -1,7 +1,7 @@
-# claude-obsidian: Gemini instructions
+# claude-empire: Gemini instructions
 
 Read `AGENTS.md` as the canonical host-neutral contract. Skills live in
-`skills/<name>/SKILL.md` and the portable core lives in `claude_obsidian/`.
+`skills/<name>/SKILL.md` and the portable core lives in `claude_empire/`.
 
 Install skill discovery with:
 
@@ -16,7 +16,7 @@ This repository is product source, not the default user vault. Create a
 separate vault with the dry-run-first `init` command or adopt an existing vault.
 Resolve that vault before reading `wiki/hot.md` or running a skill.
 
-All shared mutations use one inspected `claude-obsidian.transaction.v1` bundle.
+All shared mutations use one inspected `claude-empire.transaction.v1` bundle.
 Parallel workers draft only. Do not use direct shared writes, automatic commits,
 or the deprecated per-file lock helper. Remote egress and destructive actions
 need explicit user consent.

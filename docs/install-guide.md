@@ -1,6 +1,6 @@
-# Install claude-obsidian
+# Install claude-empire
 
-claude-obsidian has two independent parts:
+claude-empire has two independent parts:
 
 1. the product package (skills, portable core, Claude adapter, and templates);
 2. a user-owned Obsidian vault containing mutable knowledge.
@@ -23,8 +23,8 @@ for development, but a normal user vault should be a separate directory.
 Add the artifact-clean public catalog and install the namespaced plugin:
 
 ```bash
-claude plugin marketplace add avalonreset/legends-obsidian
-claude plugin install legends-obsidian@legends-obsidian
+claude plugin marketplace add avalonreset/legends-empire
+claude plugin install legends-empire@legends-empire
 claude plugin list
 ```
 
@@ -35,11 +35,11 @@ that manifest only into its audited output. The public default branch must be
 promoted from the extracted audited artifact before these marketplace commands
 are advertised for a new version.
 
-Invoke skills as `/legends-obsidian:wiki`,
-`/legends-obsidian:wiki-ingest`, and `/legends-obsidian:save`.
+Invoke skills as `/legends-empire:wiki`,
+`/legends-empire:wiki-ingest`, and `/legends-empire:save`.
 
 The plugin cache contains read-only product assets. Run Claude from the user
-vault, set `CLAUDE_OBSIDIAN_VAULT`, or pass `--vault` to portable commands.
+vault, set `CLAUDE_EMPIRE_VAULT`, or pass `--vault` to portable commands.
 
 ## Local Claude plugin development
 
@@ -109,7 +109,7 @@ Windsurf:  <workspace>/.windsurf/skills/<name> -> <product-repository>/skills/<n
 Review the initialization plan first:
 
 ```bash
-python3 scripts/claude-obsidian.py init <new-vault> \
+python3 scripts/claude-empire.py init <new-vault> \
   --generated-at <ISO-UTC> --operation-id init-reviewed
 ```
 
@@ -117,7 +117,7 @@ Apply the same operation only after the destination and changed paths look
 correct:
 
 ```bash
-python3 scripts/claude-obsidian.py init <new-vault> \
+python3 scripts/claude-empire.py init <new-vault> \
   --generated-at <ISO-UTC> --operation-id init-reviewed \
   --approved-plan-sha256 <reviewed-sha256> --apply
 ```
@@ -126,7 +126,7 @@ The generated vault contains:
 
 - `.gitignore`: privacy-safe defaults excluding `.vault-meta/` runtime state,
   Obsidian workspace state, and live `.mcp.json` launch configuration;
-- `.claude-obsidian.json`: workspace identity and vault selection;
+- `.claude-empire.json`: workspace identity and vault selection;
 - `inbox/`: visible source intake;
 - `.raw/`: immutable source payloads and legacy delta manifest;
 - `wiki/`: index, log, hot cache, overview, and generated notes;
@@ -142,9 +142,9 @@ Adoption scans an existing Obsidian directory and proposes only missing product
 metadata and foundation files:
 
 ```bash
-python3 scripts/claude-obsidian.py adopt <existing-vault> \
+python3 scripts/claude-empire.py adopt <existing-vault> \
   --generated-at <ISO-UTC> --operation-id adopt-reviewed
-python3 scripts/claude-obsidian.py adopt <existing-vault> \
+python3 scripts/claude-empire.py adopt <existing-vault> \
   --generated-at <ISO-UTC> --operation-id adopt-reviewed \
   --approved-plan-sha256 <reviewed-sha256> --apply
 ```
@@ -152,13 +152,13 @@ python3 scripts/claude-obsidian.py adopt <existing-vault> \
 It preserves existing notes and Obsidian JSON. `--force` is intentionally
 separate and should be used only after inspecting replacement targets.
 
-For older claude-obsidian layouts, add provenance ledgers and workspace config
+For older claude-empire layouts, add provenance ledgers and workspace config
 with an additive migration:
 
 ```bash
-python3 scripts/claude-obsidian.py migrate --vault <existing-vault> \
+python3 scripts/claude-empire.py migrate --vault <existing-vault> \
   --generated-at <ISO-UTC> --operation-id migrate-reviewed
-python3 scripts/claude-obsidian.py migrate --vault <existing-vault> \
+python3 scripts/claude-empire.py migrate --vault <existing-vault> \
   --generated-at <ISO-UTC> --operation-id migrate-reviewed \
   --approved-plan-sha256 <reviewed-sha256> --apply
 ```
@@ -171,8 +171,8 @@ legacy `.raw/.manifest.json` byte-for-byte unchanged.
 Mutable commands use this precedence:
 
 1. `--vault <path>`
-2. `CLAUDE_OBSIDIAN_VAULT`
-3. nearest `.claude-obsidian.json`
+2. `CLAUDE_EMPIRE_VAULT`
+3. nearest `.claude-empire.json`
 4. nearest unambiguous initialized vault from the current directory
 
 If selection fails, the command exits without mutation. The product/plugin root
@@ -181,8 +181,8 @@ is rejected as an implicit vault.
 Verify a selected vault:
 
 ```bash
-python3 scripts/claude-obsidian.py doctor --vault <vault>
-python3 scripts/claude-obsidian.py contracts --verify --vault <vault>
+python3 scripts/claude-empire.py doctor --vault <vault>
+python3 scripts/claude-empire.py contracts --verify --vault <vault>
 ```
 
 ## Optional configuration
@@ -211,15 +211,15 @@ consent. Optional tools such as Ollama and defuddle are capability-detected.
 Place a source in `inbox/`. Inspect the byte-capture plan:
 
 ```bash
-python3 scripts/claude-obsidian.py capture plan --vault <vault>
+python3 scripts/claude-empire.py capture plan --vault <vault>
 ```
 
 Create immutable content-addressed copies only when the plan is correct:
 
 ```bash
-python3 scripts/claude-obsidian.py capture apply --vault <vault> \
+python3 scripts/claude-empire.py capture apply --vault <vault> \
   --generated-at <ISO-UTC> --operation-id capture-reviewed
-python3 scripts/claude-obsidian.py capture apply --vault <vault> \
+python3 scripts/claude-empire.py capture apply --vault <vault> \
   --generated-at <ISO-UTC> --operation-id capture-reviewed \
   --approved-plan-sha256 <reviewed-sha256> --apply
 ```
@@ -235,7 +235,7 @@ large ingest, make a normal backup or snapshot. Knowledge writes are journaled;
 run recovery after an interrupted operation:
 
 ```bash
-python3 scripts/claude-obsidian.py transaction recover --vault <vault>
+python3 scripts/claude-empire.py transaction recover --vault <vault>
 ```
 
 Recovery conservatively preserves stale or foreign lock identities. Only after
@@ -245,7 +245,7 @@ Git history is optional and never automatic. To checkpoint exactly one
 completed transaction:
 
 ```bash
-python3 scripts/claude-obsidian.py checkpoint <operation-id> --vault <vault> \
+python3 scripts/claude-empire.py checkpoint <operation-id> --vault <vault> \
   --as-of YYYY-MM-DD
 ```
 
@@ -258,8 +258,8 @@ from its vault-local pending record.
 Remove the host integration, not the vault:
 
 ```bash
-claude plugin uninstall legends-obsidian@legends-obsidian
-claude plugin marketplace remove legends-obsidian
+claude plugin uninstall legends-empire@legends-empire
+claude plugin marketplace remove legends-empire
 ```
 
 For portable hosts, remove only the per-skill links that the installer reported.
@@ -270,7 +270,7 @@ User notes, sources, ledgers, and Obsidian settings remain untouched.
 | Symptom | Check |
 |---|---|
 | Skill is not discovered | Confirm `<host-skill-root>/<name>/SKILL.md` resolves to the matching product skill; rerun installer `--check`. |
-| Command says no vault selected | Run from the vault, pass `--vault`, or set `CLAUDE_OBSIDIAN_VAULT`. |
+| Command says no vault selected | Run from the vault, pass `--vault`, or set `CLAUDE_EMPIRE_VAULT`. |
 | Plugin-root refusal | Select a separate user vault; plugin cache writes are unsupported. |
 | Transaction conflict / exit 75 | Another operation is active or a target changed; reread, rebuild, and inspect a new bundle. |
 | Obsidian CLI is unavailable | Use filesystem reads; start/update Obsidian before retrying CLI transport. |

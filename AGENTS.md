@@ -1,14 +1,14 @@
-# legends-obsidian: Agent Instructions
+# legends-empire: Agent Instructions
 
-claude-obsidian is a local-first Agent Skills package for building source-cited,
+claude-empire is a local-first Agent Skills package for building source-cited,
 compounding Obsidian knowledge bases. It also ships a Claude Code plugin adapter.
 The portable workflow is implemented in `skills/` and the standard-library
-`claude_obsidian/` core; host hooks never define knowledge behavior.
+`claude_empire/` core; host hooks never define knowledge behavior.
 
 ## Product and vault boundaries
 
 - This repository is the product source. It is not the default user vault.
-- A user vault is the directory containing `.claude-obsidian.json`, `wiki/`,
+- A user vault is the directory containing `.claude-empire.json`, `wiki/`,
   and `.raw/`. Mutable state always belongs there.
 - `templates/vault/` is the distributable seed. Root `wiki/`, `.raw/`, and
   `.vault-meta/` are contributor state and are excluded from public artifacts.
@@ -21,7 +21,7 @@ The portable workflow is implemented in `skills/` and the standard-library
   artifact, never by pushing contributor-vault state.
 
 Resolve a vault in this order: explicit `--vault`,
-`CLAUDE_OBSIDIAN_VAULT`, nearest `.claude-obsidian.json`, then an unambiguous
+`CLAUDE_EMPIRE_VAULT`, nearest `.claude-empire.json`, then an unambiguous
 vault at or above the current directory. Fail closed when no vault is selected.
 
 ## Bootstrap
@@ -31,7 +31,7 @@ vault at or above the current directory. Fail closed when no vault is selected.
 2. Read the selected skill completely.
 3. Read only the references that skill routes to.
 4. Resolve the user vault. If `wiki/hot.md` exists, read it silently.
-5. For a new vault, run `python3 scripts/claude-obsidian.py init PATH` first;
+5. For a new vault, run `python3 scripts/claude-empire.py init PATH` first;
    apply only after reviewing the dry run. Use `adopt` for an existing vault.
 
 ## Canonical skills
@@ -39,7 +39,7 @@ vault at or above the current directory. Fail closed when no vault is selected.
 All 16 skills live at `skills/<name>/SKILL.md`. They use the portable Agent
 Skills frontmatter subset: exactly `name` and `description`. Do not add mirrored
 files under `commands/`; Claude invokes plugin skills by namespaced names such
-as `/legends-obsidian:wiki`.
+as `/legends-empire:wiki`.
 
 Core workflows are `wiki`, `save`, `wiki-ingest`, `wiki-query`, and
 `wiki-lint`. Extensions are `autoresearch`, `canvas`, `defuddle`, `wiki-fold`,
@@ -52,8 +52,8 @@ One logical knowledge operation is one recoverable transaction:
 
 1. Read targets and record expected SHA-256 values.
 2. Let parallel workers return drafts and evidence only.
-3. Merge drafts into one `claude-obsidian.transaction.v1` bundle.
-4. Inspect the bundle, then apply it once through `scripts/claude-obsidian.py`.
+3. Merge drafts into one `claude-empire.transaction.v1` bundle.
+4. Inspect the bundle, then apply it once through `scripts/claude-empire.py`.
 5. Report the operation ID and exact changed paths.
 
 Do not use direct shared writes, the deprecated `wiki-lock.sh` helper, or
@@ -85,14 +85,14 @@ publishing. No agent may push, tag, open or mutate issues, or publish a release
 without explicit owner approval.
 
 Claude SessionStart context injection is disabled by default. Treat
-`CLAUDE_OBSIDIAN_SESSION_CONTEXT=1` as explicit user consent to place bounded
+`CLAUDE_EMPIRE_SESSION_CONTEXT=1` as explicit user consent to place bounded
 `wiki/hot.md` data in the model context; never set it automatically. A
 workspace-configured vault outside the project also requires an exact
-`CLAUDE_OBSIDIAN_SESSION_CONTEXT_VAULT` path.
+`CLAUDE_EMPIRE_SESSION_CONTEXT_VAULT` path.
 
 ## Reference
 
-- Public distribution: https://github.com/avalonreset/legends-obsidian
+- Public distribution: https://github.com/avalonreset/legends-empire
 - Upstream source: https://github.com/AgriciDaniel/claude-obsidian
 - LLM Wiki pattern: https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f
 - Obsidian primitives: https://github.com/kepano/obsidian-skills

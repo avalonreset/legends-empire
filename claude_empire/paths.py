@@ -13,8 +13,8 @@ from typing import Mapping
 
 from .json_utils import parse_finite_json_float
 
-WORKSPACE_CONFIG = ".claude-obsidian.json"
-VAULT_SCHEMA = "claude-obsidian.workspace.v1"
+WORKSPACE_CONFIG = ".claude-empire.json"
+VAULT_SCHEMA = "claude-empire.workspace.v1"
 MAX_WORKSPACE_CONFIG_BYTES = 64 * 1024
 
 
@@ -321,7 +321,7 @@ def validate_vault_root(
     if not allow_uninitialized and not is_adoptable_vault(resolved):
         raise VaultSelectionError(
             "VAULT_SENTINEL_MISSING",
-            f"{resolved} is not a claude-obsidian or Obsidian vault",
+            f"{resolved} is not a claude-empire or Obsidian vault",
         )
     return resolved
 
@@ -369,7 +369,7 @@ def resolve_vault_root(
 ) -> VaultSelection:
     """Resolve one vault using documented precedence and fail closed.
 
-    Precedence: explicit argument, ``CLAUDE_OBSIDIAN_VAULT``, nearest workspace
+    Precedence: explicit argument, ``CLAUDE_EMPIRE_VAULT``, nearest workspace
     config, then nearest initialized vault from the current working directory.
     The plugin installation root is never accepted by implicit discovery.
     """
@@ -381,8 +381,8 @@ def resolve_vault_root(
     if explicit is not None:
         candidate = canonical(explicit)
         source = "explicit"
-    elif env.get("CLAUDE_OBSIDIAN_VAULT"):
-        candidate = canonical(env["CLAUDE_OBSIDIAN_VAULT"])
+    elif env.get("CLAUDE_EMPIRE_VAULT"):
+        candidate = canonical(env["CLAUDE_EMPIRE_VAULT"])
         source = "environment"
     else:
         configured = _find_workspace_config(cwd)
@@ -400,7 +400,7 @@ def resolve_vault_root(
             if nearest is None:
                 raise VaultSelectionError(
                     "VAULT_NOT_FOUND",
-                    "no vault selected; pass --vault or set CLAUDE_OBSIDIAN_VAULT",
+                    "no vault selected; pass --vault or set CLAUDE_EMPIRE_VAULT",
                 )
             candidate = nearest
             source = "cwd-discovery"

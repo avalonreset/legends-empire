@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Thin compatibility wrapper for the portable claude-obsidian vault workflow.
+# Thin compatibility wrapper for the portable claude-empire vault workflow.
 #
 # This wrapper never creates, replaces, or removes vault content itself. It
 # translates the legacy setup-vault flags into the canonical Python CLI, where
@@ -143,7 +143,7 @@ if [ -n "$VAULT_INPUT" ] && [ -n "$POSITIONAL_VAULT" ]; then
 fi
 
 PLUGIN_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-CORE="$PLUGIN_ROOT/scripts/claude-obsidian.py"
+CORE="$PLUGIN_ROOT/scripts/claude-empire.py"
 VAULT="${VAULT_INPUT:-${POSITIONAL_VAULT:-$PWD}}"
 
 if [ "$MODE" = "check" ]; then

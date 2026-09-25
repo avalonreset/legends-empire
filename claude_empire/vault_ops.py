@@ -39,13 +39,13 @@ def scan_vault(root: Path | str) -> dict[str, Any]:
         else []
     )
     return {
-        "schema": "claude-obsidian.adoption-scan.v1",
+        "schema": "claude-empire.adoption-scan.v1",
         "exists": path.exists(),
         "is_directory": path.is_dir(),
         "obsidian_config": (path / ".obsidian").is_dir(),
         "wiki_present": (path / "wiki").is_dir(),
         "legacy_raw_present": (path / ".raw").is_dir(),
-        "workspace_config": (path / ".claude-obsidian.json").is_file(),
+        "workspace_config": (path / ".claude-empire.json").is_file(),
         "markdown_notes": len(notes),
         "sample_notes": notes[:20],
     }
@@ -59,7 +59,7 @@ def _template_files(template_root: Path) -> list[Path]:
 
 def _workspace_config() -> dict[str, Any]:
     return {
-        "schema": "claude-obsidian.workspace.v1",
+        "schema": "claude-empire.workspace.v1",
         "vault": ".",
         "role": "vault",
         "source_inbox": "inbox",
@@ -98,7 +98,7 @@ def build_vault_bundle(
         )
         for file in _template_files(template)
     }
-    planned[".claude-obsidian.json"] = (
+    planned[".claude-empire.json"] = (
         json.dumps(_workspace_config(), indent=2, sort_keys=True) + "\n"
     ).encode("utf-8")
     if adopt:

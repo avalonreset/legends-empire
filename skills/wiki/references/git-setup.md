@@ -47,7 +47,7 @@ operation commit.
 
 ## Exact-operation checkpoints
 
-After a successful claude-obsidian transaction, an explicitly requested
+After a successful claude-empire transaction, an explicitly requested
 checkpoint is:
 
 ```bash

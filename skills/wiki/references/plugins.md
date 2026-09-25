@@ -1,13 +1,13 @@
 # Optional Obsidian integrations
 
-claude-obsidian's baseline vault uses Markdown, JSON, and Obsidian core
+claude-empire's baseline vault uses Markdown, JSON, and Obsidian core
 features. No community plugin, theme, or downloaded executable is required.
 
 ## Install and open Obsidian
 
 Use the current installation instructions at
 [Obsidian Help](https://help.obsidian.md/). Open the separate user-vault folder,
-not the claude-obsidian product checkout.
+not the claude-empire product checkout.
 
 Built-in Properties, Backlinks, Outline, and Graph views can improve navigation.
 Use Bases only when the installed Obsidian version supports the `.base` syntax
@@ -33,7 +33,7 @@ plugins can be useful, but none are bundled or assumed by the baseline.
 
 ## Git and sync plugins
 
-An Obsidian Git or sync plugin is a backup convenience, not claude-obsidian's
+An Obsidian Git or sync plugin is a backup convenience, not claude-empire's
 transaction or checkpoint mechanism. Background commits can race with an agent
 operation and make exact-operation checkpoints ambiguous. Disable overlapping
 automatic commits while applying an operation, or use a separate backup method.

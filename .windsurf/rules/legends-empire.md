@@ -1,8 +1,8 @@
-# Legends Obsidian: Windsurf Rules
+# Legends Empire: Windsurf Rules
 
 Multi-agent Obsidian wiki skill pack (Karpathy LLM Wiki). Works in Cascade via Agent Skills.
 
-**Brand:** Legends Obsidian (not Codex Obsidian)
+**Brand:** Legends Empire (not Codex Empire)
 
 ## Project Type
 
@@ -13,6 +13,6 @@ Multi-agent Obsidian wiki skill pack (Karpathy LLM Wiki). Works in Cascade via A
 
 Run `pwsh -File bin/setup-multi-agent.ps1` (or `bash bin/setup-multi-agent.sh`) once so `.windsurf/skills` points at `skills/`.
 
-Brand entry: **Legends Obsidian** → `legends-obsidian` → `wiki`.
+Brand entry: **Legends Empire** → `legends-empire` → `wiki`.
 
 See `docs/AGENTS-MATRIX.md` and `LEGENDS.md`.

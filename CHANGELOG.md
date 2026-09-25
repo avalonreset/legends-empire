@@ -1,11 +1,32 @@
 # Changelog
 
-Notable changes to claude-obsidian are recorded here using
+Notable changes to claude-empire are recorded here using
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) categories and
 [Semantic Versioning](https://semver.org/). Git history retains the detailed
 implementation record for older releases.
 
 ## [Unreleased]
+
+## [3.0.0] - 2026-09-24 (Legends Empire rebrand cut)
+
+Breaking rename, no behavior change. Product identity moves from Obsidian to
+Empire; Obsidian-the-app references (vaults, markdown, bases) are unchanged.
+Upstream pin stays `AgriciDaniel/claude-obsidian` v2.2.0.
+
+### Changed
+
+- Skill slug `skills/legends-obsidian` moves to `skills/legends-empire`.
+- Operator script `scripts/claude-obsidian.py` moves to
+  `scripts/claude-empire.py`.
+- Python package `claude_obsidian` moves to `claude_empire`.
+- Vault config file `.claude-obsidian.json` moves to `.claude-empire.json`.
+- Environment moves from `CLAUDE_OBSIDIAN_*` to `CLAUDE_EMPIRE_*`
+  (`CLAUDE_EMPIRE_VAULT`, `CLAUDE_EMPIRE_SESSION_CONTEXT`).
+- Per-harness rule files move to `codex-empire`, `claude-empire`, and
+  `legends-empire` variants.
+- Repository is `avalonreset/legends-empire` (the old
+  `avalonreset/legends-obsidian` URL redirects).
+- Retired names recorded in `skills/legends-empire/SKILL.md`.
 
 ## [2.3.0] - 2026-09-15 (Legends Obsidian house cut)
 

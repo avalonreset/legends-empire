@@ -55,8 +55,8 @@ from typing import Any, Iterable, Mapping, Sequence, cast
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from claude_obsidian.gitignore import GitignoreMatcher
-from claude_obsidian.json_utils import strict_json_loads
+from claude_empire.gitignore import GitignoreMatcher
+from claude_empire.json_utils import strict_json_loads
 
 REPORT_VERSION = 1
 ENGINE_VERSION = "1.1.1"
@@ -838,7 +838,7 @@ def _ledger_contracts() -> tuple[str, str, Any, Any]:
         package_root = str(Path(__file__).resolve().parents[1])
         if package_root not in sys.path:
             sys.path.insert(0, package_root)
-        from claude_obsidian.ledgers import (
+        from claude_empire.ledgers import (
             CLAIM_PATH,
             SOURCE_PATH,
             validate_claim_ledger,
@@ -854,7 +854,7 @@ def _transaction_reader() -> Any:
         package_root = str(Path(__file__).resolve().parents[1])
         if package_root not in sys.path:
             sys.path.insert(0, package_root)
-        from claude_obsidian.transaction import read_vault_regular
+        from claude_empire.transaction import read_vault_regular
     return read_vault_regular
 
 
@@ -870,7 +870,7 @@ def _read_ledger(
         try:
             from .ledgers import strict_json_loads
         except ImportError:  # pragma: no cover - direct script compatibility
-            from claude_obsidian.ledgers import strict_json_loads
+            from claude_empire.ledgers import strict_json_loads
         payload = strict_json_loads(raw.decode("utf-8"))
     except Exception as exc:
         return None, [

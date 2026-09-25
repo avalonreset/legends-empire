@@ -6,7 +6,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 $descriptions = @{
-  "codex-obsidian" = "Use the Codex Obsidian wiki skill pack for vault setup, ingest, query, lint, save, research, canvas, and Obsidian Markdown workflows."
+  "codex-empire" = "Use the Codex Empire wiki skill pack for vault setup, ingest, query, lint, save, research, canvas, and Obsidian Markdown workflows."
   "wiki" = "Set up and maintain a Codex + Obsidian wiki vault. Routes setup, ingest, query, lint, save, research, canvas, and hot cache work."
   "wiki-ingest" = "Ingest files, URLs, and batches into the Obsidian wiki. Extract entities, concepts, cross-links, sources, and update logs."
   "wiki-query" = "Answer questions from the Obsidian wiki using hot cache, index, relevant pages, citations, and quick, standard, or deep modes."

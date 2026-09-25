@@ -28,10 +28,10 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-import claude_obsidian.cli as cli_module
-import claude_obsidian.paths as paths_module
-import claude_obsidian.transaction as transaction_module
-from claude_obsidian.transaction import (
+import claude_empire.cli as cli_module
+import claude_empire.paths as paths_module
+import claude_empire.transaction as transaction_module
+from claude_empire.transaction import (
     BUNDLE_SCHEMA,
     TransactionValidationError,
     apply_bundle,
@@ -449,7 +449,7 @@ def test_native_windows_bundle_and_workspace_config_load() -> None:
 
 
 def test_capability_predicates_are_false_on_nt() -> None:
-    import claude_obsidian.legacy_lock as legacy_lock_module
+    import claude_empire.legacy_lock as legacy_lock_module
 
     with mock.patch.object(os, "name", "nt"):
         assert paths_module.supports_confined_dirfd() is False

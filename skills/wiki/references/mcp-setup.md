@@ -11,7 +11,7 @@ REST plugins are optional third-party integrations, never prerequisites.
    reports it usable.
 3. Consider an MCP or REST adapter only when the user needs a capability the
    first two choices cannot provide and explicitly approves installation.
-4. Keep all vault mutations in a claude-obsidian operation transaction. An
+4. Keep all vault mutations in a claude-empire operation transaction. An
    external transport must not bypass expected hashes, journaling, or recovery.
 
 ## Third-party review

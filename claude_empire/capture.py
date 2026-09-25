@@ -1,4 +1,4 @@
-"""Offline-first capture primitives for claude-obsidian.
+"""Offline-first capture primitives for claude-empire.
 
 Only local filesystem capture executes in this module. Network access, OCR,
 transcription, and content extraction are represented as inert command plans
@@ -55,11 +55,11 @@ from .transaction import (
 from .url_safety import url_credential_issue
 
 
-ADAPTER_SCHEMA = "claude-obsidian.capture-adapters.v1"
-CONFIG_SCHEMA = "claude-obsidian.capture-config.v1"
-QUEUE_SCHEMA = "claude-obsidian.capture-queue.v1"
-ACTION_SCHEMA = "claude-obsidian.capture-action.v1"
-PROPOSAL_SCHEMA = "claude-obsidian.deletion-proposal.v1"
+ADAPTER_SCHEMA = "claude-empire.capture-adapters.v1"
+CONFIG_SCHEMA = "claude-empire.capture-config.v1"
+QUEUE_SCHEMA = "claude-empire.capture-queue.v1"
+ACTION_SCHEMA = "claude-empire.capture-action.v1"
+PROPOSAL_SCHEMA = "claude-empire.deletion-proposal.v1"
 
 # The writer and reader share one exact durability envelope.  A queue accepted
 # by a mutating operation must always remain readable by list/recover, including
@@ -948,7 +948,7 @@ def plan_filesystem_batch(
                 skip_reason = None
         plans.append(
             {
-                "schema": "claude-obsidian.filesystem-capture-plan.v1",
+                "schema": "claude-empire.filesystem-capture-plan.v1",
                 "adapter": "filesystem",
                 "source_identity": digest,
                 "source": source.relative_to(root).as_posix(),
@@ -1019,7 +1019,7 @@ def capture_filesystem_batch(
         )
     return [
         {
-            "schema": "claude-obsidian.filesystem-capture.v1",
+            "schema": "claude-empire.filesystem-capture.v1",
             "source_identity": item["source_identity"],
             "source": item["source"],
             "stored_path": item["stored_path"],
@@ -1643,7 +1643,7 @@ class CaptureQueueLock:
                         "new capture queue lock was concurrently replaced",
                     )
                 owner = {
-                    "schema": "claude-obsidian.capture-lock.v1",
+                    "schema": "claude-empire.capture-lock.v1",
                     "pid": os.getpid(),
                     "host": socket.gethostname(),
                     "token": self.token,

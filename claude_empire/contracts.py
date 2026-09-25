@@ -20,7 +20,7 @@ from typing import Any, Mapping, Sequence
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from claude_obsidian.json_utils import strict_json_loads
+from claude_empire.json_utils import strict_json_loads
 
 
 SCHEMA_VERSION = 1
@@ -251,10 +251,10 @@ def _validate_verification_semantics(
 
     normalized = [_normalized_command_token(token) for token in value]
     invokes_contract_module = any(
-        "claude_obsidian/contracts.py" in token for token in normalized
+        "claude_empire/contracts.py" in token for token in normalized
     )
     invokes_portable_cli = any(
-        "scripts/claude-obsidian.py" in token for token in normalized
+        "scripts/claude-empire.py" in token for token in normalized
     )
     invokes_contract_cli = invokes_portable_cli and any(
         re.search(r"(?:^|[^A-Za-z0-9_-])contracts(?:$|[^A-Za-z0-9_-])", token)
@@ -1315,7 +1315,7 @@ def _filter_report(report: dict[str, Any], capability_id: str) -> dict[str, Any]
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Validate and inspect claude-obsidian contracts"
+        description="Validate and inspect claude-empire contracts"
     )
     parser.add_argument("--repo-root", type=Path, default=Path.cwd())
     parser.add_argument("--vault-root", type=Path)

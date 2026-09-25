@@ -12,7 +12,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from claude_obsidian.paths import (
+from claude_empire.paths import (
     MAX_WORKSPACE_CONFIG_BYTES,
     VaultSelectionError,
     assert_not_plugin_tree,
@@ -41,20 +41,20 @@ def test_precedence_and_config() -> None:
         configured = make_vault(base / "configured")
         workspace = base / "workspace"
         workspace.mkdir()
-        (workspace / ".claude-obsidian.json").write_text(
+        (workspace / ".claude-empire.json").write_text(
             json.dumps(
-                {"schema": "claude-obsidian.workspace.v1", "vault": "../configured"}
+                {"schema": "claude-empire.workspace.v1", "vault": "../configured"}
             ),
             encoding="utf-8",
         )
         nested = workspace / "nested"
         nested.mkdir()
         selected = resolve_vault_root(
-            explicit, start=nested, environ={"CLAUDE_OBSIDIAN_VAULT": str(env)}
+            explicit, start=nested, environ={"CLAUDE_EMPIRE_VAULT": str(env)}
         )
         assert selected.root == explicit.resolve()
         selected = resolve_vault_root(
-            start=nested, environ={"CLAUDE_OBSIDIAN_VAULT": str(env)}
+            start=nested, environ={"CLAUDE_EMPIRE_VAULT": str(env)}
         )
         assert selected.root == env.resolve()
         selected = resolve_vault_root(start=nested, environ={})
@@ -142,7 +142,7 @@ def test_workspace_config_root_must_be_an_object() -> None:
     for value in ([], None, "vault"):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
-            (root / ".claude-obsidian.json").write_text(
+            (root / ".claude-empire.json").write_text(
                 json.dumps(value), encoding="utf-8"
             )
             try:
@@ -160,9 +160,9 @@ def test_workspace_config_rejects_ambiguous_or_nonregular_authority() -> None:
         second = make_vault(base / "second")
         workspace = base / "workspace"
         workspace.mkdir()
-        config = workspace / ".claude-obsidian.json"
+        config = workspace / ".claude-empire.json"
         config.write_text(
-            '{"schema":"claude-obsidian.workspace.v1",'
+            '{"schema":"claude-empire.workspace.v1",'
             f'"vault":"{first}","vault":"{second}"}}',
             encoding="utf-8",
         )
@@ -185,7 +185,7 @@ def test_workspace_config_rejects_ambiguous_or_nonregular_authority() -> None:
         config.unlink()
         outside = base / "outside-config.json"
         outside.write_text(
-            json.dumps({"schema": "claude-obsidian.workspace.v1", "vault": str(first)}),
+            json.dumps({"schema": "claude-empire.workspace.v1", "vault": str(first)}),
             encoding="utf-8",
         )
         config.symlink_to(outside)

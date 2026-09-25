@@ -13,7 +13,7 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from claude_obsidian import legacy_lock
+from claude_empire import legacy_lock
 
 
 def ascii_path_of_length(length: int) -> str:

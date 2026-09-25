@@ -1,6 +1,6 @@
 # Research evidence handoff
 
-Legends Obsidian can consume `legends-research-evidence/v1` packages from
+Legends Empire can consume `legends-research-evidence/v1` packages from
 DataForSEO Kit without depending on that package at runtime. The source is a
 bounded directory containing `manifest.json`, `response.json`, and `README.md`.
 GeoGrid, content tools and other consumers remain separate products.

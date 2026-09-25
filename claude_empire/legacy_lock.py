@@ -631,7 +631,7 @@ def _peek(vault_root: Path, path: str) -> int:
 
 
 def _select_vault(plugin_root: Path) -> Path:
-    raw = os.environ.get("WIKI_LOCK_VAULT") or os.environ.get("CLAUDE_OBSIDIAN_VAULT")
+    raw = os.environ.get("WIKI_LOCK_VAULT") or os.environ.get("CLAUDE_EMPIRE_VAULT")
     try:
         vault_root = canonical(raw if raw else Path.cwd())
     except OSError as exc:

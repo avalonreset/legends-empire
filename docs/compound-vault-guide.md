@@ -1,6 +1,6 @@
 # Compound Vault architecture
 
-The Compound Vault is claude-obsidian's operational model for a local,
+The Compound Vault is claude-empire's operational model for a local,
 source-cited knowledge base. The v1.10 foundation replaces historical
 per-file-lock and lifecycle-write behavior with explicit vault selection and
 recoverable operation transactions.
@@ -15,7 +15,7 @@ recoverable operation transactions.
 | Public artifact | Allowlisted product files and synthetic samples | Rebuilt from a clean Git snapshot |
 
 An installed plugin cache is always product code. It never becomes the user
-vault. Resolve vault state through `--vault`, `CLAUDE_OBSIDIAN_VAULT`, workspace
+vault. Resolve vault state through `--vault`, `CLAUDE_EMPIRE_VAULT`, workspace
 config, or current-directory discovery.
 
 The development checkout and public marketplace root are distinct roles even
@@ -45,7 +45,7 @@ from legacy delta tracking.
 ## One operation, one transaction
 
 A save, ingest, fold, canvas update, research merge, or approved lint repair is
-one `claude-obsidian.transaction.v1` bundle:
+one `claude-empire.transaction.v1` bundle:
 
 1. Read every target and record its current SHA-256 or expected absence.
 2. Let parallel workers produce drafts and evidence without shared writes.
@@ -147,7 +147,7 @@ Read [the provenance reference](../skills/wiki/references/provenance.md).
 
 Claude's SessionStart hook is silent by default. It emits bounded, sanitized hot
 context only when a user vault resolves and the user has explicitly exported
-`CLAUDE_OBSIDIAN_SESSION_CONTEXT=1`; hook stdout becomes model context, so this
+`CLAUDE_EMPIRE_SESSION_CONTEXT=1`; hook stdout becomes model context, so this
 opt-in is an egress decision. The Stop hook reports incomplete transactions.
 Hooks do not update notes, capture conversations, stage files, or commit Git.
 Hosts without hooks use the same core workflows.
@@ -163,9 +163,9 @@ inert consent plans for a separately configured runner.
 ## Maintenance and recovery
 
 ```bash
-python3 scripts/claude-obsidian.py doctor --vault <vault>
-python3 scripts/claude-obsidian.py lint --vault <vault> --as-of YYYY-MM-DD
-python3 scripts/claude-obsidian.py transaction recover --vault <vault>
+python3 scripts/claude-empire.py doctor --vault <vault>
+python3 scripts/claude-empire.py lint --vault <vault> --as-of YYYY-MM-DD
+python3 scripts/claude-empire.py transaction recover --vault <vault>
 ```
 
 Lint is deterministic for its declared UTC audit date and read-only. Any fix is a separate reviewed
@@ -180,9 +180,9 @@ then use `transaction recover --force-stale-lock`. Never automate the override.
 Existing layouts stay readable. Preview the additive migration before applying:
 
 ```bash
-python3 scripts/claude-obsidian.py migrate --vault <vault> \
+python3 scripts/claude-empire.py migrate --vault <vault> \
   --generated-at <ISO-UTC> --operation-id migrate-reviewed
-python3 scripts/claude-obsidian.py migrate --vault <vault> \
+python3 scripts/claude-empire.py migrate --vault <vault> \
   --generated-at <ISO-UTC> --operation-id migrate-reviewed \
   --approved-plan-sha256 <reviewed-sha256> --apply
 ```

@@ -87,7 +87,7 @@ class SetupMultiAgentTests(unittest.TestCase):
                 path.parent.name for path in (ROOT / "skills").glob("*/SKILL.md")
             )
             self.assertEqual(16, len(expected))
-            self.assertIn("legends-obsidian", expected)
+            self.assertIn("legends-empire", expected)
             discovered = sorted(
                 path.parent.name for path in skill_root.glob("*/SKILL.md")
             )
@@ -125,8 +125,8 @@ class SetupMultiAgentTests(unittest.TestCase):
             self.assertEqual(0, result.returncode, result.stderr)
             for relative in (".grok/skills", ".agents/skills", ".codex/skills",
                              ".gemini/skills", ".claude/skills", "project/.cursor/skills"):
-                link = home / relative / "legends-obsidian"
-                self.assertEqual(ROOT / "skills/legends-obsidian", link.resolve())
+                link = home / relative / "legends-empire"
+                self.assertEqual(ROOT / "skills/legends-empire", link.resolve())
             self.assertIn("MANUAL MetaMuse", result.stdout)
             self.assertIn("native skill discovery is unverified", result.stdout)
             self.assertFalse((home / ".metamuse").exists())
@@ -139,7 +139,7 @@ class SetupMultiAgentTests(unittest.TestCase):
                 home = Path(directory)
                 workspace = home / "project"
                 workspace.mkdir()
-                conflict = home / relative / "legends-obsidian"
+                conflict = home / relative / "legends-empire"
                 conflict.mkdir(parents=True)
                 marker = conflict / "personal.md"
                 marker.write_text("preserve", encoding="utf-8")
@@ -155,7 +155,7 @@ class SetupMultiAgentTests(unittest.TestCase):
                 result = self.invoke(home, "--apply", "--host", host)
                 self.assertEqual(0, result.returncode, result.stderr)
                 self.assertIn("MANUAL MetaMuse", result.stdout)
-                self.assertIn("skills/legends-obsidian/SKILL.md", result.stdout)
+                self.assertIn("skills/legends-empire/SKILL.md", result.stdout)
                 self.assertEqual([], list(home.iterdir()))
 
     def test_workspace_hosts_are_explicit(self) -> None:

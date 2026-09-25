@@ -1,6 +1,6 @@
 # REST adapter safety contract
 
-The Local REST API is an optional third-party Obsidian plugin. claude-obsidian
+The Local REST API is an optional third-party Obsidian plugin. claude-empire
 does not install it, require it, or use it as a mutation transport.
 
 ## Before use
@@ -24,7 +24,7 @@ the returned content.
 
 Create, replace, append, patch, move, and delete requests are outside this
 adapter contract. Express every vault change as one inspected
-`claude-obsidian.transaction.v1` operation so expected hashes, provenance,
+`claude-empire.transaction.v1` operation so expected hashes, provenance,
 journaling, and recovery remain enforced.
 
 If secure TLS or least-privilege access cannot be configured, use direct

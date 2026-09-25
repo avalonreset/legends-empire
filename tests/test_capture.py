@@ -20,8 +20,8 @@ ROOT = Path(__file__).resolve().parents[1]
 FIXTURES = ROOT / "tests/fixtures/capture"
 sys.path.insert(0, str(ROOT))
 
-import claude_obsidian.capture as capture_module
-from claude_obsidian.capture import (
+import claude_empire.capture as capture_module
+from claude_empire.capture import (
     CaptureBudget,
     CaptureBudgetExceeded,
     CaptureConfig,
@@ -41,12 +41,12 @@ from claude_obsidian.capture import (
     validate_https_url,
     validate_redirect_chain,
 )
-from claude_obsidian.transaction import (
+from claude_empire.transaction import (
     MutationLock,
     TransactionConflict,
     TransactionValidationError,
 )
-from claude_obsidian.cli import _json_object_argument
+from claude_empire.cli import _json_object_argument
 
 
 def make_vault(root: Path) -> Path:
@@ -485,7 +485,7 @@ def test_queue_failure_resume_and_crash_recovery() -> None:
         assert queue.backup_path.exists()
         queue.path.write_text("{partial", encoding="utf-8")
         recovered = queue.recover()
-        assert recovered["schema"] == "claude-obsidian.capture-queue.v1"
+        assert recovered["schema"] == "claude-empire.capture-queue.v1"
         assert json.loads(queue.path.read_text(encoding="utf-8")) == recovered
 
 
@@ -495,7 +495,7 @@ def test_queue_rejects_malformed_entries_and_mismatched_actions() -> None:
         queue = CaptureQueue(vault)
         now = "2026-07-12T00:00:00Z"
         malformed = {
-            "schema": "claude-obsidian.capture-queue.v1",
+            "schema": "claude-empire.capture-queue.v1",
             "revision": 1,
             "entries": [
                 {
@@ -520,7 +520,7 @@ def test_queue_rejects_malformed_entries_and_mismatched_actions() -> None:
         expect_code("QUEUE_INVALID", queue.list)
 
         queue.path.write_text(
-            '{"schema":"claude-obsidian.capture-queue.v1",'
+            '{"schema":"claude-empire.capture-queue.v1",'
             '"revision":0,"revision":1,"entries":[]}',
             encoding="utf-8",
         )
@@ -727,7 +727,7 @@ def test_explicit_queue_recovery_can_reap_stale_pid_reuse_lock() -> None:
         seeded.owner_path.write_text(
             json.dumps(
                 {
-                    "schema": "claude-obsidian.capture-lock.v1",
+                    "schema": "claude-empire.capture-lock.v1",
                     "pid": os.getpid(),
                     "host": socket.gethostname(),
                     "token": "reused-pid",
@@ -751,7 +751,7 @@ def test_explicit_queue_recovery_can_reap_stale_pid_reuse_lock() -> None:
             stale_after=0,
             force_stale_lock=True,
         ).recover()
-        assert recovered["schema"] == "claude-obsidian.capture-queue.v1"
+        assert recovered["schema"] == "claude-empire.capture-queue.v1"
         assert not seeded.path.exists()
 
 
@@ -763,7 +763,7 @@ def test_queue_force_stale_lock_reaps_dead_same_host_owner() -> None:
         seeded.owner_path.write_text(
             json.dumps(
                 {
-                    "schema": "claude-obsidian.capture-lock.v1",
+                    "schema": "claude-empire.capture-lock.v1",
                     "pid": 999999,
                     "host": socket.gethostname(),
                     "token": "dead-owner",
@@ -838,7 +838,7 @@ def test_queue_lock_release_and_reaping_ignore_replaced_external_alias() -> None
         outside_owner.write_text(
             json.dumps(
                 {
-                    "schema": "claude-obsidian.capture-lock.v1",
+                    "schema": "claude-empire.capture-lock.v1",
                     "pid": os.getpid(),
                     "token": lock.token,
                     "host": socket.gethostname(),
@@ -1040,7 +1040,7 @@ def test_queue_primary_and_backup_symlinks_are_never_read() -> None:
         outside.write_text(
             json.dumps(
                 {
-                    "schema": "claude-obsidian.capture-queue.v1",
+                    "schema": "claude-empire.capture-queue.v1",
                     "revision": 0,
                     "entries": [],
                 }
@@ -1173,7 +1173,7 @@ def test_cli_capture_uses_one_recoverable_binary_transaction() -> None:
         source.write_bytes(payload)
         common = [
             sys.executable,
-            str(ROOT / "scripts/claude-obsidian.py"),
+            str(ROOT / "scripts/claude-empire.py"),
             "capture",
             "apply",
             "--vault",

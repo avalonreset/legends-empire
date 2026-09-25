@@ -11,10 +11,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from claude_obsidian.transaction import apply_bundle, inspect_bundle
-import claude_obsidian.transaction as transaction_module
-from claude_obsidian.ledgers import LedgerValidationError, stable_source_id
-from claude_obsidian.vault_ops import (
+from claude_empire.transaction import apply_bundle, inspect_bundle
+import claude_empire.transaction as transaction_module
+from claude_empire.ledgers import LedgerValidationError, stable_source_id
+from claude_empire.vault_ops import (
     VaultOperationError,
     build_vault_bundle,
     scan_vault,
@@ -33,7 +33,7 @@ def test_init_and_adopt_are_non_destructive() -> None:
             adopt=False,
         )
         result = apply_bundle(vault, operation)
-        assert ".claude-obsidian.json" in result["changed_paths"]
+        assert ".claude-empire.json" in result["changed_paths"]
         assert (vault / "inbox/.gitkeep").is_file()
         assert ".vault-meta/" in (vault / ".gitignore").read_text(encoding="utf-8")
         assert scan_vault(vault)["workspace_config"]
@@ -74,7 +74,7 @@ def test_init_refuses_existing_content_without_force() -> None:
 
 def test_adopt_rejects_invalid_canonical_state_without_replacing_it() -> None:
     cases = (
-        (".claude-obsidian.json", {"schema": "wrong", "vault": "."}),
+        (".claude-empire.json", {"schema": "wrong", "vault": "."}),
         (
             "wiki/meta/ledgers/source-ledger.json",
             {"schema": "wrong", "sources": {}},

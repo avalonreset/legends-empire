@@ -11,7 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from claude_obsidian.gates import evaluate_release_gates
+from claude_empire.gates import evaluate_release_gates
 
 
 class ReleaseGateTests(unittest.TestCase):
