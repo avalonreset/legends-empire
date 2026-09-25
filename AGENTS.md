@@ -1,98 +1,22 @@
-# legends-empire: Agent Instructions
+# legends-empire: contributor build and test notes
 
-claude-empire is a local-first Agent Skills package for building source-cited,
-compounding Obsidian knowledge bases. It also ships a Claude Code plugin adapter.
-The portable workflow is implemented in `skills/` and the standard-library
-`claude_empire/` core; host hooks never define knowledge behavior.
+Product source for `legends-empire` (local-first Markdown knowledge-base
+tooling). For product usage see `README.md` and `docs/`. Agent skill routing
+goes through `cto-legends`; this repo registers no skill of its own.
 
-## Product and vault boundaries
+## Test
 
-- This repository is the product source. It is not the default user vault.
-- A user vault is the directory containing `.claude-empire.json`, `wiki/`,
-  and `.raw/`. Mutable state always belongs there.
-- `templates/vault/` is the distributable seed. Root `wiki/`, `.raw/`, and
-  `.vault-meta/` are contributor state and are excluded from public artifacts.
-- Never derive a user vault from the plugin cache or `${CLAUDE_PLUGIN_ROOT}`.
-- A checkout containing contributor-vault state has no marketplace catalog.
-  `config/public-marketplace.json` is injected as
-  `.claude-plugin/marketplace.json` only inside the audited release artifact.
-  An extracted distribution-clean artifact may retain that exact manifest and
-  rebuild idempotently. A public default branch must be populated from the clean
-  artifact, never by pushing contributor-vault state.
+Run `make test` after behavioral changes. Targets:
 
-Resolve a vault in this order: explicit `--vault`,
-`CLAUDE_EMPIRE_VAULT`, nearest `.claude-empire.json`, then an unambiguous
-vault at or above the current directory. Fail closed when no vault is selected.
+- `make test-python`: each `tests/test_*.py` in isolation.
+- `make test-shell`: each `tests/test_*.sh` in isolation.
+- `make test-contracts`: `scripts/claude-empire.py contracts --check-only`
+  and `--verify`.
+- `make test-package`: `scripts/claude-empire.py package validate`.
+- `make validate`: contracts plus package validation without the suite.
 
-## Bootstrap
+## Working-tree safety
 
-1. Read this file. In a development checkout, also read the host-only root
-   `CLAUDE.md` when present; release artifacts intentionally omit it.
-2. Read the selected skill completely.
-3. Read only the references that skill routes to.
-4. Resolve the user vault. If `wiki/hot.md` exists, read it silently.
-5. For a new vault, run `python3 scripts/claude-empire.py init PATH` first;
-   apply only after reviewing the dry run. Use `adopt` for an existing vault.
-
-## Canonical skills
-
-All 16 skills live at `skills/<name>/SKILL.md`. They use the portable Agent
-Skills frontmatter subset: exactly `name` and `description`. Do not add mirrored
-files under `commands/`; Claude invokes plugin skills by namespaced names such
-as `/legends-empire:wiki`.
-
-Core workflows are `wiki`, `save`, `wiki-ingest`, `wiki-query`, and
-`wiki-lint`. Extensions are `autoresearch`, `canvas`, `defuddle`, `wiki-fold`,
-`wiki-mode`, `wiki-retrieve`, and `wiki-cli`. Reference skills are
-`obsidian-markdown`, `obsidian-bases`, and `think`.
-
-## Mutation protocol
-
-One logical knowledge operation is one recoverable transaction:
-
-1. Read targets and record expected SHA-256 values.
-2. Let parallel workers return drafts and evidence only.
-3. Merge drafts into one `claude-empire.transaction.v1` bundle.
-4. Inspect the bundle, then apply it once through `scripts/claude-empire.py`.
-5. Report the operation ID and exact changed paths.
-
-Do not use direct shared writes, the deprecated `wiki-lock.sh` helper, or
-generic lifecycle auto-commits. Git checkpointing is separate and explicit.
-Raw source payloads are create-only; `.raw/.manifest.json` is the only mutable
-legacy raw metadata file. Destructive repairs, remote egress, and canonical
-research merges require explicit consent.
-
-## Vault conventions
-
-- `inbox/`: visible capture intake; never deleted automatically.
-- `.raw/`: immutable source payloads and legacy delta manifest.
-- `wiki/`: generated knowledge pages.
-- `wiki/meta/ledgers/`: source and claim provenance.
-- `wiki/hot.md`: bounded recent context, never a transcript.
-- `wiki/log.md`: operation history, newest first.
-- `.vault-meta/`: ignored runtime locks, journals, indexes, queues, and config.
-
-Use Obsidian Flavored Markdown: flat YAML properties, `YYYY-MM-DD` dates,
-wikilinks, embeds, and valid callouts. Never fabricate evidence locators,
-quotations, page numbers, or confidence.
-
-## Verification
-
-Run `make test` after behavioral changes. It executes every Python and shell
-suite plus the product, capability, package, hook, and manifest contracts.
-Public artifacts are built locally with `release build` and audited without
-publishing. No agent may push, tag, open or mutate issues, or publish a release
-without explicit owner approval.
-
-Claude SessionStart context injection is disabled by default. Treat
-`CLAUDE_EMPIRE_SESSION_CONTEXT=1` as explicit user consent to place bounded
-`wiki/hot.md` data in the model context; never set it automatically. A
-workspace-configured vault outside the project also requires an exact
-`CLAUDE_EMPIRE_SESSION_CONTEXT_VAULT` path.
-
-## Reference
-
-- Public distribution: https://github.com/avalonreset/legends-empire
-- Upstream source: https://github.com/AgriciDaniel/claude-obsidian
-- LLM Wiki pattern: https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f
-- Obsidian primitives: https://github.com/kepano/obsidian-skills
+Tests are hermetic. Do not point test runs at a real user vault (a directory
+containing `.claude-empire.json`). `make clean-test-state` removes runtime
+locks, caches, and generated state.

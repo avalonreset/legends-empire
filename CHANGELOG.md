@@ -7,6 +7,19 @@ implementation record for older releases.
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-09-25 (Router-native generation reset)
+
+Contract reset: single registered skill (`cto-legends`, vendored pinned copy
+at `skills/cto-legends/SKILL.md`), per-module skill registrations removed,
+authoritative version `0.1.0` via `VERSION`. No behavior change to the memory
+tools beyond the registration surface.
+
+### Removed
+
+- Per-module `skills/*` registrations, `agents/` definitions,
+  `.claude-plugin/` manifest, `GEMINI.md` shim, and per-host skill installer
+  scripts (`scripts/setup-multi-agent.*`, `scripts/mirror-agent-skills.ps1`).
+
 ## [3.0.0] - 2026-09-24 (Legends Empire rebrand cut)
 
 Breaking rename, no behavior change. Product identity moves from Obsidian to

@@ -1,6 +1,6 @@
 # ![legends-empire](assets/legends-empire-banner.webp)
 
-<a href="CHANGELOG.md"><img src="https://img.shields.io/badge/release-v3.0.0-d97745" alt="Release v3.0.0"></a>
+<a href="CHANGELOG.md"><img src="https://img.shields.io/badge/release-v0.1.0-d97745" alt="Release v0.1.0"></a>
 [install](docs/install-guide.md) · [releases](https://github.com/avalonreset/legends-empire/releases) · [attribution](#attribution)
 
 Your digital reality is already there: folders, repositories, tools, knowledge, infrastructure, and half-built ideas. The problem is keeping track of what exists, how it connects, and what you meant to do with it.
@@ -50,13 +50,11 @@ This is personal knowledge management across your whole digital environment. Its
 
 The released memory tools support source capture, linked wiki notes, retrieval, and recoverable updates. You choose the vault. Installing the product does not give an agent permission to reorganize your files.
 
-## Agent hosts
+## Agent setup (via `cto-legends`)
 
-The skills install per host through the setup scripts: Grok, Codex, Gemini,
-Claude, Cursor, and MetaMuse. Each host gets the same canonical skills through
-its own discovery path; see [docs/AGENTS-MATRIX.md](docs/AGENTS-MATRIX.md) for
-routes, evidence, and limits. MetaMuse ships portable instructions only; its
-native discovery path is unverified.
+Part of the [CTO Legends](https://github.com/avalonreset/cto-legends) ecosystem. `cto-legends` is the only registered skill; this repo vendors a pinned copy at `skills/cto-legends/SKILL.md`.
+
+Install with `cto-legends install legends-empire`, then follow the module recipe the router loads. Do not register this module as its own skill.
 
 ## Install and use
 
