@@ -7,6 +7,16 @@ implementation record for older releases.
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-09-29
+
+### Fixed
+
+- Check filesystem permission support before transaction note writes. Filesystems
+  that cannot retain required file modes fail with an actionable error; strict
+  content and permission verification remains intact.
+- Clarify that WSL transaction writes require a POSIX-capable filesystem or a
+  DrvFS mount with metadata enabled. Native Windows remains preview-only.
+
 ## [0.2.1] - 2026-09-29
 
 ### Fixed

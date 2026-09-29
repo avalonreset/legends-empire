@@ -1,6 +1,6 @@
 # ![legends-empire](assets/legends-empire-banner.webp)
 
-<a href="CHANGELOG.md"><img src="https://img.shields.io/badge/release-v0.2.1-d97745" alt="Release v0.2.1"></a>
+<a href="CHANGELOG.md"><img src="https://img.shields.io/badge/release-v0.2.2-d97745" alt="Release v0.2.2"></a>
 [install](docs/install-guide.md) · [releases](https://github.com/avalonreset/legends-empire/releases) · [attribution](#attribution)
 
 Your digital reality is already there: folders, repositories, tools, knowledge, infrastructure, and half-built ideas. The problem is keeping track of what exists, how it connects, and what you meant to do with it.
@@ -84,7 +84,7 @@ Follow the [installation guide](docs/install-guide.md) with the [current release
 
 **Release boundary:** this package supplies memory tools, vault stewardship and its attachable Markdown knowledge pack. The seven-province starter, Throne Room canvas, territory maps, and unified onboarding remain separate development work. The structure described above is the direction, not a claim that the current installer sets up all of it.
 
-Native Windows supports inspection and previews. Transactional writes require WSL or a supported POSIX host. See [platform setup](docs/windows-wsl.md).
+Native Windows supports inspection and previews. Transactional writes require WSL or a supported POSIX host on a filesystem that preserves POSIX permissions; Windows drives mounted in WSL need DrvFS metadata enabled. See [platform setup](docs/windows-wsl.md).
 
 ---
 

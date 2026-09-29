@@ -2268,6 +2268,89 @@ def _read_runtime_json_at(
         ) from exc
 
 
+def _require_runtime_file_permissions(directory_fd: int) -> None:
+    """Probe the runtime filesystem before journals, backups or notes change.
+
+    Dirfd support alone does not prove chmod works (notably DrvFS without
+    metadata). An empty, exclusive probe must retain 0600 after reopening.
+    This tests this filesystem only; per-write integrity checks remain required.
+    """
+
+    name = f".permissions-probe-{os.getpid()}-{uuid.uuid4().hex}"
+    descriptor = -1
+    identity = None
+    try:
+        descriptor = os.open(
+            name,
+            os.O_RDWR | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW
+            | getattr(os, "O_CLOEXEC", 0),
+            0o600,
+            dir_fd=directory_fd,
+        )
+        identity = os.fstat(descriptor)
+        os.fchmod(descriptor, 0o600)
+        os.fsync(descriptor)
+        reopened = os.open(
+            name, os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0)
+            | getattr(os, "O_NONBLOCK", 0), dir_fd=directory_fd,
+        )
+        try:
+            observed = os.fstat(reopened)
+            if (
+                not stat.S_ISREG(observed.st_mode)
+                or (observed.st_dev, observed.st_ino)
+                != (identity.st_dev, identity.st_ino)
+            ):
+                raise TransactionValidationError(
+                    "UNSAFE_RUNTIME_STATE", "filesystem permission probe was replaced"
+                )
+            mode = stat.S_IMODE(observed.st_mode)
+            if mode != 0o600:
+                raise TransactionValidationError(
+                    "UNSUPPORTED_FILESYSTEM_PERMISSIONS",
+                    f"vault runtime filesystem did not retain requested mode 0600 "
+                    f"(observed {mode:04o}); no transaction journal or vault note was written; "
+                    "WSL Windows-drive mounts require DrvFS metadata enabled, or use "
+                    "a filesystem that preserves POSIX permissions; inspection and previews "
+                    "remain available; see docs/windows-wsl.md",
+                )
+        finally:
+            os.close(reopened)
+    except OSError as exc:
+        raise TransactionValidationError(
+            "FILESYSTEM_PREFLIGHT_FAILED",
+            f"cannot verify vault runtime file permissions before mutation: {exc}; "
+            "see docs/windows-wsl.md",
+        ) from exc
+    finally:
+        try:
+            if identity is not None:
+                try:
+                    entry = os.stat(name, dir_fd=directory_fd, follow_symlinks=False)
+                except FileNotFoundError:
+                    entry = None
+                if entry is not None:
+                    if (
+                        not stat.S_ISREG(entry.st_mode)
+                        or (entry.st_dev, entry.st_ino)
+                        != (identity.st_dev, identity.st_ino)
+                    ):
+                        raise TransactionValidationError(
+                            "UNSAFE_RUNTIME_STATE",
+                            "filesystem permission probe was replaced; replacement left untouched",
+                        )
+                    os.unlink(name, dir_fd=directory_fd)
+                    os.fsync(directory_fd)
+        except OSError as exc:
+            raise TransactionValidationError(
+                "FILESYSTEM_PREFLIGHT_FAILED",
+                f"cannot remove empty runtime permission probe {name}: {exc}",
+            ) from exc
+        finally:
+            if descriptor >= 0:
+                os.close(descriptor)
+
+
 def _atomic_runtime_write_at(
     directory_fd: int,
     name: str,
@@ -4403,12 +4486,14 @@ def recover_incomplete(
     if mutation_lock is None:
         with MutationLock(vault) as held_lock:
             with _RuntimeStore.from_lock(held_lock, create=False) as runtime:
+                _require_runtime_file_permissions(runtime.meta_fd)
                 return _recover_incomplete_locked(vault, held_lock, runtime)
     if mutation_lock.vault_root != vault or not mutation_lock.acquired:
         raise TransactionError(
             "LOCK_NOT_HELD", "recovery requires the held lock for the selected vault"
         )
     with _RuntimeStore.from_lock(mutation_lock, create=False) as runtime:
+        _require_runtime_file_permissions(runtime.meta_fd)
         return _recover_incomplete_locked(vault, mutation_lock, runtime)
 
 
@@ -4564,6 +4649,7 @@ def apply_bundle(
     ) as mutation_lock:
         with _RuntimeStore.from_lock(mutation_lock, create=True) as runtime:
             _assert_transaction_namespaces(mutation_lock, runtime)
+            _require_runtime_file_permissions(runtime.meta_fd)
             current_vault_identity = _vault_object_identity(
                 vault, root_fd=runtime.root_fd
             )

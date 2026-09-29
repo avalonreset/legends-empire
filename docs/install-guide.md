@@ -17,7 +17,8 @@ for development, but a normal user vault should be a separate directory.
 - Obsidian when you want its visual editor
 - Bash for the vault helper scripts
 - Git only for source development, release builds, or explicit checkpoints
-- On Windows: WSL for vault writes; native Windows supports read-only
+- On Windows: WSL with persistent POSIX file permissions for vault writes
+  (mounted Windows drives need DrvFS metadata enabled); native Windows supports read-only
   inspection and dry-runs: see the [Windows and WSL guide](windows-wsl.md)
 
 ## Router install
@@ -44,7 +45,8 @@ directory. A chat-only service cannot execute this workflow.
 
 Linux and macOS run the full POSIX suite. Native Windows supports
 inspection, retrieval and dry-run planning. Recoverable canonical
-mutation uses WSL or a supported POSIX host; never bypass this boundary
+mutation uses WSL or a supported POSIX host on a filesystem preserving POSIX
+permissions; never bypass this boundary
 with generic direct writes. Read `windows-wsl.md` before promising full
 Windows execution.
 
@@ -222,6 +224,7 @@ User notes, sources, ledgers, and Obsidian settings remain untouched.
 | Obsidian CLI is unavailable | Use filesystem reads; start/update Obsidian before retrying CLI transport. |
 | Capture adapter is not implemented | Inspect `capture adapters`; configure a separate runner only with explicit consent. |
 | Writes refused with `UNSUPPORTED_PLATFORM` on Windows | Vault mutation requires WSL; see the [Windows and WSL guide](windows-wsl.md). |
+| Writes refused with `UNSUPPORTED_FILESYSTEM_PERMISSIONS` inside WSL | The runtime filesystem did not retain mode `0600`. Verify DrvFS metadata is enabled for the chosen Windows-drive mount, or use the WSL Linux filesystem; see [mount requirements](windows-wsl.md#windows-drives-mounted-inside-wsl). |
 | WSL installed but `wsl --status` hangs | Follow Microsoft's diagnostic and reporting flow in the [Windows and WSL guide](windows-wsl.md#wsl-troubleshooting); do not assume a cause without evidence. |
 | Native dry-run approval fails in WSL with `PLAN_CHANGED` | Approval hashes bind the reviewing environment; redo the dry-run inside WSL ([details](windows-wsl.md#wsl-troubleshooting)). |
 

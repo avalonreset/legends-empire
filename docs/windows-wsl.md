@@ -1,7 +1,8 @@
 # Windows and WSL guide
 
-claude-empire supports native Windows as a read-only platform and WSL as the
-full-capability platform. This guide covers what works where, why the boundary
+claude-empire supports native Windows as a read-only platform and WSL on a
+filesystem preserving POSIX permissions as a full-capability platform.
+This guide covers what works where, why the boundary
 exists, and how to unstick WSL when it misbehaves.
 
 ## Platform support
@@ -9,15 +10,46 @@ exists, and how to unstick WSL when it misbehaves.
 | Capability | WSL / Linux / macOS | Native Windows (incl. Git Bash) |
 |---|---|---|
 | Inspection, dry-run previews, retrieval | Yes | Yes |
-| Vault writes (`transaction apply`, `init`, `adopt`, `migrate`, `capture apply`, `mode set`) | Yes | No: refused with `UNSUPPORTED_PLATFORM` |
+| Vault writes (`transaction apply`, `init`, `adopt`, `migrate`, `capture apply`, `mode set`) | Yes, on a filesystem that preserves POSIX permissions | No: refused with `UNSUPPORTED_PLATFORM` |
 | Capture queue commands (including read-only `capture queue list`) | Yes | No: currently refused; tracked in [#151](https://github.com/AgriciDaniel/claude-obsidian/issues/151) |
 | Git checkpoints (`checkpoint`) | Linux and macOS only | No |
 | Bash setup scripts and shell test suites | Yes | No (POSIX-only) |
 | Claude Code hooks (`SessionStart`, `Stop`) | Yes (works out of the box) | Partial: requires `python3` on `PATH`; see [below](#claude-code-hooks-and-python3-on-windows) |
 
-Vaults must live on a filesystem with stable file identity: NTFS is fine, but
-FAT/exFAT volumes (typical USB sticks) and some network shares are refused with
-`UNSAFE_VAULT_IDENTITY`: move the vault to NTFS or work inside WSL.
+Vaults must live on a filesystem with stable file identity and persistent POSIX
+file permissions. NTFS can supply stable identity, but a Windows drive mounted
+inside WSL also needs DrvFS metadata enabled for writes. FAT/exFAT volumes
+(typical USB sticks) and some network shares lack the required identity support
+and are refused with `UNSAFE_VAULT_IDENTITY`.
+
+## Windows drives mounted inside WSL
+
+WSL alone is not enough for a vault at `/mnt/c`, `/mnt/e`, or another mounted
+Windows drive. DrvFS must retain the exact POSIX permissions used by transaction
+recovery. Without its `metadata` mount option, `chmod` can return successfully
+while files still report permissions such as `0777`. Microsoft's
+[WSL file-permission guide](https://learn.microsoft.com/en-us/windows/wsl/file-permissions)
+explains this behavior and the metadata option.
+
+Before applying or recovering a transaction, the engine creates an empty,
+temporary file inside the confined `.vault-meta` runtime directory. It requests
+mode `0600`, reopens the file to verify the mode persisted, and removes the
+probe. A mismatch fails with `UNSUPPORTED_FILESYSTEM_PERMISSIONS` before any
+transaction journal, backup, or vault note is written. The lock and empty
+runtime directories may already have been created. A probe or cleanup I/O
+failure instead reports `FILESYSTEM_PREFLIGHT_FAILED`.
+
+Use the WSL Linux filesystem, or have the operator enable `metadata` for the
+chosen DrvFS mount and verify its persistence after WSL restarts. See Microsoft's
+[WSL automount configuration](https://learn.microsoft.com/en-us/windows/wsl/wsl-config#automount-options).
+The CLI does not remount drives, change host configuration, or move the vault.
+An ad hoc metadata-enabled mount may need to be recreated after reboot. Review
+and apply using the same vault path and environment after mount setup.
+
+This probe establishes permission support on the runtime filesystem. It does
+not certify nested mounts or prevent later filesystem changes; exact per-file
+hash and mode checks still apply. Native Windows inspection and dry-run previews
+remain supported without either WSL or metadata.
 
 ## Claude Code hooks and python3 on Windows
 

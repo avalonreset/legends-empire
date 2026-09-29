@@ -56,7 +56,9 @@ custom ontology are a separate, reviewed user-note change. Attachment does
 not claim to integrate every possible vault layout automatically.
 
 Native Windows supports preview. Applying uses the existing recoverable
-transaction engine and requires WSL or a supported POSIX host. Preview and
+transaction engine and requires WSL or a supported POSIX host with persistent
+POSIX file permissions. Windows drives mounted in WSL need DrvFS metadata
+enabled; see [platform setup](windows-wsl.md). Preview and
 apply in the same environment. There is no alternate direct-write installer.
 
 After updating the module, run the same attachment command with a new operation
