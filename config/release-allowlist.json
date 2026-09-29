@@ -29,6 +29,8 @@
   "include_files": [
     ".gitattributes",
     ".gitignore",
+    ".legends-module",
+    ".legends-router-pin",
     "AGENTS.md",
     "ATTRIBUTION.md",
     "CHANGELOG.md",
@@ -41,6 +43,7 @@
     "PRIVACY.md",
     "README.md",
     "SECURITY.md",
+    "VERSION",
     "WIKI.md",
     "ZCODE.md"
   ],
@@ -48,7 +51,9 @@
     ".github/*.md",
     ".github/*.yml",
     ".github/ISSUE_TEMPLATE/*.md",
-    ".github/workflows/*.yml"
+    ".github/workflows/*.yml",
+    "legends_vault_steward/*.py",
+    "legends_vault_steward/data/*.json"
   ],
   "include_roots": [
     "assets",
@@ -57,6 +62,7 @@
     "docs",
     "examples",
     "hooks",
+    "knowledge",
     "scripts",
     "skills",
     "templates",

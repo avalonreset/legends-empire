@@ -7,6 +7,31 @@ implementation record for older releases.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-29
+
+### Added
+
+- Vault stewardship inside `legends-empire`: a read-only inventory and evidence
+  engine for links, configured freshness, project records and session handoffs.
+- Stable finding identities, full Markdown snapshots, bounded review agendas,
+  baseline comparison and unexpected-change detection for repair campaigns.
+- An attachable Markdown stewardship knowledge pack with ontology, playbooks,
+  record templates and verification standards. Preview and apply use existing
+  Empire transactions; updates detect edited references and preserve user work.
+- Generic and opt-in portable Empire scan profiles, synthetic examples and
+  transaction campaign tests. No additional registered skill or service.
+
+### Fixed
+
+- Release ZIPs include the authoritative VERSION and module identity files,
+  the stewardship engine's configuration data and the knowledge pack.
+
+### Scope
+
+- Native Windows supports inspection and previews; transactional writes use
+  WSL or POSIX and supported `wiki/` paths. No automated truth judgment, live
+  session control, Plane synchronization or full seven-province starter.
+
 ## [0.1.1] - 2026-09-25 (Router-native contract patch)
 
 Post-reset patch: the hermetic suite, contract probes, release builder, and

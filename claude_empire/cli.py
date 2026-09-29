@@ -32,6 +32,7 @@ from .gates import evaluate_release_gates
 from .hook_adapter import emit_session_start, emit_stop_status
 from .ledgers import LedgerValidationError, migration_bundle, strict_json_loads
 from .lint_engine import lint_vault, render_markdown
+from .knowledge import attachment_bundle
 from .mode_config import validate_mode_folders
 from .package_validation import validate_package
 from .paths import (
@@ -712,6 +713,26 @@ def command_extension_dragonscale(args: argparse.Namespace) -> int:
     return 0
 
 
+def command_knowledge_attach(args: argparse.Namespace) -> int:
+    root = _selection(args).root
+    operation = attachment_bundle(
+        root, args.manifest, operation_id=args.operation_id,
+        generated_at=args.generated_at, destination=args.destination,
+    )
+    if not operation["writes"]:
+        _emit({"schema": "legends.knowledge-attachment-plan/v1", "status": "noop", "changed_paths": []})
+        return 0
+    plan = inspect_bundle(root, operation)
+    if not args.apply:
+        _emit({"schema": "legends.knowledge-attachment-plan/v1", "status": "dry-run",
+               "plan": plan, "operation": operation,
+               **_approval_fields(root, operation, args.generated_at)})
+        return 0
+    approval = _require_approved_operation(args, root, operation)
+    _emit(apply_bundle(root, operation, approved_plan_sha256=approval))
+    return 0
+
+
 def _add_capture_budget_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--inbox")
     parser.add_argument("--max-items", type=int, default=100)
@@ -921,6 +942,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="claude-empire")
     parser.add_argument("--version", action="version", version=__version__)
     subcommands = parser.add_subparsers(dest="command", required=True)
+
+    subcommands.add_parser(
+        "steward", help="Inspect knowledge, project, and session stewardship evidence"
+    )
 
     doctor = subcommands.add_parser(
         "doctor", help="Inspect vault selection and core readiness"
@@ -1225,6 +1250,18 @@ def build_parser() -> argparse.ArgumentParser:
     _add_approval_argument(adopt)
     adopt.set_defaults(handler=command_adopt)
 
+    knowledge = subcommands.add_parser("knowledge", help="Attach a reusable Markdown knowledge shelf")
+    knowledge_commands = knowledge.add_subparsers(dest="knowledge_command", required=True)
+    attach = knowledge_commands.add_parser("attach", help="Preview or apply a knowledge pack attachment/update")
+    attach.add_argument("manifest")
+    attach.add_argument("--vault", required=True, help="Explicit user vault, separate from the module")
+    attach.add_argument("--destination", help="Optional user-selected location below wiki/library/")
+    attach.add_argument("--operation-id", required=True)
+    attach.add_argument("--generated-at", required=True)
+    attach.add_argument("--apply", action="store_true")
+    _add_approval_argument(attach)
+    attach.set_defaults(handler=command_knowledge_attach)
+
     checkpoint = subcommands.add_parser(
         "checkpoint", help="Explicitly commit one completed vault operation"
     )
@@ -1261,8 +1298,15 @@ def _force_utf8_stdio() -> None:
 
 def main(argv: Sequence[str] | None = None) -> int:
     _force_utf8_stdio()
+    arguments = list(sys.argv[1:] if argv is None else argv)
+    if arguments and arguments[0] == "steward":
+        # This capability shares the Empire installation and router. Preserve
+        # its own argument validation and exit codes without a second CLI schema.
+        from legends_vault_steward.cli import main as steward_main
+
+        return steward_main(arguments[1:])
     parser = build_parser()
-    args = parser.parse_args(argv)
+    args = parser.parse_args(arguments)
     try:
         return int(args.handler(args))
     except VaultSelectionError as exc:

@@ -89,6 +89,9 @@ jobs:
             tests/test_release_surface.py \
             tests/test_package_validation.py \
             tests/test_knowledge_contracts.py \
+            tests/test_knowledge_packs.py \
+            tests/test_stewardship.py \
+            tests/test_stewardship_engine.py \
             tests/test_contracts.py \
             tests/test_benchmark_tools.py \
             tests/test_windows_compat.py; do

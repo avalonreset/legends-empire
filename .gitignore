@@ -22,6 +22,7 @@
 Thumbs.db
 
 # Python
+out/
 __pycache__/
 *.pyc
 .venv/
@@ -160,4 +161,3 @@ _attachments/
 .grok/skills/
 .cursor/skills/
 .windsurf/skills/
-

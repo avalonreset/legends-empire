@@ -1,0 +1,12 @@
+{
+  "comment": "Portable opt-in Empire profile. No personal vault configuration.",
+  "entrypoints": ["wiki/index.md", "EMPIRE-START.md"],
+  "classifier_rules": [
+    {"id": "EMPIRE_ENTRY", "paths": ["wiki/index.md", "wiki/hot.md", "EMPIRE-START.md"], "class": "A", "weight": 0.99}
+  ],
+  "surfaces": [
+    {"id": "hot", "path": "wiki/hot.md", "max_words": 500, "max_age_days": 14},
+    {"id": "index", "path": "wiki/index.md"}
+  ],
+  "operations": {"review_after_days": 14}
+}

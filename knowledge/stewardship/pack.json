@@ -1,0 +1,34 @@
+{
+  "schema": "legends.knowledge-pack/v1",
+  "id": "stewardship",
+  "module": "legends-empire",
+  "version": "0.2.0",
+  "entrypoint": "index.md",
+  "files": [
+    {
+      "path": "index.md",
+      "sha256": "581fb841145f3e9e279424e3757f303f3a173a7c159d03aca5946ac08a35a4ed"
+    },
+    {
+      "path": "ontology.md",
+      "sha256": "65dfe0bb674bd749e602775d1923a18ec02f004de278b4da1872456f8844ba64"
+    },
+    {
+      "path": "playbook.md",
+      "sha256": "a0e2660fffd7404c9a9aeb4271e05b22a177eac9fd150880ea0850c5ec40f635"
+    },
+    {
+      "path": "records.md",
+      "sha256": "f9f63a6e06da31e7fe762d5628d7f7139fc21f4cb9be5558a2ac349be929c8b3"
+    },
+    {
+      "path": "verification.md",
+      "sha256": "bb1e71798b7e9762b083ec7ad43c9ed057368bd0f4052bae14977e55e1f9d08d"
+    }
+  ],
+  "ontology": {
+    "suggested_home": "wiki/library/legends-empire/stewardship",
+    "purpose": "Maintain trustworthy navigation, project records and session continuity through evidence-backed Markdown campaigns.",
+    "kind": "machinery"
+  }
+}

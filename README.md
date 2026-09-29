@@ -1,6 +1,6 @@
 # ![legends-empire](assets/legends-empire-banner.webp)
 
-<a href="CHANGELOG.md"><img src="https://img.shields.io/badge/release-v0.1.1-d97745" alt="Release v0.1.1"></a>
+<a href="CHANGELOG.md"><img src="https://img.shields.io/badge/release-v0.2.0-d97745" alt="Release v0.2.0"></a>
 [install](docs/install-guide.md) · [releases](https://github.com/avalonreset/legends-empire/releases) · [attribution](#attribution)
 
 Your digital reality is already there: folders, repositories, tools, knowledge, infrastructure, and half-built ideas. The problem is keeping track of what exists, how it connects, and what you meant to do with it.
@@ -50,6 +50,28 @@ This is personal knowledge management across your whole digital environment. Its
 
 The released memory tools support source capture, linked wiki notes, retrieval, and recoverable updates. You choose the vault. Installing the product does not give an agent permission to reorganize your files.
 
+## Vault stewardship
+
+Ask your agent: "What needs attention in my vault?", "Review my stale projects",
+or "Help me recover this session." The **steward** capability inside
+`legends-empire` gives the agent a repeatable inventory, link and freshness
+evidence, and a bounded review queue. File hashes and baseline comparisons help
+it distinguish changed evidence from yesterday's findings.
+
+The value is continuity: notes, project intentions, and session handoffs remain
+readable Markdown, while mechanical checks make the agent's review verifiable.
+An unlinked receipt need not become cleanup work. A missing route to an active
+decision deserves a closer look. The agent interprets that evidence and prepares
+a small campaign; authorized repairs use Empire's existing transaction engine.
+
+Stewardship adds no separate skill or product installation. It includes an
+attachable [Markdown knowledge pack](docs/knowledge-packs.md): operating
+playbooks, ontology and reusable project/session records. Preview its
+attachment to your vault, then apply the reviewed transaction. Future pack
+updates preserve your work and report conflicts with edited references. See the
+[stewardship workflow](docs/stewardship.md) for commands, limits, and the optional
+Plane view.
+
 ## Agent setup (via `cto-legends`)
 
 Part of the [CTO Legends](https://github.com/avalonreset/cto-legends) ecosystem. `cto-legends` is the only registered skill; this repo vendors a pinned copy at `skills/cto-legends/SKILL.md`.
@@ -60,7 +82,7 @@ Install with `cto-legends install legends-empire`, then follow the module recipe
 
 Follow the [installation guide](docs/install-guide.md) with the [current release](https://github.com/avalonreset/legends-empire/releases). Keep the software checkout separate from your own `Empire` folder.
 
-**Release boundary:** the published package supplies the memory tools. The seven-province starter, Throne Room canvas, territory maps, and unified onboarding exist in the local candidate but are not bundled in that public release yet. The structure described above is the direction, not a claim that the current installer sets up all of it.
+**Release boundary:** this package supplies memory tools, vault stewardship and its attachable Markdown knowledge pack. The seven-province starter, Throne Room canvas, territory maps, and unified onboarding remain separate development work. The structure described above is the direction, not a claim that the current installer sets up all of it.
 
 Native Windows supports inspection and previews. Transactional writes require WSL or a supported POSIX host. See [platform setup](docs/windows-wsl.md).
 

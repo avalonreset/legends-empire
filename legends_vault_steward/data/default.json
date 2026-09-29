@@ -1,0 +1,73 @@
+{
+  "schema": "legends.vault-steward.config/v1",
+  "product": "Legends Vault Steward",
+  "phase": "M0",
+  "skip_dir_names": [
+    ".git",
+    ".vault-meta",
+    ".trash",
+    ".obsidian",
+    ".steward",
+    ".venv",
+    "venv",
+    "__pycache__",
+    "node_modules",
+    ".pytest_cache",
+    ".codex-tmp",
+    ".scratch",
+    ".tmp"
+  ],
+  "skip_dir_prefixes": [],
+  "note_suffixes": [".md", ".markdown"],
+  "attachment_suffixes": [
+    ".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg",
+    ".mp3", ".mp4", ".wav", ".webm", ".pdf"
+  ],
+  "classifier_rules": [
+    {"id": "PATH_DECISIONS", "path_prefix": "decisions/", "class": "B", "weight": 0.95},
+    {"id": "PATH_SOPS", "path_prefix": "sops/", "class": "B", "weight": 0.95},
+    {"id": "PATH_TMP", "path_prefix": "tmp/", "class": "G", "weight": 0.99},
+    {"id": "PATH_IMPORTED", "path_prefix": "imported/", "class": "F", "weight": 0.95},
+    {"id": "PATH_CONCEPTS", "path_prefix": "wiki/concepts/", "class": "C", "weight": 0.9},
+    {"id": "PATH_PEOPLE", "path_prefix": "people/", "class": "C", "weight": 0.85},
+    {"id": "PATH_PROJECTS", "path_prefix": "projects/", "class": "C", "weight": 0.7},
+    {"id": "PATH_AREAS", "path_prefix": "areas/", "class": "C", "weight": 0.7},
+    {"id": "PATH_WIKI", "path_prefix": "wiki/", "class": "C", "weight": 0.55},
+    {"id": "PATH_META", "path_prefix": "meta/", "class": "H", "weight": 0.55},
+    {"id": "PATH_INBOX", "path_prefix": "inbox/", "class": "E", "weight": 0.4},
+    {"id": "NAME_BAK", "name_contains": ".bak", "class": "G", "weight": 0.8},
+    {"id": "NAME_RECEIPT", "name_prefix": "Receipt-", "class": "D", "weight": 0.96},
+    {"id": "NAME_LOOKSEE", "name_contains": "look-see", "class": "D", "weight": 0.96},
+    {"id": "NAME_CAMPAIGN", "name_prefix": "Campaign-", "class": "I", "weight": 0.92},
+    {"id": "NAME_BRIEF", "name_prefix": "Brief-", "class": "I", "weight": 0.9},
+    {"id": "NAME_STARTER", "name_prefix": "Starter-", "class": "I", "weight": 0.9},
+    {"id": "NAME_ASK", "name_prefix": "Ask-", "class": "E", "weight": 0.9},
+    {"id": "NAME_EVENT", "name_prefix": "Event-", "class": "E", "weight": 0.88},
+    {"id": "NAME_DRAFT", "name_prefix": "Draft-", "class": "E", "weight": 0.88},
+    {"id": "NAME_NOTE", "name_prefix": "Note-", "class": "E", "weight": 0.8},
+    {"id": "FM_TYPE_RECEIPT", "frontmatter_type": ["receipt"], "class": "D", "weight": 0.97},
+    {"id": "FM_TYPE_DECISION", "frontmatter_type": ["decision", "law"], "class": "B", "weight": 0.97},
+    {"id": "FM_TYPE_SOP", "frontmatter_type": ["sop", "procedure"], "class": "B", "weight": 0.97},
+    {"id": "FM_TYPE_CAMPAIGN", "frontmatter_type": ["campaign", "packet"], "class": "I", "weight": 0.9},
+    {"id": "FM_TYPE_PROJECT", "frontmatter_type": ["project"], "class": "C", "weight": 0.75}
+  ],
+  "default_class": "E",
+  "default_confidence": 0.35,
+  "default_reason": "DEFAULT_UNCLASSIFIED",
+  "surfaces": [],
+  "findings": {
+    "emit_orphan_normal": false,
+    "orphan_defect_classes": ["A", "B"],
+    "orphan_queue_classes": ["E"],
+    "orphan_normal_classes": ["D", "F", "G", "I"],
+    "unresolved_core_classes": ["A", "B", "C", "H"],
+    "max_queue_orphan_findings": 50,
+    "max_unresolved_findings": 80
+  },
+  "injection_patterns": [
+    "ignore previous instructions",
+    "ignore all previous instructions",
+    "dump secrets",
+    "delete doctrine"
+  ]
+}
