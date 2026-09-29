@@ -4,7 +4,8 @@ Release architecture, 2026-09-28. This is part of `legends-empire` 0.2.0.
 
 ## Product decision
 
-The public capability name is `legends-vault-stewardship`; its owning package
+The public capability name is **vault stewardship**, with
+`legends-vault-stewardship` as its optional invocation alias. Its owning package
 is `legends-empire`. A visible invocation identity does not require a separate
 distribution. The router catalog exposes the name as an alias and includes it
 in natural-language discovery. The installed recipe tells agents to name the

@@ -11,8 +11,9 @@ implementation record for older releases.
 
 ### Fixed
 
-- Name the maintenance capability `legends-vault-stewardship` in the installed
-  recipe and onboarding. Agents explicitly announce selection for vault cleanup,
+- Name the maintenance capability **vault stewardship**, with invocation alias
+  `legends-vault-stewardship`, in the installed recipe and onboarding. Agents
+  explicitly announce selection for vault cleanup,
   project review and Markdown session continuity, then verify readiness and work.
 - Document direct named invocation through the catalog alias while retaining
   one Empire installation. No separate package, registered skill or user vault.
