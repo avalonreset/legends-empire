@@ -41,6 +41,14 @@ from .paths import (
 BUNDLE_SCHEMA = "claude-empire.transaction.v1"
 RESULT_SCHEMA = "claude-empire.transaction-result.v1"
 JOURNAL_SCHEMA = "claude-empire.transaction-journal.v1"
+# The product rename did not change the v1 transaction format. Read the exact
+# historical family without rewriting terminal history or weakening recovery.
+# New transactions continue to emit only the current family.
+_JOURNAL_RESULT_SCHEMAS = {
+    JOURNAL_SCHEMA: RESULT_SCHEMA,
+    "claude-obsidian.transaction-journal.v1": "claude-obsidian.transaction-result.v1",
+}
+_READABLE_RESULT_SCHEMAS = frozenset(_JOURNAL_RESULT_SCHEMAS.values())
 OPERATION_TYPES = {
     "base",
     "save",
@@ -4252,7 +4260,16 @@ def _recover_incomplete_locked(
                 "journal.json", label=f"transaction {operation_name} journal"
             )
             _assert_transaction_namespaces(lock, runtime, operation)
-            if not isinstance(journal, dict) or journal.get("schema") != JOURNAL_SCHEMA:
+            if (
+                not isinstance(journal, dict)
+                or not isinstance(journal.get("schema"), str)
+                or journal.get("schema") not in _JOURNAL_RESULT_SCHEMAS
+                or journal.get("operation_id") != operation_name
+                or not isinstance(journal.get("state"), str)
+                or journal.get("state") not in {
+                    "prepared", "applying", "rollback-failed", "rolled-back", "complete"
+                }
+            ):
                 raise TransactionRecoveryError(
                     "CORRUPT_JOURNAL",
                     f"transaction {operation_name} has an invalid journal",
@@ -4271,7 +4288,7 @@ def _recover_incomplete_locked(
                 )
                 if (
                     not isinstance(result, dict)
-                    or result.get("schema") != RESULT_SCHEMA
+                    or result.get("schema") != _JOURNAL_RESULT_SCHEMAS[journal["schema"]]
                     or result.get("status") != "complete"
                     or result.get("operation_id") != operation_name
                 ):
@@ -4342,7 +4359,7 @@ def _recover_incomplete_locked(
                         f"transaction {operation_name} result cannot be reconstructed",
                     )
                 result = {
-                    "schema": RESULT_SCHEMA,
+                    "schema": _JOURNAL_RESULT_SCHEMAS[journal["schema"]],
                     "operation_id": operation_name,
                     "operation_type": journal.get("operation_type"),
                     "bundle_sha256": input_hash,
@@ -4363,6 +4380,14 @@ def _recover_incomplete_locked(
                 )
                 operation.write_json("changed-paths.json", result)
                 recovered.append(operation_name)
+            elif journal.get("state") == "rolled-back":
+                # Terminal means no recovery writes, not unvalidated input.
+                # Preserve the journal and user content byte-for-byte while
+                # enforcing the same path/hash/backup envelope as other states.
+                _validated_recovery_writes(
+                    vault_root, operation, journal,
+                    root_fd=runtime.root_fd, meta_fd=runtime.meta_fd,
+                )
             _assert_transaction_namespaces(lock, runtime, operation)
     return recovered
 
@@ -4577,7 +4602,8 @@ def apply_bundle(
                         )
                         if (
                             not isinstance(prior, dict)
-                            or prior.get("schema") != RESULT_SCHEMA
+                            or not isinstance(prior.get("schema"), str)
+                            or prior.get("schema") not in _READABLE_RESULT_SCHEMAS
                         ):
                             raise TransactionRecoveryError(
                                 "CORRUPT_RESULT",

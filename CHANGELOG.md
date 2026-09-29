@@ -7,6 +7,17 @@ implementation record for older releases.
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-09-29
+
+### Fixed
+
+- Recognize the historical `claude-obsidian` transaction journal and result
+  schema names while retaining recovery validation. Existing pre-rebrand vaults
+  can perform new transactions without rewriting their historical journals.
+- Add recovery regressions for historical terminal and interrupted transactions
+  and malformed journal/result rejection. The stewardship knowledge pack stays
+  at 0.2.0 because its Markdown and manifest are unchanged.
+
 ## [0.2.0] - 2026-09-29
 
 ### Added
