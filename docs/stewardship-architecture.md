@@ -4,6 +4,16 @@ Release architecture, 2026-09-28. This is part of `legends-empire` 0.2.0.
 
 ## Product decision
 
+The public capability name is `legends-vault-stewardship`; its owning package
+is `legends-empire`. A visible invocation identity does not require a separate
+distribution. The router catalog exposes the name as an alias and includes it
+in natural-language discovery. The installed recipe tells agents to name the
+selected capability and distinguish selection, readiness and execution.
+
+Acceptance includes ordinary vault-organization requests, direct named handoff,
+the same underlying install for both names, and a verified engine run. A
+homepage row or a working low-level scanner alone does not prove that flow.
+
 Vault stewardship is the maintenance function of an Empire, with a name users
 can ask for. It should be prominent in onboarding and discoverable from
 "tighten up my vault", "review stale projects", "recover our work", and

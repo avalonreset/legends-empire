@@ -7,6 +7,17 @@ implementation record for older releases.
 
 ## [Unreleased]
 
+## [0.2.3] - 2026-09-29
+
+### Fixed
+
+- Name the maintenance capability `legends-vault-stewardship` in the installed
+  recipe and onboarding. Agents explicitly announce selection for vault cleanup,
+  project review and Markdown session continuity, then verify readiness and work.
+- Document direct named invocation through the catalog alias while retaining
+  one Empire installation. No separate package, registered skill or user vault.
+- Engine behavior and the stewardship knowledge pack remain unchanged.
+
 ## [0.2.2] - 2026-09-29
 
 ### Fixed

@@ -1,6 +1,6 @@
 # ![legends-empire](assets/legends-empire-banner.webp)
 
-<a href="CHANGELOG.md"><img src="https://img.shields.io/badge/release-v0.2.2-d97745" alt="Release v0.2.2"></a>
+<a href="CHANGELOG.md"><img src="https://img.shields.io/badge/release-v0.2.3-d97745" alt="Release v0.2.3"></a>
 [install](docs/install-guide.md) · [releases](https://github.com/avalonreset/legends-empire/releases) · [attribution](#attribution)
 
 Your digital reality is already there: folders, repositories, tools, knowledge, infrastructure, and half-built ideas. The problem is keeping track of what exists, how it connects, and what you meant to do with it.
@@ -53,10 +53,15 @@ The released memory tools support source capture, linked wiki notes, retrieval, 
 ## Vault stewardship
 
 Ask your agent: "What needs attention in my vault?", "Review my stale projects",
-or "Help me recover this session." The **steward** capability inside
+or "Help me recover this session." The **vault stewardship** capability in
 `legends-empire` gives the agent a repeatable inventory, link and freshness
 evidence, and a bounded review queue. File hashes and baseline comparisons help
 it distinguish changed evidence from yesterday's findings.
+
+The agent names the capability it selects, checks readiness, and shows the
+results of the work it actually performs. You can also ask for
+`legends-vault-stewardship` directly. It shares Empire's installation and update
+lifecycle; there is no second package to manage.
 
 The value is continuity: notes, project intentions, and session handoffs remain
 readable Markdown, while mechanical checks make the agent's review verifiable.

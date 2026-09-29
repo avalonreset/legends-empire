@@ -1,9 +1,38 @@
-# Stewardship inside legends-empire
+# Vault stewardship
 
-Available in `legends-empire` 0.2.0. `cto-legends` remains the only
-registered skill. Steward is a named capability of `legends-empire`, loaded
-with its module instructions. The internal Python package name is an
-implementation detail; members install no second product or skill.
+**Vault stewardship** (invocation name `legends-vault-stewardship`) is the
+maintenance capability shipped with
+`legends-empire` since 0.2.0. `cto-legends` remains the only registered skill.
+There is one Empire installation and one maintained implementation; stewardship
+does not require a separate package, skill or vault.
+
+## Discovery and invocation
+
+Select this workflow when someone asks to clean or organize a vault, find
+orphaned notes, review neglected projects, tighten up their Empire, or resume
+work from Markdown session handoffs. They need not know the capability name.
+Source capture and ordinary retrieval can use Empire's other workflows.
+
+Make the selection visible before starting: "I'm using
+vault stewardship to inspect your vault and identify what needs
+attention." Then run the readiness check and report any blocker under that
+name. Selecting the workflow is not evidence that a scan or repair completed.
+The closing report should name the capability, what actually ran, coverage
+limits, and useful findings backed by report paths.
+
+Catalog 1.0.6 adds the direct invocation name:
+
+```text
+cto-legends handoff legends-vault-stewardship
+cto-legends run legends-vault-stewardship -- steward doctor
+```
+
+The handoff reports `module: legends-empire` because that is the owning package.
+This is successful resolution, not a missing module or a fallback. The alias
+uses the same installation, version, runtime and update lifecycle. After a
+catalog refresh, installing by either name previews the same Empire package.
+Older catalogs require `cto-legends sync --apply`; update Empire to get this
+invocation recipe. Neither operation starts a vault cleanup.
 
 ## Why it exists
 
