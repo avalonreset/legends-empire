@@ -121,7 +121,7 @@ def _build_findings(
                         severity="high",
                         path=path,
                         record_class=note.record_class,
-                        message="Class A/B orphan — this class requires a route",
+                        message="Class A/B orphan: this class requires a route",
                     )
                 )
             elif note.record_class in queue and queue_emitted < max_queue:
@@ -131,7 +131,7 @@ def _build_findings(
                         severity="low",
                         path=path,
                         record_class=note.record_class,
-                        message="Class E orphan — candidate for the human review queue",
+                        message="Class E orphan: candidate for the human review queue",
                     )
                 )
                 queue_emitted += 1

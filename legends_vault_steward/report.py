@@ -91,10 +91,10 @@ def render_markdown(report: dict[str, Any]) -> str:
                         item["id"],
                         item["path"],
                         "yes" if item["ok"] else "NO",
-                        item.get("words") if item.get("words") is not None else "—",
-                        item.get("dated_bullets") if item.get("dated_bullets") is not None else "—",
-                        item.get("age_days") if item.get("age_days") is not None else "—",
-                        ", ".join(item.get("breaches") or []) or "—",
+                        item.get("words") if item.get("words") is not None else "n/a",
+                        item.get("dated_bullets") if item.get("dated_bullets") is not None else "n/a",
+                        item.get("age_days") if item.get("age_days") is not None else "n/a",
+                        ", ".join(item.get("breaches") or []) or "n/a",
                     ]
                     for item in freshness
                 ],
@@ -137,8 +137,8 @@ def render_markdown(report: dict[str, Any]) -> str:
                 [
                     item.get("severity", ""),
                     item.get("code", ""),
-                    item.get("class") or item.get("record_class") or "—",
-                    item.get("path") or "—",
+                    item.get("class") or item.get("record_class") or "n/a",
+                    item.get("path") or "n/a",
                     item.get("message", "").replace("|", "\\|"),
                 ]
             )
