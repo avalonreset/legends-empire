@@ -90,6 +90,7 @@ jobs:
             tests/test_package_validation.py \
             tests/test_knowledge_contracts.py \
             tests/test_knowledge_packs.py \
+            tests/test_research_evidence.py \
             tests/test_stewardship.py \
             tests/test_stewardship_engine.py \
             tests/test_contracts.py \

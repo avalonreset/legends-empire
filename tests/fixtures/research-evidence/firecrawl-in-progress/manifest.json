@@ -1,0 +1,19 @@
+{
+  "coverage": {
+    "completeness": "not_asserted",
+    "scope": "single_response"
+  },
+  "endpoint": "scrape",
+  "evidence_id": "76b92a10da53fbd993a3f25337abb5890412e8ba85f1d32e94721b4de12177a0",
+  "note_sha256": "f86fc0893c62678c45b1449b347ccae4313d48ffda9a1643eb0c6bb53e5b19c1",
+  "observed_at": "2026-10-01T00:00:00Z",
+  "producer": "legends-firecrawl",
+  "provider": "firecrawl",
+  "request": {
+    "url": "https://example.com/"
+  },
+  "response_sha256": "26808815b61f9a100b2d12f7d8c9f0a59aa6cd47eb5298d1641f5ad2453d1514",
+  "schema": "legends-firecrawl-evidence/v1",
+  "status": "pending",
+  "workspace": "synthetic-client"
+}

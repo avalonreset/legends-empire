@@ -10,6 +10,7 @@ exists, and how to unstick WSL when it misbehaves.
 | Capability | WSL / Linux / macOS | Native Windows (incl. Git Bash) |
 |---|---|---|
 | Inspection, dry-run previews, retrieval | Yes | Yes |
+| Provider evidence `research-evidence verify/plan` | Yes, read-only | Yes, read-only |
 | Vault writes (`transaction apply`, `init`, `adopt`, `migrate`, `capture apply`, `mode set`) | Yes, on a filesystem that preserves POSIX permissions | No: refused with `UNSUPPORTED_PLATFORM` |
 | Capture queue commands (including read-only `capture queue list`) | Yes | No: currently refused; tracked in [#151](https://github.com/AgriciDaniel/claude-obsidian/issues/151) |
 | Git checkpoints (`checkpoint`) | Linux and macOS only | No |

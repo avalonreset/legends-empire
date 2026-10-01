@@ -2,12 +2,16 @@
   "schema": "legends.knowledge-pack/v1",
   "id": "stewardship",
   "module": "legends-empire",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "entrypoint": "index.md",
   "files": [
     {
+      "path": "evidence.md",
+      "sha256": "2925aa32512f846e35b50e6371a382982907cb8499a505b2093e88a8defb2116"
+    },
+    {
       "path": "index.md",
-      "sha256": "581fb841145f3e9e279424e3757f303f3a173a7c159d03aca5946ac08a35a4ed"
+      "sha256": "5e743f84c0029cb2d1fa69dc8546dcb7025aba365d66637a0c73ac1f01170143"
     },
     {
       "path": "ontology.md",

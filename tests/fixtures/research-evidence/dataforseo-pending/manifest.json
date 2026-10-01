@@ -1,0 +1,25 @@
+{
+  "endpoint": "/serp/google/organic/live/advanced",
+  "evidence_id": "3d5fd39b83e25e01514fa7d9171fc6e5fc142b04f04f81bad9b4e84655aaef2e",
+  "note_sha256": "0a74ec608df37ab394fa006c03d47cfe27210d15f059ffa13a7752207ffa9e6c",
+  "observed_at": "2026-10-01T00:00:00Z",
+  "producer": "legends-dataforseo-kit",
+  "reported_response_cost": 0,
+  "request": [
+    {
+      "keyword": "synthetic",
+      "location_code": 2840
+    }
+  ],
+  "response_sha256": "60f40c2ea09f4af8e62dd2f08a3d129f4a954dca2f24320e1632096a3e871227",
+  "schema": "legends-research-evidence/v1",
+  "status_code": 20000,
+  "tasks": [
+    {
+      "cost": 0,
+      "id": "synthetic",
+      "status_code": 20100
+    }
+  ],
+  "workspace": "synthetic-client"
+}

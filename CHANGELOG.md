@@ -7,6 +7,17 @@ implementation record for older releases.
 
 ## [Unreleased]
 
+## [0.2.4] - 2026-10-01
+
+### Added
+
+- Offline, read-only provider evidence verification and intake planning for the
+  DataForSEO and Firecrawl v1 contracts, with explicit workspace selection,
+  bounded reads, manifest/raw/note integrity and provider state checks.
+- Portable evidence-bank and reviewed capture-to-knowledge guidance. No provider
+  calls, automatic promotion, staging writes or alternate transaction engine.
+- Stewardship reference pack 0.2.1 with the evidence admission playbook.
+
 ## [0.2.3] - 2026-09-29
 
 ### Fixed

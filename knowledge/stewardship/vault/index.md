@@ -15,7 +15,8 @@ Start with the user's outcome:
 | Keep my Empire healthy | Review the previous campaign, compare a fresh inventory, and choose the next useful improvement |
 
 Read [the operating playbook](playbook.md), [the ontology](ontology.md),
-[record templates](records.md), and [verification standards](verification.md).
+[record templates](records.md), [verification standards](verification.md), and
+[provider evidence admission](evidence.md).
 
 These files are shipped references. Personal campaigns and project records
 belong in the user's vault, outside this reference directory. The attachment

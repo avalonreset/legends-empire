@@ -1,6 +1,6 @@
 # ![legends-empire](assets/legends-empire-banner.webp)
 
-<a href="CHANGELOG.md"><img src="https://img.shields.io/badge/release-v0.2.3-d97745" alt="Release v0.2.3"></a>
+<a href="CHANGELOG.md"><img src="https://img.shields.io/badge/release-v0.2.4-d97745" alt="Release v0.2.4"></a>
 [install](docs/install-guide.md) · [releases](https://github.com/avalonreset/legends-empire/releases) · [attribution](#attribution)
 
 Your digital reality is already there: folders, repositories, tools, knowledge, infrastructure, and half-built ideas. The problem is keeping track of what exists, how it connects, and what you meant to do with it.
@@ -49,6 +49,15 @@ This is personal knowledge management across your whole digital environment. Its
 [cto-legends](https://github.com/avalonreset/cto-legends) discovers the appropriate module and loads its instructions. The modules do the work. `legends-empire` keeps the evidence and context available for the next session.
 
 The released memory tools support source capture, linked wiki notes, retrieval, and recoverable updates. You choose the vault. Installing the product does not give an agent permission to reorganize your files.
+
+## Provider evidence intake
+
+Keep DataForSEO and Firecrawl evidence banks in a chosen client workspace,
+outside module installs. Empire can verify either supported v1 package and
+plan its intake without network access or vault writes. The existing capture
+and reviewed semantic transaction workflow remains responsible for mutation.
+See [the handoff recipe](docs/RESEARCH-EVIDENCE-HANDOFF.md). A saved response is
+source material, not automatically accepted knowledge.
 
 ## Vault stewardship
 

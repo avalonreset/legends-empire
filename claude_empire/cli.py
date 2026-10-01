@@ -42,6 +42,7 @@ from .paths import (
     resolve_vault_root,
 )
 from .release import audit_artifact, build_public_artifact
+from .research_evidence import EvidenceError, verify_package, plan_intake
 from .transaction import (
     MutationLock,
     TransactionError,
@@ -713,6 +714,16 @@ def command_extension_dragonscale(args: argparse.Namespace) -> int:
     return 0
 
 
+def command_research_evidence(args: argparse.Namespace) -> int:
+    if args.evidence_command == "verify":
+        result = verify_package(args.package, workspace=args.workspace)
+    else:
+        selected = _selection(args)
+        result = plan_intake(args.package, workspace=args.workspace, vault=selected.root)
+    _emit(result)
+    return 0
+
+
 def command_knowledge_attach(args: argparse.Namespace) -> int:
     root = _selection(args).root
     operation = attachment_bundle(
@@ -1250,6 +1261,16 @@ def build_parser() -> argparse.ArgumentParser:
     _add_approval_argument(adopt)
     adopt.set_defaults(handler=command_adopt)
 
+    evidence = subcommands.add_parser("research-evidence", help="Verify scoped provider evidence or plan intake without writes")
+    evidence_commands = evidence.add_subparsers(dest="evidence_command", required=True)
+    for verb in ("verify", "plan"):
+        check = evidence_commands.add_parser(verb)
+        check.add_argument("package")
+        check.add_argument("--workspace", required=True, help="Exact selected client/workspace identity")
+        if verb == "plan":
+            check.add_argument("--vault", required=True, help="Explicit initialized user vault")
+        check.set_defaults(handler=command_research_evidence)
+
     knowledge = subcommands.add_parser("knowledge", help="Attach a reusable Markdown knowledge shelf")
     knowledge_commands = knowledge.add_subparsers(dest="knowledge_command", required=True)
     attach = knowledge_commands.add_parser("attach", help="Preview or apply a knowledge pack attachment/update")
@@ -1309,6 +1330,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(arguments)
     try:
         return int(args.handler(args))
+    except EvidenceError as exc:
+        print(f"ERR EVIDENCE: {exc}", file=sys.stderr)
+        return 2
     except VaultSelectionError as exc:
         print(f"ERR {exc.code}: {exc}", file=sys.stderr)
         return 2
