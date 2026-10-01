@@ -92,6 +92,11 @@ The exact project-local `.agents/skills/aimh/SKILL.md` and
 `.claude/skills/aimh/SKILL.md` entries, QUICKSTART.md, requirements-dev.txt,
 qualified text `_examples/` and license/attribution notices are
 included. They do not replace the CTO router or activate desktop plugins.
+Pinned root help documents (README, KNOWN-LIMITATIONS, PREVIEW-VERIFICATION,
+PRIVACY, CONTRIBUTING, ROLLBACK and CHANGELOG, all `.md`) keep native onboarding
+links functional. If an existing root already owns a differing document at one
+of these paths, installation refuses; resolve that layout explicitly or use the
+separate-root adapter. The installer never overwrites owner documentation.
 
 This is a **headless capability layer**, not a full Home desktop installation.
 It excludes `.obsidian` plugins/settings, maintainer folders,

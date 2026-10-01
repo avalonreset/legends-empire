@@ -31,6 +31,7 @@ class ProfileTests(unittest.TestCase):
                       ".agents/skills/aimh/SKILL.md": b"# Synthetic agent entry\n",
                       ".claude/skills/aimh/SKILL.md": b"# Synthetic Claude entry\n",
                       "_third-party/example/LICENSE": b"Synthetic attribution\n",
+                      "README.md": b"# Synthetic native help\n",
                       "AI Team/Knowledge/Scripts/resolve-context.py": b"print('synthetic')\n",
                       "Workspaces/AI Marketing Hub/Skills/Example/SKILL.md": b"# Invented method\n",
                       "_templates/Example.md": b"# Invented template\n",
@@ -164,6 +165,13 @@ class ProfileTests(unittest.TestCase):
         with self.assertRaises(TransactionError):
             installer.install_plan(self.root, self.source, "bad", STAMP)
         self.assertEqual(target.read_text(), "owner method")
+
+    def test_owner_root_support_document_is_not_overwritten(self):
+        target = self.root / "README.md"
+        target.write_text("Existing owner help")
+        with self.assertRaises(TransactionError):
+            installer.install_plan(self.root, self.source, "conflict", STAMP)
+        self.assertEqual(target.read_text(), "Existing owner help")
 
     @POSIX
     def test_whole_life_scaffold_is_native_pm_but_draft_context(self):

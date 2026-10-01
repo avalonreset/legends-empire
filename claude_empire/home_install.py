@@ -17,6 +17,8 @@ STATE = f"{profile.BASE}/installation.json"
 SCHEMA = "legends.home-installation/v1"
 ROOTS = ("AI Team/", "Workspaces/", "Projects/", "_system/", "_templates/", "Home/", "_assets/", "_examples/")
 EXACT = {".agents/skills/aimh/SKILL.md", ".claude/skills/aimh/SKILL.md", "LICENSE.md", "THIRD_PARTY_NOTICES.md", "QUICKSTART.md", "requirements-dev.txt"}
+EXACT.update({"README.md", "KNOWN-LIMITATIONS.md", "PREVIEW-VERIFICATION.md", "PRIVACY.md",
+              "CONTRIBUTING.md", "ROLLBACK.md", "CHANGELOG.md"})
 SUFFIXES = {".md", ".json", ".py", ".txt", ".base", ".canvas", ".css", ".svg", ".yaml", ".yml", ".sh"}
 BATCH_SIZE = 400
 
