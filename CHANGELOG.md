@@ -7,6 +7,24 @@ implementation record for older releases.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-01
+
+### Added
+
+- Optional Home adapter: inspect a separately obtained native Home workspace,
+  preview and attach a reference-only binding, discover bindings, check native
+  project readiness, and detach without deleting business records.
+- Digest-pinned Home v0.5.2 contract/scripts, explicit native interpreter support,
+  workspace-only onboarding, existing-project routing and reviewed transactions.
+- No mandatory Home dependency, bundled licensed methods, automatic installation,
+  automatic root instruction rewrites, or changes to standalone Empire defaults.
+- Original shared-root Home-ready scaffolds for standalone Empire: canonical
+  Project Manager records, company records and brand packages, always draft until
+  selected evidence and methods are validated. Existing business facts are reused.
+- Explicit reviewed private-source headless installation with inventory-bound
+  batches and completion verification; optional exact-provenance root instruction
+  composition enables a shared-root binding without granting arbitrary drift.
+
 ## [0.2.4] - 2026-10-01
 
 ### Added

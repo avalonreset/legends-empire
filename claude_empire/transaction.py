@@ -63,6 +63,10 @@ OPERATION_TYPES = {
     "capture",
     "configuration",
     "generic",
+    "home-profile",
+    "home-compose",
+    "home-records",
+    "home-install",
 }
 
 # Transaction journals, host locks, derived indexes, queues, and hook state are
@@ -3281,6 +3285,17 @@ def _validate_operation_write_scope(
             "RESERVED_WRITE_PATH",
             f"product and runtime internals cannot be bundle targets: {relative}",
         )
+    if operation_type == "home-install":
+        from .home_install import write_allowed as install_write_allowed
+        if not install_write_allowed(relative, write_mode):
+            raise TransactionValidationError("WRITE_SCOPE_VIOLATION", "Home install path is outside its headless inventory scope")
+        return
+    if operation_type in {"home-profile", "home-compose", "home-records"}:
+        from .home_profile import write_allowed
+        if not write_allowed(operation_type, relative, write_mode):
+            raise TransactionValidationError("WRITE_SCOPE_VIOLATION",
+                f"{operation_type} may write only its declared Home-compatible records: {relative}")
+        return
     managed_by_key = {
         _portable_name_key(path): path for path in _MANAGED_METADATA_PATHS
     }
@@ -3370,9 +3385,14 @@ def _validate_operation_write_scope(
 def _validate_operation_bundle_scope(
     operation_type: str,
     prepared: Iterable[PreparedWrite],
+    bundle: Mapping[str, Any] | None = None,
 ) -> None:
     """Validate coupled path sets that cannot be checked one write at a time."""
 
+    if operation_type == "home-install":
+        from .home_install import validate_prepared
+        validate_prepared(prepared, dict(bundle or {}))
+        return
     if operation_type != "fold":
         return
     paths = {write.relative_path for write in prepared}
@@ -3637,7 +3657,7 @@ def _prepare_writes(
             "expected_hashes contains paths that are not writes: "
             + ", ".join(extra_expected),
         )
-    _validate_operation_bundle_scope(str(bundle.get("operation_type")), prepared)
+    _validate_operation_bundle_scope(str(bundle.get("operation_type")), prepared, bundle)
     _validate_provenance_writes(vault_root, prepared, root_fd=root_fd, meta_fd=meta_fd)
     return prepared
 

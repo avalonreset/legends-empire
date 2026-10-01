@@ -32,6 +32,10 @@ CAPABILITY_TIERS = {"core", "extension", "reference"}
 SUPPORT_LEVELS = {"native", "compatible"}
 WRITE_ACCESS = {"transactional", "create_only", "runtime"}
 CORE_TRANSACTION_TYPES = {
+    "home-profile",
+    "home-compose",
+    "home-records",
+    "home-install",
     "autoresearch",
     "base",
     "canvas",

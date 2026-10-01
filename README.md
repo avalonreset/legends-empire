@@ -1,6 +1,6 @@
 # ![legends-empire](assets/legends-empire-banner.webp)
 
-<a href="CHANGELOG.md"><img src="https://img.shields.io/badge/release-v0.2.4-d97745" alt="Release v0.2.4"></a>
+<a href="CHANGELOG.md"><img src="https://img.shields.io/badge/release-v0.3.0-d97745" alt="Release v0.3.0"></a>
 [install](docs/install-guide.md) · [releases](https://github.com/avalonreset/legends-empire/releases) · [attribution](#attribution)
 
 Your digital reality is already there: folders, repositories, tools, knowledge, infrastructure, and half-built ideas. The problem is keeping track of what exists, how it connects, and what you meant to do with it.
@@ -8,6 +8,12 @@ Your digital reality is already there: folders, repositories, tools, knowledge, 
 `legends-empire` brings that into one navigable map, backed by a Markdown knowledge base you own. Obsidian is the visual interface. AI agents help maintain the knowledge and work from it.
 
 ## The seven provinces
+
+AI Marketing Hub Home fits an [optional shared-root capability slot](docs/home-adapter.md).
+Standalone Empire can create Home-compatible project and business records first;
+an authorized private Home installation adds methods later, without a second ontology.
+Empire remains the session starting point. Private methods are never bundled in
+this public module. Existing separate Home workspaces can also be linked intact.
 
 An empire needs a map. These are its seven provinces:
 

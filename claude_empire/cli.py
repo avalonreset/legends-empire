@@ -33,6 +33,9 @@ from .hook_adapter import emit_session_start, emit_stop_status
 from .ledgers import LedgerValidationError, migration_bundle, strict_json_loads
 from .lint_engine import lint_vault, render_markdown
 from .knowledge import attachment_bundle
+from . import home_adapter
+from . import home_profile
+from . import home_install
 from .mode_config import validate_mode_folders
 from .package_validation import validate_package
 from .paths import (
@@ -744,6 +747,54 @@ def command_knowledge_attach(args: argparse.Namespace) -> int:
     return 0
 
 
+def command_home_adapter(args: argparse.Namespace) -> int:
+    if args.home_command == "inspect":
+        report = home_adapter.inspect_home(args.home, args.project)
+        _emit(report)
+        return 0 if report["compatibility"] == "pinned-core" else 2
+    root = _selection(args).root
+    if args.home_command == "list":
+        _emit(home_adapter.list_bindings(root))
+        return 0
+    if args.home_command == "check":
+        if args.native_python and not args.native:
+            home_adapter.fail("--native-python requires --native")
+        report = home_adapter.check_binding(root, args.binding_id, args.native, args.project, args.native_python)
+        _emit(report)
+        return 0 if report["compatibility"] in ("pinned-core", "detached") and report["native_readiness"] not in ("refused", "dependency_missing") else 2
+    if args.home_command == "install":
+        plan, batches, completion = home_install.install_plan(root, args.home_source, args.operation_id, args.generated_at)
+        if not args.apply:
+            _emit({k: v for k, v in plan.items() if k not in ("file_hashes", "verification_hashes")})
+            return 0
+        if not args.approved_plan_sha256 or not hmac.compare_digest(args.approved_plan_sha256, plan["approved_plan_sha256"]):
+            home_adapter.fail("review the exact install plan and supply its approved-plan-sha256")
+        _emit(home_install.apply_install(root, plan, batches, completion))
+        return 0
+    if args.home_command == "prepare":
+        operation = home_profile.prepare_bundle(root, args.operation_id, args.generated_at)
+    elif args.home_command == "compose":
+        operation = home_profile.compose_bundle(root, args.home_source, args.operation_id, args.generated_at)
+    elif args.home_command == "scaffold":
+        operation = home_profile.scaffold_bundle(root, args.spec, args.operation_id, args.generated_at)
+    elif args.home_command == "detach":
+        operation = home_adapter.detach_bundle(root, args.binding_id, args.operation_id, args.generated_at)
+    else:
+        operation = home_adapter.attachment_bundle(root, args.home, args.project,
+            args.binding_id, args.operation_id, args.generated_at, args.shared_root)
+    if not operation["writes"]:
+        _emit({"status": "noop", "changed_paths": []})
+        return 0
+    if args.home_command == "plan" or (args.home_command in ("detach", "prepare", "compose", "scaffold") and not args.apply):
+        _emit({"status": "dry-run", "operation": operation,
+               "plan": inspect_bundle(root, operation),
+               **_approval_fields(root, operation, args.generated_at)})
+        return 0
+    approval = _require_approved_operation(args, root, operation)
+    _emit(apply_bundle(root, operation, approved_plan_sha256=approval))
+    return 0
+
+
 def _add_capture_budget_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--inbox")
     parser.add_argument("--max-items", type=int, default=100)
@@ -1270,6 +1321,43 @@ def build_parser() -> argparse.ArgumentParser:
         if verb == "plan":
             check.add_argument("--vault", required=True, help="Explicit initialized user vault")
         check.set_defaults(handler=command_research_evidence)
+
+    home = subcommands.add_parser("home-adapter", help="Optional reference-only native AI Marketing Hub Home binding")
+    home_commands = home.add_subparsers(dest="home_command", required=True)
+    for verb in ("inspect", "plan", "apply", "check", "detach", "list"):
+        adapter = home_commands.add_parser(verb)
+        if verb not in ("check", "detach", "list"):
+            adapter.add_argument("--home", required=True, help="Explicit separately installed native Home root")
+            adapter.add_argument("--project", help="Optional native Projects/.../context.md; omit for workspace binding")
+        if verb != "inspect":
+            adapter.add_argument("--vault", required=True, help="Initialized Empire session root")
+            if verb != "list":
+                adapter.add_argument("--binding-id", required=True)
+        if verb in ("plan", "apply", "detach"):
+            adapter.add_argument("--operation-id", required=True)
+            adapter.add_argument("--generated-at", required=True)
+            _add_approval_argument(adapter)
+        if verb in ("plan", "apply"):
+            adapter.add_argument("--shared-root", action="store_true", help="Explicit shared-root binding after reviewed composition")
+        if verb == "detach":
+            adapter.add_argument("--apply", action="store_true")
+        if verb == "check":
+            adapter.add_argument("--project", help="Select a native project for this check without changing the binding")
+            adapter.add_argument("--native-python", help="Absolute trusted Home Python interpreter with PyYAML; only with --native")
+            adapter.add_argument("--native", action="store_true", help="Explicitly run the pinned Home project resolver")
+        adapter.set_defaults(handler=command_home_adapter)
+    for verb in ("prepare", "compose", "scaffold", "install"):
+        profile = home_commands.add_parser(verb)
+        profile.add_argument("--vault", required=True)
+        profile.add_argument("--operation-id", required=True)
+        profile.add_argument("--generated-at", required=True)
+        profile.add_argument("--apply", action="store_true")
+        _add_approval_argument(profile)
+        if verb in ("compose", "install"):
+            profile.add_argument("--home-source", required=True, help="Separately authorized original pinned Home installation")
+        if verb == "scaffold":
+            profile.add_argument("--spec", required=True, help="Explicit original record specification JSON")
+        profile.set_defaults(handler=command_home_adapter)
 
     knowledge = subcommands.add_parser("knowledge", help="Attach a reusable Markdown knowledge shelf")
     knowledge_commands = knowledge.add_subparsers(dest="knowledge_command", required=True)
