@@ -24,9 +24,12 @@ private journal and recovery workflow.
   junctions, symlinks and cloud placeholder paths; keep an ordinary local vault
   outside a managed sync tree.
 - Existing files must have owner and primary group matching the invoking
-  Windows token, so their security descriptors can be restored without
+  Windows token's default object owner and primary group, so their security descriptors can be restored without
   ownership privileges. Unsupported ownership is refused during preparation,
   before any transaction content is changed.
+  An elevated token may assign Administrators as its default owner; private
+  ACL grants still name the individual token user and SYSTEM. Well-known SID
+  aliases are compared by their resolved identity, not their spelling.
 - Read-only files, encrypted EFS files and files with named NTFS alternate streams are refused
   before replacement, because copying only their main bytes would lose protected
   or auxiliary content. This backend preserves file bytes and owner/group/DACL;

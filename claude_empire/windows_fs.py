@@ -151,6 +151,14 @@ else:
         _a, "GetSecurityDescriptorControl", W.BOOL, C.c_void_p,
         C.POINTER(W.USHORT), C.POINTER(W.DWORD),
     )
+    _GetSDOwner = _proto(
+        _a, "GetSecurityDescriptorOwner", W.BOOL, C.c_void_p,
+        C.POINTER(C.c_void_p), C.POINTER(W.BOOL),
+    )
+    _GetSDGroup = _proto(
+        _a, "GetSecurityDescriptorGroup", W.BOOL, C.c_void_p,
+        C.POINTER(C.c_void_p), C.POINTER(W.BOOL),
+    )
     _GetAce = _proto(_a, "GetAce", W.BOOL, C.c_void_p, W.DWORD,
                     C.POINTER(C.c_void_p))
     _InitializeAcl = _proto(_a, "InitializeAcl", W.BOOL, C.c_void_p,
@@ -215,6 +223,31 @@ else:
             if "P" in flags:
                 text = text[:start + 2] + flags.replace("AI", "") + text[end:]
         return text
+
+    def _sid_string(sid):
+        """Numeric SID identity, independent of SDDL aliases such as BA/SY."""
+        if not sid:
+            raise OSError(errno.EINVAL, "security descriptor lacks owner or group")
+        text = W.LPWSTR()
+        _checked(_SidToString(sid, C.byref(text)))
+        try:
+            return text.value
+        finally:
+            _LocalFree(C.cast(text, C.c_void_p))
+
+    def _descriptor_identity(descriptor):
+        owner, group, defaulted = C.c_void_p(), C.c_void_p(), W.BOOL()
+        _checked(_GetSDOwner(descriptor, C.byref(owner), C.byref(defaulted)))
+        _checked(_GetSDGroup(descriptor, C.byref(group), C.byref(defaulted)))
+        return _sid_string(owner), _sid_string(group)
+
+    def _descriptor_sddl(descriptor, information=_SECURITY_INFORMATION):
+        text = W.LPWSTR()
+        _checked(_SDToString(descriptor, 1, information, C.byref(text), None))
+        try:
+            return _canonical_sddl(text.value)
+        finally:
+            _LocalFree(C.cast(text, C.c_void_p))
 
     def _sddl_for_handle(handle, information=_SECURITY_INFORMATION):
         descriptor = C.c_void_p()
@@ -387,10 +420,21 @@ else:
             self._mutexes = {}
             self._held_identities = set()
             self._sid = _token_sid(1)
+            # TokenOwner is the default owner assigned to newly created
+            # objects. Elevated tokens may use Administrators here while
+            # TokenUser remains the individual account. Preserve the actual
+            # creator ownership; the private DACL still grants TokenUser.
+            self._owner_sid = _token_sid(4)
             self._group_sid = _token_sid(5)
-            self._identity_sddl = f"O:{self._sid}G:{self._group_sid}"
-            self._private_dacl = f"D:P(A;;FA;;;SY)(A;;FA;;;{self._sid})"
-            self._private_sddl = self._identity_sddl + self._private_dacl
+            identity = f"O:{self._owner_sid}G:{self._group_sid}"
+            private_dacl = f"D:P(A;;FA;;;SY)(A;;FA;;;{self._sid})"
+            # Windows renders well-known token identities with aliases. Use
+            # the same canonical serialization for defaults, live readback,
+            # approval hashes and journal recovery.
+            with _security_descriptor(identity + private_dacl) as descriptor:
+                self._identity_sddl = _descriptor_sddl(descriptor, 3)
+                self._private_sddl = _descriptor_sddl(descriptor)
+            self._private_dacl = self._private_sddl[self._private_sddl.index("D:"):]
             self.supports_dir_fd = {
                 self.open, self.stat, self.mkdir, self.rename, self.replace,
                 self.unlink, self.rmdir,
@@ -414,23 +458,11 @@ else:
                                     C.byref(defaulted)))
                 if not present or not dacl:
                     raise OSError(errno.EACCES, "null or absent DACL is unsupported")
-                text = W.LPWSTR()
-                _checked(_SDToString(descriptor, 1, _SECURITY_INFORMATION,
-                                    C.byref(text), None))
-                try:
-                    canonical = _canonical_sddl(text.value)
-                finally:
-                    _LocalFree(C.cast(text, C.c_void_p))
-                identity = W.LPWSTR()
-                _checked(_SDToString(descriptor, 1, 3, C.byref(identity), None))
-                try:
-                    if identity.value != self._identity_sddl:
-                        raise OSError(
-                            errno.ENOTSUP,
-                            "native transactions require current-user ownership and primary group")
-                finally:
-                    _LocalFree(C.cast(identity, C.c_void_p))
-                return canonical
+                if _descriptor_identity(descriptor) != (self._owner_sid, self._group_sid):
+                    raise OSError(
+                        errno.ENOTSUP,
+                        "native transactions require token-default ownership and primary group")
+                return _descriptor_sddl(descriptor)
 
         def kill(self, pid, signal):
             # os.kill(pid, 0) TERMINATES a process on Windows. Emulate only the

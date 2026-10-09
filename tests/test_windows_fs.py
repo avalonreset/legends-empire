@@ -10,6 +10,7 @@ import struct
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -169,6 +170,40 @@ class WindowsFilesystemTests(unittest.TestCase):
             self.fs.validate_security("O:SYG:SYD:NO_ACCESS_CONTROL")
         self.assertEqual(self.fs.validate_security(self.fs.private_security()),
                          self.fs.private_security())
+
+    def test_builtin_sid_aliases_and_default_owner_are_semantic_identities(self):
+        import claude_empire.windows_fs as native
+
+        user = "S-1-5-21-100000001-200000002-300000003-1001"
+        administrators, system = "S-1-5-32-544", "S-1-5-18"
+        for token_user, token_owner, token_group in (
+            (user, user, administrators),
+            (user, administrators, administrators),
+            (system, system, administrators),
+        ):
+            with self.subTest(owner=token_owner, group=token_group):
+                identities = {1: token_user, 4: token_owner, 5: token_group}
+                with patch.object(native, "_token_sid", side_effect=identities.__getitem__):
+                    adapter = native.WindowsFS()
+                numeric = (
+                    f"O:{token_owner}G:{token_group}"
+                    f"D:P(A;;FA;;;S-1-5-18)(A;;FA;;;{token_user})"
+                )
+                canonical = adapter.private_security()
+                self.assertIn("G:BA", canonical)
+                self.assertEqual(adapter.validate_security(numeric), canonical)
+                self.assertEqual(adapter.validate_security(canonical), canonical)
+                if token_owner == administrators:
+                    self.assertTrue(canonical.startswith("O:BA"))
+                    self.assertIn(f"(A;;FA;;;{user})", canonical)
+                    # Membership in Administrators does not authorize a
+                    # different owner's descriptor under this adapter.
+                    with self.assertRaises(OSError):
+                        adapter.validate_security(numeric.replace(f"O:{administrators}", f"O:{user}"))
+                elif token_owner == system:
+                    self.assertTrue(canonical.startswith("O:SY"))
+                with self.assertRaises(OSError):
+                    adapter.validate_security(numeric.replace(f"G:{token_group}", "G:S-1-5-19"))
 
     def test_same_process_lock_contention_is_not_recursive(self):
         duplicate = self.fs.dup(self.root)
