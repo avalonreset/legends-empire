@@ -171,7 +171,7 @@ membership, tenancy isolation, credential access, or additional agent permission
 ## Inspect, preview, attach
 
 Initialize an Empire vault through the existing `init` workflow first. On Windows,
-inspection and previews work natively; writes use WSL/POSIX directory confinement.
+inspection, previews and writes work natively on local NTFS with Empire 0.3.1+.
 On WSL, use a filesystem supporting private file modes (Linux storage, or correctly
 configured mounts). Do not weaken transaction protections to force an attachment.
 Keep attachment and subsequent checks in the same path namespace; cross-OS or

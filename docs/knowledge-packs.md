@@ -55,11 +55,14 @@ reorganize existing records to make them fit. Index links into an existing
 custom ontology are a separate, reviewed user-note change. Attachment does
 not claim to integrate every possible vault layout automatically.
 
-Native Windows supports preview. Applying uses the existing recoverable
-transaction engine and requires WSL or a supported POSIX host with persistent
-POSIX file permissions. Windows drives mounted in WSL need DrvFS metadata
-enabled; see [platform setup](windows-wsl.md). Preview and
-apply in the same environment. There is no alternate direct-write installer.
+Empire 0.3.1 supports native Windows preview and apply on local NTFS through
+the same recoverable transaction engine with its native handle/ACL backend.
+Linux and macOS use POSIX confinement. WSL remains optional; mounted Windows
+drives in WSL need DrvFS metadata enabled. See [platform setup](windows-wsl.md)
+for storage and recovery limits. Preview and apply in the same environment;
+do not replay a Windows approval hash or unfinished journal through POSIX or vice
+versa. Valid complete foreign history remains intact and does not block new work.
+There is no alternate direct-write installer.
 
 After updating the module, run the same attachment command with a new operation
 ID and the new pack. An unchanged pack returns `noop` without writing files.

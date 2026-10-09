@@ -11,6 +11,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Mapping
 
+if os.name == "nt":
+    from .windows_fs import os_proxy as os
+
 from .json_utils import parse_finite_json_float
 
 WORKSPACE_CONFIG = ".claude-empire.json"
@@ -62,7 +65,7 @@ def supports_confined_dirfd() -> bool:
     """
 
     return (
-        os.name != "nt"
+        (os.name != "nt" or getattr(os, "native_confined", False))
         and hasattr(os, "O_DIRECTORY")
         and os.open in os.supports_dir_fd
         and os.mkdir in os.supports_dir_fd

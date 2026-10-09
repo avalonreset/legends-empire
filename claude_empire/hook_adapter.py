@@ -10,6 +10,9 @@ import sys
 from pathlib import Path
 from typing import Mapping, TextIO
 
+if os.name == "nt":
+    from .windows_fs import os_proxy as os
+
 from .json_utils import strict_json_loads
 from .paths import (
     WORKSPACE_CONFIG,
@@ -57,7 +60,7 @@ def _bounded_regular_bytes(root: Path, path: Path, limit: int) -> bytes | None:
         | getattr(os, "O_NOFOLLOW", 0)
         | getattr(os, "O_BINARY", 0)
     )
-    if os.name != "nt" and os.open in os.supports_dir_fd and hasattr(os, "O_DIRECTORY"):
+    if (os.name != "nt" or getattr(os, "native_confined", False)) and os.open in os.supports_dir_fd and hasattr(os, "O_DIRECTORY"):
         try:
             parent_descriptor = os.open(root, directory_flags)
         except OSError:

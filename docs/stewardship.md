@@ -117,8 +117,8 @@ project files or authority documents. The scanner covers those records, but
 this release does not claim a transaction repair path for every folder.
 Do not move a user's notes merely to fit the writer's allowed paths.
 
-Native Windows supports scanning and transaction inspection. Transactional
-writes require WSL or a supported POSIX host. Inspect and apply in the same
+Native Windows supports scanning, transaction inspection and reviewed writes
+on local NTFS using Empire 0.3.1+. Inspect and apply in the same
 environment; see [platform details](windows-wsl.md). Transaction recovery handles
 interrupted transactions, not recovery of an agent conversation.
 

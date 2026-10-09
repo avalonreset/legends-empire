@@ -70,11 +70,13 @@ lookups. The vault root, metadata runtime, transaction operation, backups,
 capture queue, checkpoint state, and retrieval publications remain pinned for
 their complete mutation window. Concurrent alias replacement therefore fails
 closed or rolls back without touching a replacement tree. These guarantees
-require WSL/Linux or supported macOS; native Windows and Git Bash are not
-supported mutation hosts and are refused with `UNSUPPORTED_PLATFORM` before
-any side effect. Read-only inspection and dry-runs run natively on Windows
-using point-in-time lstat validation (symlink and junction rejection) instead
-of descriptor pinning. Platform specifics and WSL troubleshooting live in the
+use POSIX directory descriptors on Linux/macOS/WSL and retained NT directory
+handles on native Windows local NTFS. Native Windows uses the same journal,
+with owner/group/DACL state bound into approval and recovery. Native support
+does not extend to network shares, reparse paths, or Bash helper protocols.
+Its durability claim covers process interruption; POSIX directory-fsync
+semantics after sudden power loss are not claimed on Windows.
+Platform specifics and WSL troubleshooting live in the
 [Windows and WSL guide](windows-wsl.md).
 
 Raw source bytes can be supplied through hash-checked binary `content_file`

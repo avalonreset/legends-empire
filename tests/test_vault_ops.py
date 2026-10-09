@@ -143,13 +143,13 @@ def test_adopt_preserves_unresolved_legacy_batch_without_raw_inference() -> None
                 raw_payload.parent.parent.stat().st_ino,
             ),
         }
-        real_listdir = os.listdir
-        real_scandir = os.scandir
+        real_listdir = transaction_module.os.listdir
+        real_scandir = transaction_module.os.scandir
 
         def is_raw_payload_directory(value: object) -> bool:
             try:
                 metadata = (
-                    os.fstat(value)
+                    transaction_module.os.fstat(value)
                     if isinstance(value, int)
                     else os.stat(value)  # type: ignore[arg-type]
                 )

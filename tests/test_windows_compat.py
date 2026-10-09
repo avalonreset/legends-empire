@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Windows compatibility tests for the degraded (non-dirfd) vault paths.
+"""Compatibility tests for inspection when no confined write backend is available.
 
 On POSIX these tests simulate the degraded platform by disabling the dirfd
 capability probes and removing ``os.O_DIRECTORY`` (safe: every test file runs
-in its own process).  On real Windows the same branches run natively with no
-patching, plus a few native-only assertions.
+in its own process). On real Windows these tests disable the native backend
+explicitly. Separate transaction suites exercise real handle-confined writes.
 
-What the simulation CANNOT prove (covered only by the windows-smoke CI job on
+What the simulation CANNOT prove (covered only by the windows-native CI job on
 real Windows): CRT text-mode translation (O_BINARY), ``os.open`` refusing
 directories (EACCES), Win32 filename stripping, junction/reparse semantics,
 case-insensitive ``Path.resolve`` normalization, and NTFS stat identity.
@@ -64,13 +64,10 @@ def bundle(operation_id: str, writes: list[dict], expected: dict | None = None) 
 
 @contextlib.contextmanager
 def windows_mode():
-    """Force the degraded non-dirfd branches on POSIX; no-op on Windows."""
-
-    if IS_WINDOWS:
-        yield
-        return
+    """Force unsupported-backend branches without weakening the live backend."""
     saved_flag = getattr(os, "O_DIRECTORY", None)
     with (
+        mock.patch.object(transaction_module.os, "native_confined", False, create=True),
         mock.patch.object(paths_module, "supports_confined_dirfd", lambda: False),
         mock.patch.object(
             transaction_module, "_supports_confined_dirfd", lambda: False
@@ -451,7 +448,7 @@ def test_native_windows_bundle_and_workspace_config_load() -> None:
 def test_capability_predicates_are_false_on_nt() -> None:
     import claude_empire.legacy_lock as legacy_lock_module
 
-    with mock.patch.object(os, "name", "nt"):
+    with windows_mode(), mock.patch.object(os, "name", "nt"):
         assert paths_module.supports_confined_dirfd() is False
         assert transaction_module._supports_confined_dirfd() is False
         assert legacy_lock_module._supports_confined_runtime() is False

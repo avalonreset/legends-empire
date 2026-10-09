@@ -16,7 +16,6 @@ from claude_empire import home_adapter as adapter
 from claude_empire.cli import main
 from claude_empire.transaction import TransactionError, apply_bundle, inspect_bundle, sha256_bytes
 
-POSIX = unittest.skipIf(os.name == "nt", "writes require POSIX or WSL")
 PROJECT = "Projects/Active/Synthetic/context.md"
 
 
@@ -109,10 +108,14 @@ class AdapterTests(unittest.TestCase):
             (self.home / path).write_bytes(payload.replace(b"\n", b"\r\n"))
         self.assertEqual(adapter.inspect_home(self.home)["compatibility"], "pinned-core")
 
-    @POSIX
     def test_symlink_project_or_home_rejected(self):
         alias = self.base / "alias"
-        alias.symlink_to(self.home, target_is_directory=True)
+        try:
+            alias.symlink_to(self.home, target_is_directory=True)
+        except OSError as exc:
+            if os.name == "nt" and getattr(exc, "winerror", None) == 1314:
+                self.skipTest("symlink creation privilege unavailable; native junction rejection is tested separately")
+            raise
         with self.assertRaises(TransactionError):
             adapter.inspect_home(alias)
         context = self.home / PROJECT
@@ -121,7 +124,6 @@ class AdapterTests(unittest.TestCase):
         with self.assertRaises(TransactionError):
             self.bundle()
 
-    @POSIX
     def test_apply_preserves_notes_idempotent_and_native_check(self):
         note = self.empire / "AGENTS.md"
         note.write_bytes(b"Owner instructions\r\n")
@@ -138,7 +140,6 @@ class AdapterTests(unittest.TestCase):
         (self.home / PROJECT).write_text("draft")
         self.assertEqual(adapter.check_binding(self.empire, "synthetic", native=True)["native_readiness"], "refused")
 
-    @POSIX
     def test_binding_retarget_and_native_drift_refused(self):
         self.apply()
         with self.assertRaises(TransactionError):
@@ -147,7 +148,6 @@ class AdapterTests(unittest.TestCase):
         with self.assertRaises(TransactionError):
             adapter.check_binding(self.empire, "synthetic", native=True)
 
-    @POSIX
     def test_reviewed_plan_required_and_concurrent_note_not_overwritten(self):
         bundle = self.bundle()
         with self.assertRaises(TransactionError):
@@ -171,7 +171,6 @@ class AdapterTests(unittest.TestCase):
                 main(["--version"])
             self.assertEqual(stopped.exception.code, 0)
 
-    @POSIX
     def test_workspace_only_discovery_selection_and_detach(self):
         self.assertEqual(adapter.list_bindings(self.empire)["bindings"], [])
         self.apply(self.bundle(project=None))
@@ -197,7 +196,6 @@ class AdapterTests(unittest.TestCase):
         self.assertNotEqual(code, 0)
         self.assertFalse((self.empire / "wiki/integrations").exists())
 
-    @POSIX
     def test_missing_native_dependency_is_actionable_without_vault_writes(self):
         self.apply()
         with patch.object(adapter.subprocess, "run", return_value=subprocess.CompletedProcess([], 1, b"", b"missing")):
@@ -206,7 +204,6 @@ class AdapterTests(unittest.TestCase):
         self.assertIn("--native-python", report["native_requirement"])
         self.assertEqual(report["writes"], 0)
 
-    @POSIX
     def test_malformed_binding_refuses_without_traceback(self):
         self.apply()
         state_file = self.empire / adapter.binding_paths("synthetic")[0]

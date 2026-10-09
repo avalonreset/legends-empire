@@ -30,6 +30,9 @@ from pathlib import Path, PurePosixPath
 from typing import Any, Iterable, Iterator, Mapping, Sequence, cast
 from urllib.parse import urlsplit, urlunsplit
 
+if os.name == "nt":
+    from .windows_fs import os_proxy as os
+
 from .json_utils import parse_finite_json_float
 
 from .paths import canonical, is_relative_to

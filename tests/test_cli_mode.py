@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -195,7 +196,12 @@ class ModeCliTests(unittest.TestCase):
             )
             meta = vault / ".vault-meta"
             meta.mkdir()
-            (meta / "mode.json").symlink_to(outside)
+            try:
+                (meta / "mode.json").symlink_to(outside)
+            except OSError as exc:
+                if os.name == "nt" and getattr(exc, "winerror", None) == 1314:
+                    self.skipTest("symlink creation privilege unavailable; native junction rejection is tested separately")
+                raise
             result = self.invoke("mode", "get", "--vault", str(vault))
             self.assertEqual(2, result.returncode)
             self.assertNotIn("EXTERNAL_MODE_SENTINEL", result.stdout + result.stderr)

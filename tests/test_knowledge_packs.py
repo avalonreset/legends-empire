@@ -20,7 +20,6 @@ from claude_empire.transaction import TransactionError, apply_bundle, inspect_bu
 
 STAMP = "2026-09-28T12:00:00Z"
 DEST = "wiki/library/legends-empire/stewardship"
-POSIX = unittest.skipIf(os.name == "nt", "writes require POSIX or WSL")
 
 
 class KnowledgeTests(unittest.TestCase):
@@ -69,7 +68,6 @@ class KnowledgeTests(unittest.TestCase):
         self.assertFalse((self.vault / "wiki/library").exists())
         self.assertFalse((self.vault / ".vault-meta").exists())
 
-    @POSIX
     def test_attach_idempotence_and_personalized_index_preserved(self):
         self.apply()
         index = self.vault / DEST / "index.md"
@@ -78,7 +76,6 @@ class KnowledgeTests(unittest.TestCase):
         self.assertEqual("# My own integration note\n", index.read_text())
         self.assertFalse((self.vault / DEST / "work").exists())
 
-    @POSIX
     def test_update_preserves_private_records_and_obsolete_reference(self):
         self.apply()
         work = self.vault / DEST / "work/private.md"
@@ -97,7 +94,6 @@ class KnowledgeTests(unittest.TestCase):
         self.assertEqual("0.2.1", state["version"])
         self.assertEqual([], self.bundle("again")["writes"])
 
-    @POSIX
     def test_rollback_updates_only_unmodified_references(self):
         self.apply()
         self.files["index.md"] = "# Version two\n"
@@ -108,7 +104,6 @@ class KnowledgeTests(unittest.TestCase):
         self.apply(self.bundle("rollback"))
         self.assertEqual(self.files["index.md"], (self.vault / DEST / "reference/index.md").read_text())
 
-    @POSIX
     def test_modified_reference_refuses_whole_update(self):
         self.apply()
         reference = self.vault / DEST / "reference/review.md"
@@ -119,14 +114,12 @@ class KnowledgeTests(unittest.TestCase):
             self.bundle("update")
         self.assertEqual("owner edit", reference.read_text())
 
-    @POSIX
     def test_deleted_reference_refuses_update(self):
         self.apply()
         (self.vault / DEST / "reference/review.md").unlink()
         with self.assertRaisesRegex(TransactionError, "modified or removed"):
             self.bundle("again")
 
-    @POSIX
     def test_tampered_state_rejected(self):
         self.apply()
         state_path = self.vault / DEST / "pack-state.json"
@@ -136,7 +129,6 @@ class KnowledgeTests(unittest.TestCase):
         with self.assertRaisesRegex(TransactionError, "integrity mismatch"):
             self.bundle("again")
 
-    @POSIX
     def test_raced_unchanged_reference_rejects_reviewed_transaction(self):
         self.apply()
         self.files["index.md"] = "# Changed upstream\n"
@@ -150,7 +142,6 @@ class KnowledgeTests(unittest.TestCase):
             apply_bundle(self.vault, bundle, approved_plan_sha256=approval)
         self.assertNotEqual(self.files["index.md"], (self.vault / DEST / "reference/index.md").read_text())
 
-    @POSIX
     def test_raced_state_or_index_rejects_update(self):
         self.apply()
         self.files["index.md"] = "# Changed\n"
@@ -210,11 +201,15 @@ class KnowledgeTests(unittest.TestCase):
         with self.assertRaisesRegex(TransactionError, "separate"):
             attachment_bundle(self.parent, self.manifest, operation_id="bad", generated_at=STAMP)
 
-    @POSIX
     def test_symlink_source_or_destination_rejected(self):
         source_note = self.source / "vault/review.md"
         source_note.unlink()
-        source_note.symlink_to(self.source / "vault/index.md")
+        try:
+            source_note.symlink_to(self.source / "vault/index.md")
+        except OSError as exc:
+            if os.name == "nt" and getattr(exc, "winerror", None) == 1314:
+                self.skipTest("symlink creation privilege unavailable; native junction rejection is tested separately")
+            raise
         with self.assertRaises(TransactionError):
             self.bundle()
         source_note.unlink()
@@ -223,7 +218,6 @@ class KnowledgeTests(unittest.TestCase):
         with self.assertRaises(TransactionError):
             self.bundle()
 
-    @POSIX
     def test_same_version_changed_bytes_requires_release_bump(self):
         self.apply()
         self.files["index.md"] = "# Different\n"
@@ -242,7 +236,6 @@ class KnowledgeTests(unittest.TestCase):
         self.assertEqual(64, len(report["approved_plan_sha256"]))
         self.assertFalse((self.vault / DEST).exists())
 
-    @POSIX
     def test_cli_apply_requires_review_hash_and_applies_exact_plan(self):
         args = ["knowledge", "attach", str(self.manifest), "--vault", str(self.vault),
                 "--operation-id", "cli-apply", "--generated-at", STAMP]

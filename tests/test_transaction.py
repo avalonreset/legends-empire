@@ -2383,7 +2383,11 @@ def test_read_runtime_bytes_fails_closed_on_a_same_size_content_change() -> None
             nonlocal calls
             calls += 1
             if calls == 2:
+                stamp = original_fstat(descriptor).st_mtime_ns
                 target.write_bytes(tampered)
+                # Force the same observable mtime, rather than relying on
+                # whether this filesystem coalesces rapid writes.
+                os.utime(target, ns=(stamp, stamp))
             return original_fstat(descriptor)
 
         os.fstat = counting_fstat

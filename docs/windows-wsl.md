@@ -1,9 +1,9 @@
 # Windows and WSL guide
 
-claude-empire supports native Windows as a read-only platform and WSL on a
-filesystem preserving POSIX permissions as a full-capability platform.
-This guide covers what works where, why the boundary
-exists, and how to unstick WSL when it misbehaves.
+Empire 0.3.1 supports native Windows transactions on local NTFS through a
+Windows filesystem backend. Linux, macOS and optional WSL use the existing
+POSIX backend. Both use the same reviewed transactions, ownership rules,
+private journal and recovery workflow.
 
 ## Platform support
 
@@ -11,17 +11,58 @@ exists, and how to unstick WSL when it misbehaves.
 |---|---|---|
 | Inspection, dry-run previews, retrieval | Yes | Yes |
 | Provider evidence `research-evidence verify/plan` | Yes, read-only | Yes, read-only |
-| Vault writes (`transaction apply`, `init`, `adopt`, `migrate`, `capture apply`, `mode set`) | Yes, on a filesystem that preserves POSIX permissions | No: refused with `UNSUPPORTED_PLATFORM` |
-| Capture queue commands (including read-only `capture queue list`) | Yes | No: currently refused; tracked in [#151](https://github.com/AgriciDaniel/claude-obsidian/issues/151) |
-| Git checkpoints (`checkpoint`) | Linux and macOS only | No |
+| Python vault writes (`transaction apply`, `init`, `adopt`, `migrate`, `capture apply`, `mode set`, knowledge attachment, Home workflows) | Yes, on a filesystem that preserves POSIX permissions | Yes, local NTFS under the native constraints below |
+| Python capture queue commands | Yes | Yes, same native constraints |
+| Git checkpoints (`checkpoint`) | Yes | Yes, with Git installed and guarded working directory |
 | Bash setup scripts and shell test suites | Yes | No (POSIX-only) |
 | Claude Code hooks (`SessionStart`, `Stop`) | Yes (works out of the box) | Partial: requires `python3` on `PATH`; see [below](#claude-code-hooks-and-python3-on-windows) |
 
-Vaults must live on a filesystem with stable file identity and persistent POSIX
-file permissions. NTFS can supply stable identity, but a Windows drive mounted
-inside WSL also needs DrvFS metadata enabled for writes. FAT/exFAT volumes
-(typical USB sticks) and some network shares lack the required identity support
-and are refused with `UNSAFE_VAULT_IDENTITY`.
+## Native Windows scope and recovery
+
+- Use a local fixed-drive NTFS vault. UNC paths, network drives, FAT/exFAT/ReFS
+  and reparse-point paths are refused by the native backend. This includes
+  junctions, symlinks and cloud placeholder paths; keep an ordinary local vault
+  outside a managed sync tree.
+- Existing files must have owner and primary group matching the invoking
+  Windows token, so their security descriptors can be restored without
+  ownership privileges. Unsupported ownership is refused during preparation,
+  before any transaction content is changed.
+- Read-only files, encrypted EFS files and files with named NTFS alternate streams are refused
+  before replacement, because copying only their main bytes would lose protected
+  or auxiliary content. This backend preserves file bytes and owner/group/DACL;
+  it does not claim preservation of SACL auditing or every NTFS metadata feature.
+- Root and child paths use retained handles and relative NT opens. Reparse
+  objects are refused. Renaming a directory does not redirect an already
+  retained handle into a replacement directory.
+- Root identity has a process-lifetime named mutex. Runtime metadata and new
+  files receive protected owner-and-SYSTEM ACLs at creation. Existing files'
+  owner/group/DACL are bound into the reviewed plan and preserved on replacement
+  and rollback. Permission changes cause a conflict.
+- File bytes are flushed and each replacement is atomic. The journal supports
+  recovery after process interruption, including a killed writer. Ordinary-user
+  Windows does not expose POSIX directory `fsync`; this backend does **not**
+  claim the same durability for directory entries after sudden power loss.
+  Maintain backups and verify the vault after an OS/storage failure.
+- Review, apply, replay and recover an unfinished operation in the same backend.
+  Complete foreign history with a valid correlated result and intact backups
+  remains readable and does not block new work; its records stay unchanged and
+  foreign permission descriptors are never applied. Missing-result, unfinished
+  or replayed foreign operations require their original backend. WSL remains
+  available for existing POSIX vault operations.
+
+Installing the module does not mutate a vault. Native invocation uses the same
+Python command as other systems; no WSL helper or alternate direct-copy
+installer is involved. Existing shell helpers and their legacy lock protocol
+remain POSIX-only, and native support does not make Bash scripts Windows
+programs. Do not run native and WSL writers concurrently against one vault.
+
+After a crashed process, inspect the operation journal. A confirmed-dead lock
+owner can be reaped using the existing explicit stale-lock recovery option;
+age alone never authorizes reaping a live owner. Recovery validates all backup
+hashes and permission descriptors before restoring files.
+
+POSIX vaults require persistent POSIX file permissions. A Windows drive mounted
+inside WSL needs DrvFS metadata enabled, as described below.
 
 ## Windows drives mounted inside WSL
 
@@ -79,19 +120,13 @@ diagnostic. SessionStart context and Stop recovery warnings are both silently
 absent in that case; the rest of claude-empire (skills and the CLI) is
 unaffected, since only the optional hook path depends on `python3`.
 
-## Why writes require WSL
+## Optional WSL backend
 
-Mutation safety is bound to POSIX directory descriptors: the vault root and
-every runtime directory stay pinned for the whole write, so a concurrently
-swapped symlink or replaced folder fails closed instead of redirecting the
-write (see the [compound vault guide](compound-vault-guide.md)). Native Windows
-cannot provide those primitives, so writes are refused up front rather than
-silently running with weaker guarantees.
-
-A degraded native-Windows write mode (default-off, behind an explicit
-reduced-guarantees flag) is under consideration in
-[#151](https://github.com/AgriciDaniel/claude-obsidian/issues/151). If WSL is a
-blocker for you, that issue is the place to weigh in.
+WSL remains useful for Bash helpers and existing POSIX journals. Its directory
+descriptors provide confinement while the native backend uses NT directory
+handles. Choose one backend for an operation and retain that environment for
+recovery. The native backend does not loosen the POSIX engine's permission
+requirements on DrvFS.
 
 ## WSL troubleshooting
 
@@ -125,9 +160,9 @@ WSL troubleshooting checklist:
 
 ## Working across the boundary
 
-The supported native-Windows workflow is: inspect and review natively, mutate
-inside WSL. Because approval hashes bind to the environment that produced
-them, do the reviewed dry-run in the same environment that will run the apply.
+The supported native workflow is: inspect, review and apply with native Python
+against a supported local vault. If choosing WSL instead, perform all three
+steps there. Approval hashes bind to the environment that produced them.
 Keeping the vault inside the WSL filesystem (rather than on a mounted Windows
 drive) avoids both the identity caveats above and cross-boundary performance
 overhead.

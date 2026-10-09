@@ -17,9 +17,8 @@ for development, but a normal user vault should be a separate directory.
 - Obsidian when you want its visual editor
 - Bash for the vault helper scripts
 - Git only for source development, release builds, or explicit checkpoints
-- On Windows: WSL with persistent POSIX file permissions for vault writes
-  (mounted Windows drives need DrvFS metadata enabled); native Windows supports read-only
-  inspection and dry-runs: see the [Windows and WSL guide](windows-wsl.md)
+- On Windows: a local NTFS vault for native reviewed writes; WSL is optional.
+  See the [Windows and WSL guide](windows-wsl.md) for storage and recovery limits.
 
 ## Router install
 
@@ -43,12 +42,11 @@ path to `skills/cto-legends/SKILL.md`, then run
 `python scripts/claude-empire.py package validate` from the product
 directory. A chat-only service cannot execute this workflow.
 
-Linux and macOS run the full POSIX suite. Native Windows supports
-inspection, retrieval and dry-run planning. Recoverable canonical
-mutation uses WSL or a supported POSIX host on a filesystem preserving POSIX
-permissions; never bypass this boundary
-with generic direct writes. Read `windows-wsl.md` before promising full
-Windows execution.
+Linux and macOS use the POSIX backend. Native Windows supports inspection,
+retrieval, dry-run planning and reviewed Python transaction workflows on local
+NTFS through the native handle/ACL backend. Shell helpers remain POSIX-only.
+Read `windows-wsl.md` for exact filesystem, journal and recovery boundaries;
+never replace reviewed transactions with untracked direct writes.
 
 ## Product versus vault
 
@@ -223,7 +221,7 @@ User notes, sources, ledgers, and Obsidian settings remain untouched.
 | Transaction conflict / exit 75 | Another operation is active or a target changed; reread, rebuild, and inspect a new bundle. |
 | Obsidian CLI is unavailable | Use filesystem reads; start/update Obsidian before retrying CLI transport. |
 | Capture adapter is not implemented | Inspect `capture adapters`; configure a separate runner only with explicit consent. |
-| Writes refused with `UNSUPPORTED_PLATFORM` on Windows | Vault mutation requires WSL; see the [Windows and WSL guide](windows-wsl.md). |
+| Native writes refused on Windows | Verify Empire 0.3.1+, local NTFS and no reparse/network path; see the [Windows and WSL guide](windows-wsl.md). |
 | Writes refused with `UNSUPPORTED_FILESYSTEM_PERMISSIONS` inside WSL | The runtime filesystem did not retain mode `0600`. Verify DrvFS metadata is enabled for the chosen Windows-drive mount, or use the WSL Linux filesystem; see [mount requirements](windows-wsl.md#windows-drives-mounted-inside-wsl). |
 | WSL installed but `wsl --status` hangs | Follow Microsoft's diagnostic and reporting flow in the [Windows and WSL guide](windows-wsl.md#wsl-troubleshooting); do not assume a cause without evidence. |
 | Native dry-run approval fails in WSL with `PLAN_CHANGED` | Approval hashes bind the reviewing environment; redo the dry-run inside WSL ([details](windows-wsl.md#wsl-troubleshooting)). |

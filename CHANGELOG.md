@@ -7,6 +7,31 @@ implementation record for older releases.
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-10-09
+
+### Added
+
+- Native Windows transaction backend for local NTFS vaults, using retained
+  handles and relative NT filesystem operations, process-lifetime root locks,
+  private runtime ACLs, and the existing journal/recovery workflow.
+- Native permission descriptors are included in reviewed plans and journals;
+  replacement and rollback preserve supported existing owner/group/DACL state,
+  and permission drift is refused.
+- Verified complete transaction history remains readable after a vault crosses
+  operating systems. Incomplete recovery and explicit replay still require the
+  operation's original backend; foreign security metadata is never applied.
+- Native Windows knowledge attachment and the shared Python transaction
+  workflows no longer require WSL. Reparse-point, network and non-NTFS storage
+  remain unsupported for native mutation. Windows recovery covers process
+  interruption; POSIX directory-fsync power-loss guarantees are not claimed.
+
+### Fixed
+
+- Runtime JSON reads verify bytes even when a same-size edit shares the same
+  filesystem timestamp.
+- Native process-liveness checks use query-only Windows APIs rather than
+  Windows `os.kill(pid, 0)`.
+
 ## [0.3.0] - 2026-10-01
 
 ### Added

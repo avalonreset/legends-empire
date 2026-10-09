@@ -74,10 +74,10 @@ partial, empty or error response is admitted only as evidence of that state.
 5. Verify the resulting source and claim links, navigation and knowledge state.
    Do not create a canonical page if indexing the evidence alone is sufficient.
 
-Native Windows supports verification and planning. Applying capture and canonical
-transactions still requires a supported POSIX filesystem. WSL on Windows drives
-requires persistent POSIX permissions; a Linux-native working vault is another
-option. Do not substitute direct canonical writes when those constraints block
+Native Windows supports verification, planning and reviewed capture/canonical
+transactions on local NTFS with Empire 0.3.1+. POSIX hosts retain their existing
+backend. Optional WSL on Windows drives requires persistent POSIX permissions.
+Do not substitute direct canonical writes when filesystem constraints block
 apply. See [platform rules](windows-wsl.md) and [capture steps](install-guide.md).
 
 Source bytes can change after planning. Verification is a point-in-time admission

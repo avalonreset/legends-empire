@@ -13,7 +13,6 @@ sys.path.insert(0, str(ROOT))
 from claude_empire import home_adapter as adapter, home_profile as profile, home_install as installer
 from claude_empire.transaction import TransactionError, apply_bundle, inspect_bundle, sha256_bytes
 
-POSIX = unittest.skipIf(os.name == "nt", "writes require POSIX or WSL")
 STAMP = "2026-10-01T00:00:00Z"
 
 
@@ -79,14 +78,12 @@ class ProfileTests(unittest.TestCase):
         self.assertFalse(any("Archive" in p for p in paths))
         self.assertFalse((self.root / "AGENTS.md").exists())
 
-    @POSIX
     def test_prepare_preserves_owner_and_is_idempotent(self):
         (self.root / "AGENTS.md").write_bytes(b"Owner contract\r\n")
         self.prepare()
         self.assertEqual((self.root / "AGENTS.md").read_bytes(), b"Owner contract\r\n")
         self.assertFalse(profile.prepare_bundle(self.root, "again", STAMP)["writes"])
 
-    @POSIX
     def test_compose_preserves_exact_contracts_and_drift_refuses(self):
         (self.root / "AGENTS.md").write_bytes(b"Owner instructions\r\n")
         self.prepare()
@@ -101,7 +98,6 @@ class ProfileTests(unittest.TestCase):
         with self.assertRaises(TransactionError):
             profile.compose_bundle(self.root, self.source, "no", STAMP)
 
-    @POSIX
     def test_end_to_end_shared_binding_and_detach_preserve_capabilities(self):
         self.prepare()
         result = self.install()
@@ -115,7 +111,6 @@ class ProfileTests(unittest.TestCase):
         self.assertTrue((self.root / "Workspaces/AI Marketing Hub/Skills/Example/SKILL.md").exists())
         self.assertFalse((self.root / ".obsidian").exists())
 
-    @POSIX
     def test_install_inventory_only_idempotent_and_no_untracked_data(self):
         (self.source / "Workspaces/private.md").write_text("private user data not in release")
         self.install()
@@ -126,7 +121,6 @@ class ProfileTests(unittest.TestCase):
         self.assertEqual(plan["create_files"], 0)
         self.assertEqual(installer.apply_install(self.root, plan, batches, completion)["completed_batches"], 0)
 
-    @POSIX
     def test_mutable_handoff_preserved_but_methods_and_schema_checked(self):
         self.install()
         handoff = self.root / "AI Team/Sessions/handoff.md"
@@ -142,7 +136,6 @@ class ProfileTests(unittest.TestCase):
         with self.assertRaises(TransactionError):
             installer.install_plan(self.root, self.source, "invalid", STAMP)
 
-    @POSIX
     def test_install_partial_state_resume_and_final_hashes(self):
         with patch.object(installer, "BATCH_SIZE", 1):
             plan, batches, completion = installer.install_plan(self.root, self.source, "resume", STAMP)
@@ -173,7 +166,6 @@ class ProfileTests(unittest.TestCase):
             installer.install_plan(self.root, self.source, "conflict", STAMP)
         self.assertEqual(target.read_text(), "Existing owner help")
 
-    @POSIX
     def test_whole_life_scaffold_is_native_pm_but_draft_context(self):
         self.apply(self.scaffold(title="Learn piano"))
         overview = (self.root / "Projects/Active/first-project/first-project.md").read_text()
@@ -183,7 +175,6 @@ class ProfileTests(unittest.TestCase):
         self.assertIn("client: null", context)
         self.assertFalse((self.root / "Workspaces").exists())
 
-    @POSIX
     def test_second_project_reuses_populated_company_and_brand(self):
         self.apply(self.scaffold(kind="marketing", company_id="example", brand_id="example"))
         company = self.root / "Workspaces/Clients/Companies/example.md"

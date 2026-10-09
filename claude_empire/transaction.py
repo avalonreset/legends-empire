@@ -24,6 +24,9 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Any, Callable, Iterable, Mapping, Sequence
 
+if os.name == "nt":
+    from .windows_fs import os_proxy as os
+
 from .json_utils import parse_finite_json_float
 from .paths import (
     VaultSelectionError,
@@ -731,7 +734,7 @@ def _portable_file_mode(st_mode: int) -> int:
     output differ from every POSIX host for identical content.
     """
 
-    if os.name == "nt":
+    if os.name == "nt" and not getattr(os, "native_confined", False):
         return 0o644
     return st_mode & 0o777
 
@@ -843,6 +846,7 @@ def _atomic_vault_write(
     data: bytes,
     *,
     mode: int | None,
+    native_security: str | None = None,
     root_fd: int | None = None,
     meta_fd: int | None = None,
 ) -> None:
@@ -883,6 +887,9 @@ def _atomic_vault_write(
             handle.flush()
             os.fsync(handle.fileno())
             os.fchmod(handle.fileno(), mode if mode is not None else 0o600)
+            if native_security is not None:
+                os.set_security(handle.fileno(), native_security)
+                os.fsync(handle.fileno())
         os.replace(
             temporary,
             leaf,
@@ -1047,6 +1054,7 @@ def _prepared_projection(writes: Iterable[PreparedWrite]) -> list[dict[str, Any]
             "original_mode": write.original_mode,
             "new_sha256": write.content_sha256,
             "new_mode": write.new_mode,
+            **_security_fields(write),
         }
         for write in writes
     ]
@@ -1385,7 +1393,7 @@ def _require_lock_dirfd_support() -> None:
 
     required = (os.open, os.mkdir, os.stat, os.unlink, os.rmdir, os.rename)
     if (
-        os.name == "nt"
+        (os.name == "nt" and not getattr(os, "native_confined", False))
         or not getattr(os, "O_DIRECTORY", 0)
         or not getattr(os, "O_NOFOLLOW", 0)
         or any(function not in os.supports_dir_fd for function in required)
@@ -1498,6 +1506,12 @@ def _open_lock_parent_from_root_fd(
 def _try_vault_advisory_lock(root_fd: int) -> bool:
     """Try to serialize the vault inode across runtime namespace replacement."""
 
+    if getattr(os, "native_confined", False):
+        try:
+            os.acquire_lock(root_fd)
+        except BlockingIOError:
+            return False
+        return True
     try:
         fcntl_module = __import__("fcntl")
         lock_ex = int(getattr(fcntl_module, "LOCK_EX"))
@@ -1520,6 +1534,9 @@ def _try_vault_advisory_lock(root_fd: int) -> bool:
 def _release_vault_advisory_lock(root_fd: int) -> None:
     """Release an advisory lock previously acquired on the vault descriptor."""
 
+    if getattr(os, "native_confined", False):
+        os.release_lock(root_fd)
+        return
     try:
         fcntl_module = __import__("fcntl")
         flock = getattr(fcntl_module, "flock")
@@ -2226,13 +2243,12 @@ def _read_runtime_bytes_at(
 
         raw, after = _read_current()
         _require_stable_identity(after)
-        if after.st_mtime_ns == opened.st_mtime_ns:
-            return raw
-        # A metadata-only touch (a sync client refreshing timestamps) moves the
-        # mtime without moving a byte. Re-read once and accept only if the bytes
-        # are identical to the first read; any difference means the content
-        # changed while it was read and the read fails closed.
-        time.sleep(_RUNTIME_READ_STABILITY_DELAY)
+        # Filesystems can coalesce timestamps for same-size writes, and a
+        # writer can restore mtime. Always confirm bytes through the pinned
+        # descriptor; unchanged metadata alone is not a content guarantee.
+        # Keep the settling delay only for metadata changes from sync clients.
+        if after.st_mtime_ns != opened.st_mtime_ns:
+            time.sleep(_RUNTIME_READ_STABILITY_DELAY)
         confirmation, confirmed = _read_current()
         _require_stable_identity(confirmed)
         if confirmation != raw:
@@ -2682,6 +2698,8 @@ class PreparedWrite:
     original_mode: int | None
     new_mode: int
     backup_path: Path
+    original_security: str | None = None
+    new_security: str | None = None
 
 
 @dataclass(frozen=True)
@@ -2692,6 +2710,45 @@ class RecoveryWrite:
     original_mode: int | None
     new_mode: int
     backup_content: bytes | None
+    original_security: str | None = None
+    new_security: str | None = None
+
+
+def _security_fields(write: PreparedWrite | RecoveryWrite) -> dict[str, Any]:
+    if write.new_security is None:
+        return {}
+    return {
+        "original_security": write.original_security,
+        "new_security": write.new_security,
+    }
+
+
+def _safe_native_security(
+    vault_root: Path, relative: str, *, root_fd: int | None = None,
+    meta_fd: int | None = None,
+) -> str | None:
+    """Capture owner/group/DACL through the same confined file primitive."""
+    if not getattr(os, "native_confined", False):
+        return None
+    parent = descriptor = -1
+    try:
+        parent, leaf = _open_parent_directory(
+            vault_root, relative, create=False, root_fd=root_fd, meta_fd=meta_fd,
+        )
+        descriptor = os.open(leaf, read_open_flags(), dir_fd=parent)
+        return os.validate_security(os.get_security(descriptor))
+    except FileNotFoundError:
+        return None
+    except (OSError, ValueError) as exc:
+        raise TransactionValidationError(
+            "UNSUPPORTED_NATIVE_PERMISSIONS",
+            f"cannot preserve native owner/group/DACL for {relative}: {exc}",
+        ) from exc
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+        if parent != -1:
+            os.close(parent)
 
 
 def _load_bundle(
@@ -3596,6 +3653,13 @@ def _prepare_writes(
             root_fd=root_fd,
             meta_fd=meta_fd,
         )
+        original_security = _safe_native_security(
+            vault_root, normalized, root_fd=root_fd, meta_fd=meta_fd,
+        )
+        new_security = (
+            original_security or os.private_security()
+            if getattr(os, "native_confined", False) else None
+        )
         if normalized_expected[normalized] != current_hash:
             raise TransactionConflict(
                 "EXPECTED_HASH_MISMATCH",
@@ -3648,6 +3712,8 @@ def _prepare_writes(
                 original_mode=original_mode,
                 new_mode=original_mode if original_mode is not None else 0o600,
                 backup_path=backup,
+                original_security=original_security,
+                new_security=new_security,
             )
         )
     extra_expected = sorted(set(normalized_expected).difference(seen))
@@ -3862,6 +3928,7 @@ def _journal_for(
 ) -> dict[str, Any]:
     return {
         "schema": JOURNAL_SCHEMA,
+        **({"native_security": "windows-sddl-v1"} if getattr(os, "native_confined", False) else {}),
         "operation_id": operation_id,
         "operation_type": operation_type,
         "input_bundle_sha256": input_bundle_hash,
@@ -3878,6 +3945,7 @@ def _journal_for(
                 "original_mode": write.original_mode,
                 "new_mode": write.new_mode,
                 "backup": write.backup_path.name,
+                **_security_fields(write),
             }
             for write in writes
         ],
@@ -3906,6 +3974,13 @@ def _result_for(
         "changed_paths": [write.relative_path for write in prepared],
         "hashes": {write.relative_path: write.content_sha256 for write in prepared},
         "modes": {write.relative_path: write.new_mode for write in prepared},
+        **({
+            "native_security": "windows-sddl-v1",
+            "security_hashes": {
+                write.relative_path: sha256_bytes(write.new_security.encode("utf-8"))
+                for write in prepared if write.new_security is not None
+            },
+        } if getattr(os, "native_confined", False) else {}),
     }
 
 
@@ -3966,9 +4041,26 @@ def _validated_recovery_writes(
     *,
     root_fd: int,
     meta_fd: int,
+    allow_foreign_terminal: bool = False,
 ) -> list[RecoveryWrite]:
     """Preflight the complete journal and all backups before rollback mutates."""
 
+    native_family = journal.get("native_security")
+    foreign_terminal = allow_foreign_terminal and journal.get("state") == "complete"
+    if native_family is not None and (
+        native_family != "windows-sddl-v1"
+        or (not getattr(os, "native_confined", False) and not foreign_terminal)
+    ):
+        raise TransactionRecoveryError(
+            "UNSUPPORTED_JOURNAL_PLATFORM",
+            "native Windows security metadata requires the native Windows transaction backend",
+        )
+    if (getattr(os, "native_confined", False)
+            and native_family != "windows-sddl-v1" and not foreign_terminal):
+        raise TransactionRecoveryError(
+            "UNSUPPORTED_JOURNAL_PLATFORM",
+            "POSIX journals require recovery in their original POSIX environment",
+        )
     writes = journal.get("writes")
     operation_type = journal.get("operation_type")
     if (
@@ -4092,6 +4184,37 @@ def _validated_recovery_writes(
         assert isinstance(new_hash, str)
         original_mode = entry.get("original_mode")
         new_mode = entry.get("new_mode")
+        original_security = entry.get("original_security")
+        new_security = entry.get("new_security")
+        if native_family is not None:
+            try:
+                if (
+                    not isinstance(new_security, str)
+                    or (original_hash is None and original_security is not None)
+                    or (original_hash is not None and not isinstance(original_security, str))
+                ):
+                    raise ValueError("native security descriptor coverage is invalid")
+                for descriptor in (original_security, new_security):
+                    if descriptor is not None and (
+                        not descriptor or "\x00" in descriptor
+                        or len(descriptor.encode("utf-8")) > 65536
+                        or (
+                            getattr(os, "native_confined", False)
+                            and not foreign_terminal
+                            and os.validate_security(descriptor) != descriptor
+                        )
+                    ):
+                        raise ValueError("native security descriptor is invalid or noncanonical")
+                if original_hash is not None and original_security != new_security:
+                    raise ValueError("replacement must preserve original native security")
+            except (OSError, ValueError, TypeError) as exc:
+                raise TransactionRecoveryError(
+                    "CORRUPT_JOURNAL", f"journal write {index} has invalid native security: {exc}",
+                ) from exc
+        elif original_security is not None or new_security is not None:
+            raise TransactionRecoveryError(
+                "CORRUPT_JOURNAL", "native security fields require their platform marker",
+            )
         if (
             (original_hash is None and original_mode is not None)
             or (
@@ -4157,6 +4280,8 @@ def _validated_recovery_writes(
                 original_mode=original_mode,
                 new_mode=new_mode,
                 backup_content=backup_content,
+                original_security=original_security,
+                new_security=new_security,
             )
         )
     return validated
@@ -4195,6 +4320,13 @@ def _restore_journal(
             if current_hash not in {original_hash, new_hash, None}:
                 record_failure(relative, "content changed outside transaction")
                 continue
+            if entry.new_security is not None and current_hash is not None:
+                current_security = _safe_native_security(
+                    vault_root, relative, root_fd=root_fd, meta_fd=meta_fd,
+                )
+                if current_security not in {entry.original_security, entry.new_security}:
+                    record_failure(relative, "permissions changed outside transaction")
+                    continue
             if original_hash is None:
                 if current_hash is None:
                     continue
@@ -4213,6 +4345,7 @@ def _restore_journal(
                     relative,
                     entry.backup_content,
                     mode=entry.original_mode,
+                    native_security=entry.original_security,
                     root_fd=root_fd,
                     meta_fd=meta_fd,
                 )
@@ -4240,6 +4373,8 @@ def _validate_completed_result(
     paths = result.get("changed_paths")
     hashes = result.get("hashes")
     modes = result.get("modes")
+    native_family = result.get("native_security")
+    security_hashes = result.get("security_hashes")
     if (
         not isinstance(paths, list)
         or any(not isinstance(path, str) for path in paths)
@@ -4252,6 +4387,16 @@ def _validate_completed_result(
         raise error_type(
             code, "completed operation result has invalid path/hash/mode coverage"
         )
+    if native_family is not None and (
+        native_family != "windows-sddl-v1"
+        or not getattr(os, "native_confined", False)
+        or not isinstance(security_hashes, dict)
+        or set(security_hashes) != set(paths)
+        or any(not _valid_journal_sha256(value) for value in security_hashes.values())
+    ):
+        raise error_type(code, "completed operation has invalid native security coverage")
+    if getattr(os, "native_confined", False) and native_family is None:
+        raise error_type(code, "native Windows cannot replay a POSIX operation result")
     for relative in paths:
         expected_hash = hashes[relative]
         expected_mode = modes[relative]
@@ -4281,6 +4426,12 @@ def _validate_completed_result(
                 f"(expected sha256={expected_hash} mode={expected_mode:04o}, "
                 f"found sha256={actual_hash} mode={actual_mode})",
             )
+        if native_family is not None:
+            security = _safe_native_security(
+                vault_root, relative, root_fd=root_fd, meta_fd=meta_fd,
+            )
+            if security is None or sha256_bytes(security.encode("utf-8")) != security_hashes[relative]:
+                raise error_type(code, f"completed operation security drifted: {relative}")
 
 
 def _assert_transaction_namespaces(
@@ -4304,6 +4455,10 @@ def _validate_result_journal_correlation(
     expected_paths = [entry.relative_path for entry in writes]
     expected_hashes = {entry.relative_path: entry.new_sha256 for entry in writes}
     expected_modes = {entry.relative_path: entry.new_mode for entry in writes}
+    expected_security = {
+        entry.relative_path: sha256_bytes(entry.new_security.encode("utf-8"))
+        for entry in writes if entry.new_security is not None
+    }
     expected_fields = {
         "operation_type": journal.get("operation_type"),
         "bundle_sha256": journal.get("input_bundle_sha256"),
@@ -4316,6 +4471,8 @@ def _validate_result_journal_correlation(
         or result.get("changed_paths") != expected_paths
         or result.get("hashes") != expected_hashes
         or result.get("modes") != expected_modes
+        or (expected_security and result.get("security_hashes") != expected_security)
+        or result.get("native_security") != journal.get("native_security")
     ):
         raise TransactionRecoveryError(
             "CORRUPT_RESULT",
@@ -4384,6 +4541,10 @@ def _recover_incomplete_locked(
                     journal,
                     root_fd=runtime.root_fd,
                     meta_fd=runtime.meta_fd,
+                    # Complete history is verified but never replayed here.
+                    # Foreign security descriptors remain bounded opaque data;
+                    # result correlation below must pass before continuing.
+                    allow_foreign_terminal=journal.get("state") == "complete",
                 )
                 result = operation.read_json(
                     "changed-paths.json",
@@ -4472,6 +4633,13 @@ def _recover_incomplete_locked(
                     "changed_paths": list(hashes),
                     "hashes": hashes,
                     "modes": {entry.relative_path: entry.new_mode for entry in writes},
+                    **({
+                        "native_security": "windows-sddl-v1",
+                        "security_hashes": {
+                            entry.relative_path: sha256_bytes(entry.new_security.encode("utf-8"))
+                            for entry in writes if entry.new_security is not None
+                        },
+                    } if journal.get("native_security") == "windows-sddl-v1" else {}),
                 }
                 _validate_completed_result(
                     vault_root,
@@ -4866,6 +5034,14 @@ def apply_bundle(
                                 "EXPECTED_MODE_MISMATCH",
                                 f"{write.relative_path} mode changed before it could be applied",
                             )
+                        if write.new_security is not None and _safe_native_security(
+                            vault, write.relative_path, root_fd=runtime.root_fd,
+                            meta_fd=runtime.meta_fd,
+                        ) != write.original_security:
+                            raise TransactionConflict(
+                                "EXPECTED_SECURITY_MISMATCH",
+                                f"{write.relative_path} permissions changed before it could be applied",
+                            )
                         _assert_no_existing_portable_alias(
                             vault,
                             write.relative_path,
@@ -4877,6 +5053,7 @@ def apply_bundle(
                             write.relative_path,
                             write.content,
                             mode=write.new_mode,
+                            native_security=write.new_security,
                             root_fd=runtime.root_fd,
                             meta_fd=runtime.meta_fd,
                         )

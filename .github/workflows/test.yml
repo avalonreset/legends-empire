@@ -49,15 +49,16 @@ jobs:
           git diff --exit-code
           test -z "$(git status --porcelain=v1 --untracked-files=all)"
 
-  windows-smoke:
-    # The full suite exercises dirfd confinement, symlinks, fcntl, and Bash.
-    # deliberately unsupported on native Windows.  This job runs the portable
-    # surface (schema/package/contract validation plus the Windows
-    # compatibility suite) as an explicit allowlist so a skip can never be
-    # mistaken for a pass.
-    name: windows-latest / Python 3.12 (portable surface)
+  windows-native:
+    # Core transactions execute through real Windows handles. Legacy Bash and
+    # POSIX-specific race injection remain in the full Linux/macOS jobs above.
+    name: windows-latest / Python ${{ matrix.python }} (native writes)
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.11', '3.12', '3.13', '3.14']
     runs-on: windows-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     env:
       PYTHONDONTWRITEBYTECODE: '1'
     defaults:
@@ -77,12 +78,12 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
-          python-version: '3.12'
+          python-version: ${{ matrix.python }}
 
       - name: Show runtime versions
         run: python --version
 
-      - name: Run portable-surface tests
+      - name: Run native transactions and portable tests
         run: |
           set -eu
           for test_file in \
@@ -97,7 +98,15 @@ jobs:
             tests/test_stewardship_engine.py \
             tests/test_contracts.py \
             tests/test_benchmark_tools.py \
-            tests/test_windows_compat.py; do
+            tests/test_windows_compat.py \
+            tests/test_windows_fs.py \
+            tests/test_transaction_windows.py \
+            tests/test_transaction_foreign_history.py \
+            tests/test_capture_windows.py \
+            tests/test_checkpoint_windows.py \
+            tests/test_cli_approval.py \
+            tests/test_cli_mode.py \
+            tests/test_vault_ops.py; do
             echo "=== $test_file ==="
             python "$test_file"
           done
@@ -116,7 +125,7 @@ jobs:
     name: Reproducible release artifact
     runs-on: ubuntu-latest
     timeout-minutes: 8
-    needs: test
+    needs: [test, windows-native]
     env:
       PYTHONDONTWRITEBYTECODE: '1'
 

@@ -11,10 +11,14 @@ import subprocess
 import sys
 import tempfile
 import uuid
+from contextlib import ExitStack, contextmanager
 from contextvars import ContextVar, Token
 from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping, Sequence
+
+if os.name == "nt":
+    from .windows_fs import os_proxy as os
 
 from .json_utils import parse_finite_json_float
 from .lint_engine import lint_vault
@@ -57,6 +61,10 @@ _ACTIVE_ROOT: ContextVar[tuple[Path, int] | None] = ContextVar(
     "claude_empire_checkpoint_root",
     default=None,
 )
+_ACTIVE_WINDOWS_CWD: ContextVar[Path | None] = ContextVar(
+    "claude_empire_checkpoint_windows_cwd",
+    default=None,
+)
 
 
 def _active_root_fd(root: Path) -> int | None:
@@ -66,13 +74,89 @@ def _active_root_fd(root: Path) -> int | None:
     return active[1]
 
 
+@contextmanager
+def _windows_pinned_cwd(descriptor: int):
+    """Retain a native local cwd namespace until every Git subprocess exits.
+
+    Windows has no subprocess directory-descriptor interface. Holding each
+    component without FILE_SHARE_WRITE/DELETE prevents reparse mutation,
+    replacement or ancestor moves
+    between verification and CreateProcess resolving its cwd. Reparse points
+    and non-drive namespaces fail closed.
+    """
+    import ctypes
+    from ctypes import wintypes
+
+    kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+    final_path = kernel.GetFinalPathNameByHandleW
+    final_path.argtypes = [
+        wintypes.HANDLE, wintypes.LPWSTR, wintypes.DWORD, wintypes.DWORD
+    ]
+    final_path.restype = wintypes.DWORD
+    create = kernel.CreateFileW
+    create.argtypes = [
+        wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD, ctypes.c_void_p,
+        wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE,
+    ]
+    create.restype = wintypes.HANDLE
+    close = kernel.CloseHandle
+    close.argtypes = [wintypes.HANDLE]
+    close.restype = wintypes.BOOL
+    # The adapter owns this handle; only close the separate guards below.
+    handle = os._directory(descriptor)
+    buffer = ctypes.create_unicode_buffer(32768)
+    length = final_path(handle, buffer, len(buffer), 0)
+    if not length or length >= len(buffer):
+        raise OSError(errno.ENOTSUP, "cannot resolve retained native directory")
+    value = buffer.value
+    if not value.startswith("\\\\?\\") or value.startswith("\\\\?\\UNC\\"):
+        raise OSError(errno.ENOTSUP, "Git cwd requires a local drive namespace")
+    candidate = Path(value[4:])
+    if len(candidate.anchor) != 3 or candidate.anchor[1:] != ":\\":
+        raise OSError(errno.ENOTSUP, "Git cwd requires a local drive namespace")
+    guards = []
+    try:
+        for component in reversed((candidate, *candidate.parents)):
+            # FILE_LIST_DIRECTORY | FILE_READ_ATTRIBUTES | READ_CONTROL; share read only,
+            # explicitly deny write/delete. Metadata-only opens do not participate
+            # in Windows sharing checks, so directory-list access is required.
+            # OPEN_EXISTING, OPEN_REPARSE_POINT, BACKUP_SEMANTICS.
+            guard = create(str(component), 0x20081, 1, None, 3, 0x02200000, None)
+            if guard == ctypes.c_void_p(-1).value:
+                raise ctypes.WinError(ctypes.get_last_error())
+            guards.append(guard)
+            # Inspect the guard handle itself; a second pathname lookup cannot
+            # establish whether the object we pinned was a reparse point.
+            metadata = os._metadata(guard)
+            if not stat.S_ISDIR(metadata.st_mode):
+                raise OSError(errno.ENOTDIR, "Git cwd component is not a directory")
+        held = os.fstat(descriptor)
+        current = os.stat(candidate, follow_symlinks=False)
+        if (held.st_dev, held.st_ino) != (current.st_dev, current.st_ino):
+            raise OSError(errno.ESTALE, "Git cwd changed while acquiring guards")
+        yield candidate
+    finally:
+        for guard in reversed(guards):
+            close(guard)
+
+
 def _descriptor_root_path(root: Path) -> tuple[Path, tuple[int, ...]]:
     """Return a subprocess cwd pinned to the held vault directory."""
 
     descriptor = _active_root_fd(root)
     if descriptor is None:
         return root, ()
-    if sys.platform.startswith("linux"):
+    if os.name == "nt":
+        # pinned_cwd holds no-delete handles for every path ancestor for the
+        # entire checkpoint. Identity checks alone would leave a swap window
+        # between this probe and CreateProcess resolving its cwd.
+        candidate = _ACTIVE_WINDOWS_CWD.get()
+        if candidate is None:
+            raise CheckpointError(
+                "CHECKPOINT_FD_CWD_UNSUPPORTED",
+                "native Git requires a retained Windows cwd guard",
+            )
+    elif sys.platform.startswith("linux"):
         candidate = Path(f"/proc/self/fd/{descriptor}")
     elif sys.platform == "darwin":
         try:
@@ -102,7 +186,11 @@ def _descriptor_root_path(root: Path) -> tuple[Path, tuple[int, ...]]:
     probe: int | None = None
     try:
         opened = os.fstat(descriptor)
-        flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0)
+        flags = (
+            directory_open_flags()
+            if os.name == "nt"
+            else os.O_RDONLY | getattr(os, "O_CLOEXEC", 0)
+        )
         probe = os.open(candidate, flags)
         alias = os.fstat(probe)
     except OSError as exc:
@@ -121,7 +209,7 @@ def _descriptor_root_path(root: Path) -> tuple[Path, tuple[int, ...]]:
             "CHECKPOINT_FD_CWD_UNSUPPORTED",
             "descriptor Git cwd does not identify the selected vault",
         )
-    return candidate, (descriptor,)
+    return candidate, () if os.name == "nt" else (descriptor,)
 
 
 def _same_as_active_root(root: Path, candidate: Path) -> bool:
@@ -130,7 +218,7 @@ def _same_as_active_root(root: Path, candidate: Path) -> bool:
         return canonical(candidate) == root
     try:
         expected = os.fstat(descriptor)
-        actual = candidate.stat()
+        actual = os.stat(candidate)
     except OSError:
         return False
     return (expected.st_dev, expected.st_ino) == (actual.st_dev, actual.st_ino)
@@ -1221,10 +1309,20 @@ def checkpoint_operation(
         raise CheckpointError(
             "INVALID_AS_OF", "as_of must be an ISO date, date object, or null"
         )
-    with MutationLock(root) as mutation_lock:
+    with MutationLock(root) as mutation_lock, ExitStack() as cwd_guards:
         root_fd = mutation_lock.duplicate_root_fd()
         active_token: Token[tuple[Path, int] | None] = _ACTIVE_ROOT.set((root, root_fd))
+        cwd_token: Token[Path | None] | None = None
         try:
+            if os.name == "nt":
+                try:
+                    pinned = cwd_guards.enter_context(_windows_pinned_cwd(root_fd))
+                except (AttributeError, OSError) as exc:
+                    raise CheckpointError(
+                        "CHECKPOINT_FD_CWD_UNSUPPORTED",
+                        f"cannot retain a safe native Git cwd: {exc}",
+                    ) from exc
+                cwd_token = _ACTIVE_WINDOWS_CWD.set(Path(pinned))
             with _CheckpointStore(mutation_lock, root, operation_id) as store:
                 _repository_head(root)
                 result, result_fingerprint = _transaction_result(store)
@@ -1381,5 +1479,7 @@ def checkpoint_operation(
                 )
                 return _resume_pending(root, store, validated)
         finally:
+            if cwd_token is not None:
+                _ACTIVE_WINDOWS_CWD.reset(cwd_token)
             _ACTIVE_ROOT.reset(active_token)
             os.close(root_fd)
