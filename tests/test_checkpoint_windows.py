@@ -55,7 +55,15 @@ def test_native_cwd_guards_block_root_and_ancestor_rename() -> None:
         descriptor = checkpoint.os.open(root, directory_open_flags())
         try:
             with checkpoint._windows_pinned_cwd(descriptor) as pinned:
-                assert pinned == root
+                # GitHub Windows TEMP can use an 8.3 path while the retained
+                # handle resolves to its long spelling. Compare the objects,
+                # not two valid spellings of the same directory.
+                held = checkpoint.os.fstat(descriptor)
+                for spelling in (pinned, root):
+                    actual = checkpoint.os.stat(spelling, follow_symlinks=False)
+                    assert (actual.st_dev, actual.st_ino) == (
+                        held.st_dev, held.st_ino
+                    )
                 for target in (root, parent):
                     # A writable directory handle could turn an empty directory
                     # into a junction. Deny write as well as rename/delete.
