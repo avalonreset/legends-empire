@@ -4046,7 +4046,9 @@ def _validated_recovery_writes(
     """Preflight the complete journal and all backups before rollback mutates."""
 
     native_family = journal.get("native_security")
-    foreign_terminal = allow_foreign_terminal and journal.get("state") == "complete"
+    foreign_terminal = allow_foreign_terminal and journal.get("state") in {
+        "complete", "rolled-back",
+    }
     if native_family is not None and (
         native_family != "windows-sddl-v1"
         or (not getattr(os, "native_confined", False) and not foreign_terminal)
@@ -4658,6 +4660,7 @@ def _recover_incomplete_locked(
                 _validated_recovery_writes(
                     vault_root, operation, journal,
                     root_fd=runtime.root_fd, meta_fd=runtime.meta_fd,
+                    allow_foreign_terminal=True,
                 )
             _assert_transaction_namespaces(lock, runtime, operation)
     return recovered
@@ -4932,6 +4935,18 @@ def apply_bundle(
                         and journal.get("state") == "rolled-back"
                         and journal.get("input_bundle_sha256") == input_bundle_hash
                     ):
+                        # Inspection of terminal foreign history is read-only.
+                        # A retry discards its journal and backups, so retain
+                        # the native-platform requirements before doing so.
+                        _validated_recovery_writes(
+                            vault, existing, journal,
+                            root_fd=runtime.root_fd, meta_fd=runtime.meta_fd,
+                        )
+                        # Validation may pin backups. Windows cannot finish
+                        # removing that directory while its handle is open.
+                        if existing.backups_fd is not None:
+                            os.close(existing.backups_fd)
+                            existing.backups_fd = None
                         runtime.remove_operation(existing)
                     else:
                         raise TransactionRecoveryError(

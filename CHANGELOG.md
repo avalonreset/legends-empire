@@ -7,6 +7,18 @@ implementation record for older releases.
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-10-10
+
+### Fixed
+
+- Valid rolled-back transaction history no longer blocks new operations after
+  a vault crosses operating systems. Journal paths, hashes, backup contents and
+  security metadata remain validated; terminal history is never replayed,
+  removed or rewritten.
+- Incomplete foreign transactions and retries of foreign operation IDs still
+  require their original backend. This patch does not apply POSIX permissions
+  on Windows or Windows security descriptors on POSIX.
+
 ## [0.3.1] - 2026-10-09
 
 ### Added

@@ -62,6 +62,8 @@ drives in WSL need DrvFS metadata enabled. See [platform setup](windows-wsl.md)
 for storage and recovery limits. Preview and apply in the same environment;
 do not replay a Windows approval hash or unfinished journal through POSIX or vice
 versa. Valid complete foreign history remains intact and does not block new work.
+Version 0.3.2 also accepts validated rolled-back foreign history without modifying
+it. Use that version or newer when an existing vault contains such records.
 There is no alternate direct-write installer.
 
 After updating the module, run the same attachment command with a new operation

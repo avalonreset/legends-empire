@@ -48,9 +48,11 @@ private journal and recovery workflow.
   Maintain backups and verify the vault after an OS/storage failure.
 - Review, apply, replay and recover an unfinished operation in the same backend.
   Complete foreign history with a valid correlated result and intact backups
-  remains readable and does not block new work; its records stay unchanged and
-  foreign permission descriptors are never applied. Missing-result, unfinished
-  or replayed foreign operations require their original backend. WSL remains
+  remains readable and does not block new work. From 0.3.2, validated rolled-back
+  foreign history is also accepted without requiring a completion result;
+  rollback is already terminal. Its records stay unchanged and foreign
+  permission descriptors are never applied. Missing-result complete, unfinished,
+  replayed or retried foreign operations require their original backend. WSL remains
   available for existing POSIX vault operations.
 
 Installing the module does not mutate a vault. Native invocation uses the same
