@@ -40,9 +40,11 @@
     "CONTRIBUTING.md",
     "LICENSE",
     "Makefile",
+    "NOTICE",
     "PRIVACY.md",
     "README.md",
     "SECURITY.md",
+    "SUPPORT.md",
     "VERSION",
     "WIKI.md",
     "ZCODE.md"
@@ -76,10 +78,12 @@
     "max_total_bytes": 52428800
   },
   "reviewed_binaries": {
+    "assets/banner.webp": "963a0103133c5fd8809047cfca598d693e14f0204dc45061dc5343d5b61d2538",
     "assets/cover.png": "7921a6494df958c9bf236cbaa141fc23641efc2ca16f2775be9913ce91724197",
     "assets/legends-empire-banner.webp": "963a0103133c5fd8809047cfca598d693e14f0204dc45061dc5343d5b61d2538",
     "assets/screenshots/graph-view.png": "9faa4a414ccfa2618ab849519ca81a66fe5eb096c90491fc9fe650099f3002cc",
     "assets/screenshots/wiki-map-view.png": "76d5e1ce23d4a76bca4c09e737fb3ac494e787556fcb385d6acc2af66235be89",
+    "assets/social-preview.png": "e0c4493b81ace278ac9ad634125443f9b176f025ff9d0a6e74dbc6134203bb4d",
     "tests/fixtures/capture/sample.pdf": "b6a48cb88c70887bd99c9120292e72764d368433655388783b7fc77578b23a35"
   },
   "schema_version": 1

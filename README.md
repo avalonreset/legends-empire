@@ -1,6 +1,8 @@
-# ![legends-empire](assets/legends-empire-banner.webp)
+# ![legends-empire](assets/banner.webp)
 
 <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/release-v0.3.2-d97745" alt="Release v0.3.2"></a>
+<a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-666666" alt="License MIT"></a>
+
 [install](docs/install-guide.md) · [releases](https://github.com/avalonreset/legends-empire/releases) · [attribution](#attribution)
 
 Your digital reality is already there: folders, repositories, tools, knowledge, infrastructure, and half-built ideas. The problem is keeping track of what exists, how it connects, and what you meant to do with it.
@@ -112,13 +114,51 @@ Network shares, reparse-point paths and non-NTFS storage are not native write
 targets. See [platform setup](docs/windows-wsl.md) for the exact scope and the
 optional WSL route.
 
+## Quick start
+
+Install and inspect `legends-empire` through the central [`cto-legends`](https://github.com/avalonreset/cto-legends) router:
+
+```sh
+cto-legends sync --apply
+cto-legends install legends-empire --apply
+cto-legends handoff legends-empire
+```
+
+Run a read-only vault stewardship check or verify an exported research evidence bank:
+
+```sh
+python -m legends_vault_steward --help
+python -m claude_empire.cli --help
+```
+
+## Architecture and how it works
+
+```text
+Obsidian Markdown Vault (user-owned files)
+  +-- claude_empire/ (source capture, linked wiki notes, reviewed transactions)
+  +-- legends_vault_steward/ (read-only inventory, link freshness, bounded review queue)
+  +-- knowledge/ (attachable `legends.knowledge-pack/v1` playbooks and templates)
+```
+
+- `claude_empire/`: Core vault memory runtime, atomic transaction engine, and research evidence handoff verifier.
+- `legends_vault_steward/`: Vault stewardship CLI and attachable knowledge pack manager.
+- `docs/`: [Installation guide](docs/install-guide.md), [stewardship guide](docs/stewardship.md), [knowledge packs](docs/knowledge-packs.md), and [search strategy](docs/SEARCH-STRATEGY.md).
+
+## FAQ
+
+**Does installing `legends-empire` automatically modify my Obsidian vault?**
+No. You choose the target vault, and all writes happen through reviewed transactions. Vault stewardship inspections and evidence intake previews are read-only by default.
+
+**Can other Legends modules attach their runbooks to my vault?**
+Yes. Modules that ship a `legends.knowledge-pack/v1` manifest (such as [`legends-hetzner`](https://github.com/avalonreset/legends-hetzner), [`legends-coolify`](https://github.com/avalonreset/legends-coolify), and [`legends-cloudflare`](https://github.com/avalonreset/legends-cloudflare)) can preview and attach their reference packs without overwriting your private notes.
+
 ---
 
 ## Attribution
 
 `legends-empire` incorporates source-cited wiki and memory tooling from [claude-obsidian](https://github.com/AgriciDaniel/claude-obsidian) by Daniel Agrici ([AgriciDaniel](https://github.com/AgriciDaniel)), under the MIT license.
 
-Original copyright, license, and contributor notices are preserved in [LICENSE](LICENSE), [ATTRIBUTION.md](ATTRIBUTION.md), and [CITATION.cff](CITATION.cff).
+Original copyright, license, and contributor notices are preserved in [LICENSE](LICENSE), [ATTRIBUTION.md](ATTRIBUTION.md), [CITATION.cff](CITATION.cff), [CONTRIBUTING.md](CONTRIBUTING.md), [SUPPORT.md](SUPPORT.md), and [SECURITY.md](SECURITY.md).
 
 ---
 

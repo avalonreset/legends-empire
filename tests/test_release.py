@@ -612,10 +612,12 @@ class CanonicalPolicyTests(unittest.TestCase):
         self.assertEqual(["ATTRIBUTION.md"], config["approved_private_url_disclosures"])
         reviewed = config["reviewed_binaries"]
         expected_binaries = [
+            "assets/banner.webp",
             "assets/cover.png",
             "assets/legends-empire-banner.webp",
             "assets/screenshots/graph-view.png",
             "assets/screenshots/wiki-map-view.png",
+            "assets/social-preview.png",
             "tests/fixtures/capture/sample.pdf",
         ]
         self.assertEqual(expected_binaries, list(reviewed))
