@@ -61,6 +61,7 @@ class RouterNativeSurfaceTests(unittest.TestCase):
             "scripts/setup-multi-agent.sh",
             "scripts/setup-multi-agent.ps1",
             "scripts/mirror-agent-skills.ps1",
+            "scripts/compact-skill-descriptions.ps1",
             "install-codex.ps1",
             "install-codex.sh",
         ]

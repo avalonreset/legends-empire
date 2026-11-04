@@ -7,6 +7,14 @@ implementation record for older releases.
 
 ## [Unreleased]
 
+## [0.3.3] - 2026-11-04
+
+### Changed
+
+- Lowered `BATCH_SIZE` in `claude_empire/home_install.py` from `400` to `150` files per atomic transaction batch to stay well below Windows Defender bulk NTFS rename heuristic thresholds while preserving multi-batch Home installation semantics.
+- Removed legacy pre-router `scripts/compact-skill-descriptions.ps1` script and added it to the forbidden skill-registration surface checks in `tests/test_release_surface.py`.
+- Clarified `scripts/wiki-mode.py templates` help and error guidance to direct agents to `scripts/claude-empire.py knowledge` for methodology knowledge packs.
+
 ## [0.3.2] - 2026-10-10
 
 ### Fixed

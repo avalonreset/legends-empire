@@ -1,6 +1,6 @@
 # ![legends-empire](assets/banner.webp)
 
-<a href="CHANGELOG.md"><img src="https://img.shields.io/badge/release-v0.3.2-d97745" alt="Release v0.3.2"></a>
+<a href="CHANGELOG.md"><img src="https://img.shields.io/badge/release-v0.3.3-d97745" alt="Release v0.3.3"></a>
 <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-666666" alt="License MIT"></a>
 
 [install](docs/install-guide.md) · [releases](https://github.com/avalonreset/legends-empire/releases) · [attribution](#attribution)

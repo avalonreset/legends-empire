@@ -20,7 +20,7 @@ EXACT = {".agents/skills/aimh/SKILL.md", ".claude/skills/aimh/SKILL.md", "LICENS
 EXACT.update({"README.md", "KNOWN-LIMITATIONS.md", "PREVIEW-VERIFICATION.md", "PRIVACY.md",
               "CONTRIBUTING.md", "ROLLBACK.md", "CHANGELOG.md"})
 SUFFIXES = {".md", ".json", ".py", ".txt", ".base", ".canvas", ".css", ".svg", ".yaml", ".yml", ".sh"}
-BATCH_SIZE = 400
+BATCH_SIZE = 150
 
 
 def selected(path: str) -> bool:

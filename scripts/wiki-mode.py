@@ -19,7 +19,7 @@ CLI:
   wiki-mode.py route TYPE NAME          # print suggested path for new content
                                         # TYPE: source|entity|concept|session|research
   wiki-mode.py id                       # mint a Zettelkasten ID (timestamp)
-  wiki-mode.py templates                # list per-mode template files
+  wiki-mode.py templates                # retired legacy command (use claude-empire.py knowledge)
 
 Exit codes:
   0: success
@@ -342,7 +342,7 @@ def main(argv=None):
                           help="Preview routing under MODE without writing mode.json (default: use current vault mode)")
 
     sub.add_parser("id", help="Mint a Zettelkasten ID (timestamp)")
-    sub.add_parser("templates", help="List per-mode template files")
+    sub.add_parser("templates", help="Retired legacy command (templates now live in knowledge packs)")
 
     # Accept --vault after the subcommand as well as before it. Extract it in a
     # tiny pre-pass, then let the existing subparser validate everything else.
@@ -377,7 +377,11 @@ def main(argv=None):
     if args.cmd == "templates":
         templates_dir = PLUGIN_ROOT / "skills" / "wiki-mode" / "templates"
         if not templates_dir.is_dir():
-            print(f"ERR: templates dir missing: {templates_dir}", file=sys.stderr)
+            print(
+                f"ERR: templates dir missing: {templates_dir} "
+                "(per-module templates were retired; attach the methodology knowledge pack via scripts/claude-empire.py knowledge)",
+                file=sys.stderr,
+            )
             return 2
         for f in sorted(templates_dir.rglob("*.md")):
             print(str(f.relative_to(PLUGIN_ROOT)))
