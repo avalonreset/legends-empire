@@ -163,3 +163,10 @@ Original copyright, license, and contributor notices are preserved in [LICENSE](
 ---
 
 [cto-legends](https://cto-legends.com) · [ai-marketing-hub-pro](https://www.skool.com/ai-marketing-hub-pro)
+
+---
+
+**Specification & benchmarks on cto-legends.com:**
+- **Module specification & architecture matrix:** [cto-legends.com/modules/legends-empire](https://cto-legends.com/modules/legends-empire)
+- **Related engineering dispatches:** [Obsidian Second Brain: Markdown Knowledge Base Guide](https://cto-legends.com/blog?post=obsidian-second-brain-markdown-knowledge-base) · [How to Build AI Agents: Production CLI & MCP Routing](https://cto-legends.com/blog?post=how-to-build-ai-agents-cli-mcp-routing) · [Fractional CTO Advisory: Technical Due Diligence Guide](https://cto-legends.com/blog?post=fractional-cto-technical-due-diligence-guide)
+- **Ecosystem hub:** [cto-legends.com/home](https://cto-legends.com/home)
