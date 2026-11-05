@@ -240,7 +240,7 @@ class WindowsFilesystemTests(unittest.TestCase):
         try:
             result = subprocess.run(
                 [sys.executable, "-c", program], capture_output=True, text=True,
-                timeout=10, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                timeout=10)
             self.assertEqual(result.returncode, 0, result.stderr)
         finally:
             self.fs.release_lock(self.root)
@@ -293,8 +293,7 @@ class WindowsFilesystemTests(unittest.TestCase):
 
     def test_zero_signal_does_not_terminate_process(self):
         process = subprocess.Popen(
-            [sys.executable, "-c", "import time; time.sleep(30)"],
-            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+            [sys.executable, "-c", "import time; time.sleep(30)"])
         try:
             self.fs.kill(process.pid, 0)
             self.assertIsNone(process.poll())

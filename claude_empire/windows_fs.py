@@ -411,7 +411,7 @@ else:
         O_DIRECTORY = 0x10000000
         O_NOFOLLOW = 0x20000000
         O_CLOEXEC = 0x40000000
-        O_NONBLOCK = 0x08000000
+        O_NONBLOCK = 1 << 27
 
         def __init__(self):
             self._directories = {}

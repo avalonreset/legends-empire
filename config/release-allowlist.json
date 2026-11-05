@@ -28,6 +28,7 @@
   ],
   "include_files": [
     ".gitattributes",
+    ".github/CODEOWNERS",
     ".gitignore",
     ".legends-module",
     ".legends-router-pin",
@@ -35,7 +36,6 @@
     "ATTRIBUTION.md",
     "CHANGELOG.md",
     "CITATION.cff",
-    "CODEOWNERS",
     "CODE_OF_CONDUCT.md",
     "CONTRIBUTING.md",
     "LICENSE",
@@ -45,6 +45,7 @@
     "README.md",
     "SECURITY.md",
     "SUPPORT.md",
+    "THIRD_PARTY_NOTICES.md",
     "VERSION",
     "WIKI.md",
     "ZCODE.md"
@@ -52,7 +53,7 @@
   "include_globs": [
     ".github/*.md",
     ".github/*.yml",
-    ".github/ISSUE_TEMPLATE/*.md",
+    ".github/ISSUE_TEMPLATE/*.yml",
     ".github/workflows/*.yml",
     "legends_vault_steward/*.py",
     "legends_vault_steward/data/*.json"
@@ -78,9 +79,11 @@
     "max_total_bytes": 52428800
   },
   "reviewed_binaries": {
+    "assets/banner.png": "914e369207a0f138e3afe00719dc9f86a64a389101823ee596f6250797af7875",
     "assets/banner.webp": "963a0103133c5fd8809047cfca598d693e14f0204dc45061dc5343d5b61d2538",
-    "assets/cover.png": "7921a6494df958c9bf236cbaa141fc23641efc2ca16f2775be9913ce91724197",
+    "assets/cover.png": "b2fdf765ba4536e6fb395c517f6e847b6ec964c2d5a4283fa8c2c329dd534ea3",
     "assets/legends-empire-banner.webp": "963a0103133c5fd8809047cfca598d693e14f0204dc45061dc5343d5b61d2538",
+    "assets/preview.png": "714227a321aad3c13c7962561f7984ca22c5a3298a2b851712b4e6f25b4001b3",
     "assets/screenshots/graph-view.png": "9faa4a414ccfa2618ab849519ca81a66fe5eb096c90491fc9fe650099f3002cc",
     "assets/screenshots/wiki-map-view.png": "76d5e1ce23d4a76bca4c09e737fb3ac494e787556fcb385d6acc2af66235be89",
     "assets/social-preview.png": "e0c4493b81ace278ac9ad634125443f9b176f025ff9d0a6e74dbc6134203bb4d",

@@ -1,9 +1,13 @@
+<a name="banner"></a>
+<a name="legends-empire"></a>
+
 # ![legends-empire](assets/banner.webp)
 
-<a href="CHANGELOG.md"><img src="https://img.shields.io/badge/release-v0.3.3-d97745" alt="Release v0.3.3"></a>
-<a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-666666" alt="License MIT"></a>
+[![release](https://img.shields.io/github/v/release/avalonreset/legends-empire?label=release&sort=date&style=flat-square&labelColor=000000&color=ff0000)](https://github.com/avalonreset/legends-empire/releases/latest)
+[![checks](https://img.shields.io/github/actions/workflow/status/avalonreset/legends-empire/test.yml?branch=main&label=checks&style=flat-square&labelColor=000000)](https://github.com/avalonreset/legends-empire/actions/workflows/test.yml)
+[![license](https://img.shields.io/github/license/avalonreset/legends-empire?label=license&style=flat-square&labelColor=000000&color=666666)](LICENSE)
 
-[install](docs/install-guide.md) · [releases](https://github.com/avalonreset/legends-empire/releases) · [attribution](#attribution)
+[Operating recipe](docs/AGENT-RECIPE.md) · [install](docs/install-guide.md) · [releases](https://github.com/avalonreset/legends-empire/releases) · [attribution](#attribution)
 
 Your digital reality is already there: folders, repositories, tools, knowledge, infrastructure, and half-built ideas. The problem is keeping track of what exists, how it connects, and what you meant to do with it.
 
@@ -96,9 +100,9 @@ Plane view.
 
 ## Agent setup (via `cto-legends`)
 
-Part of the [CTO Legends](https://github.com/avalonreset/cto-legends) ecosystem. `cto-legends` is the only registered skill; this repo vendors a pinned copy at `skills/cto-legends/SKILL.md`.
+Part of the [CTO Legends](https://github.com/avalonreset/cto-legends) ecosystem. `cto-legends` is the only registered skill; this repo vendors a pinned copy at [skills/cto-legends/SKILL.md](skills/cto-legends/SKILL.md).
 
-Install with `cto-legends install legends-empire`, then follow the module recipe the router loads. Do not register this module as its own skill.
+Install with `cto-legends install legends-empire`, then follow the module recipe the router loads ([docs/AGENT-RECIPE.md](docs/AGENT-RECIPE.md)). Do not register this module as its own skill.
 
 ## Install and use
 
@@ -142,7 +146,7 @@ Obsidian Markdown Vault (user-owned files)
 
 - `claude_empire/`: Core vault memory runtime, atomic transaction engine, and research evidence handoff verifier.
 - `legends_vault_steward/`: Vault stewardship CLI and attachable knowledge pack manager.
-- `docs/`: [Installation guide](docs/install-guide.md), [stewardship guide](docs/stewardship.md), [knowledge packs](docs/knowledge-packs.md), and [search strategy](docs/SEARCH-STRATEGY.md).
+- `docs/`: [Operating recipe](docs/AGENT-RECIPE.md), [installation guide](docs/install-guide.md), [stewardship guide](docs/stewardship.md), [knowledge packs](docs/knowledge-packs.md), and [search strategy](docs/SEARCH-STRATEGY.md).
 
 ## FAQ
 

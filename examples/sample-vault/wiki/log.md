@@ -12,4 +12,4 @@ tags:
 
 # Sample Wiki Log
 
-- 2026-07-11 — fixture — Created the deterministic synthetic sample.
+- 2026-07-11 - fixture - Created the deterministic synthetic sample.

@@ -7,6 +7,19 @@ implementation record for older releases.
 
 ## [Unreleased]
 
+## [0.3.4] - 2026-11-05
+
+### Added
+
+- Added `docs/AGENT-RECIPE.md` with complete CLI/workflow tables (`claude-empire.py`, `legends-vault-stewardship`, `knowledge-packs`, `home-adapter`) and explicit Windows Defender, EDR, and anti-ransomware operating guardrails.
+- Added `scripts/check_release.py`, `THIRD_PARTY_NOTICES.md`, `assets/manifest.json`, and metadata-stripped `assets/banner.png` (`4096x1024`) and `assets/preview.png` (`1024x256`).
+
+### Changed
+
+- Added explicit Windows Defender, EDR, and anti-ransomware guardrails to `AGENTS.md` and updated `README.md` top badges to the 3-badge house layout.
+- Pinned `actions/checkout` and `actions/setup-python` by full 40-character commit SHA across `.github/workflows/contract.yml` and `.github/workflows/test.yml`, and removed duplicate `.github/ISSUE_TEMPLATE/*.md` and root `CODEOWNERS` files.
+- Stripped PNG authoring metadata chunks from `assets/cover.png` and removed hidden-console process creation flags from Windows filesystem unit tests.
+
 ## [0.3.3] - 2026-11-04
 
 ### Changed

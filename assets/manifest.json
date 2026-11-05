@@ -1,0 +1,31 @@
+{
+  "product": "legends-empire",
+  "banner_template": "legends-type-v1",
+  "social_template": "legends-social-v1",
+  "subtitle": "markdown knowledge foundation, recoverable vault transactions, and stewardship",
+  "font": "Legends Regular",
+  "font_sha256": "3769f0f76477a7d9e2e6cb40422dedacb56c9ab1a6f7beee89b2b9ba6b8091ee",
+  "font_redistributed": false,
+  "files": [
+    {
+      "name": "banner.png",
+      "bytes": 91598,
+      "sha256": "914e369207a0f138e3afe00719dc9f86a64a389101823ee596f6250797af7875"
+    },
+    {
+      "name": "banner.webp",
+      "bytes": 35228,
+      "sha256": "963a0103133c5fd8809047cfca598d693e14f0204dc45061dc5343d5b61d2538"
+    },
+    {
+      "name": "preview.png",
+      "bytes": 34566,
+      "sha256": "714227a321aad3c13c7962561f7984ca22c5a3298a2b851712b4e6f25b4001b3"
+    },
+    {
+      "name": "social-preview.png",
+      "bytes": 24109,
+      "sha256": "e0c4493b81ace278ac9ad634125443f9b176f025ff9d0a6e74dbc6134203bb4d"
+    }
+  ]
+}

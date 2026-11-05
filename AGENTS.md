@@ -1,22 +1,17 @@
-# legends-empire: contributor build and test notes
+# Agent Instructions for legends-empire
 
-Product source for `legends-empire` (local-first Markdown knowledge-base
-tooling). For product usage see `README.md` and `docs/`. Agent skill routing
-goes through `cto-legends`; this repo registers no skill of its own.
+Start with [docs/AGENT-RECIPE.md](docs/AGENT-RECIPE.md), [README.md](README.md), and [docs/install-guide.md](docs/install-guide.md).
 
-## Test
+## Core Operating Rules
 
-Run `make test` after behavioral changes. Targets:
-
-- `make test-python`: each `tests/test_*.py` in isolation.
-- `make test-shell`: each `tests/test_*.sh` in isolation.
-- `make test-contracts`: `scripts/claude-empire.py contracts --check-only`
-  and `--verify`.
-- `make test-package`: `scripts/claude-empire.py package validate`.
-- `make validate`: contracts plus package validation without the suite.
-
-## Working-tree safety
-
-Tests are hermetic. Do not point test runs at a real user vault (a directory
-containing `.claude-empire.json`). `make clean-test-state` removes runtime
-locks, caches, and generated state.
+1. **Single Router Skill**: Discovery belongs to `skills/cto-legends/SKILL.md`. Do not add secondary skills under `skills/` or register per-module skills.
+2. **Product vs. Vault Separation**: Never point test runs or implicit writes at the module source checkout or a real user vault without an explicit `--vault <path>`.
+3. **Preview-First Reviewed Transactions**: All mutating workflows (`init`, `adopt`, `migrate`, `capture apply`, `mode set`, `extension dragonscale`, `knowledge attach`, `home-adapter`, `transaction apply`) require a preview pass followed by `--apply --approved-plan-sha256 <sha256>`.
+4. **Windows Defender, EDR, and Anti-Ransomware Guardrails**:
+   - Never spawn hidden consoles, execution-policy bypass shell wrappers, or background localhost daemons.
+   - Never read local browser profile databases, DPAPI stores, or third-party credential stores outside the explicit workspace.
+   - Never print raw secrets or tokens to terminal output, logs, or receipts.
+   - All vault mutations use bounded batches (`BATCH_SIZE <= 150`), refuse symlinks and reparse points (`CWE-59`), and fail closed on precondition drift.
+5. **Release & Test Hygiene**:
+   - Run `python scripts/check_release.py` and the hermetic test suite (`make test` or `python -m unittest discover -s tests`) before packaging.
+   - `make clean-test-state` removes runtime locks, caches, and generated state.

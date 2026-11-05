@@ -602,8 +602,11 @@ class CanonicalPolicyTests(unittest.TestCase):
             f"## [{version}] - {citation_date.group(1)}",
             changelog,
         )
-        self.assertIn(f"release-v{version}-", readme)
-        self.assertIn(f'alt="Release v{version}"', readme)
+        self.assertIn(
+            "https://img.shields.io/github/v/release/avalonreset/legends-empire",
+            readme,
+        )
+        self.assertIn("docs/AGENT-RECIPE.md", readme)
 
     def test_repository_allowlist_is_canonical_and_valid(self) -> None:
         config, errors = _load_config(ROOT)
@@ -612,9 +615,11 @@ class CanonicalPolicyTests(unittest.TestCase):
         self.assertEqual(["ATTRIBUTION.md"], config["approved_private_url_disclosures"])
         reviewed = config["reviewed_binaries"]
         expected_binaries = [
+            "assets/banner.png",
             "assets/banner.webp",
             "assets/cover.png",
             "assets/legends-empire-banner.webp",
+            "assets/preview.png",
             "assets/screenshots/graph-view.png",
             "assets/screenshots/wiki-map-view.png",
             "assets/social-preview.png",
