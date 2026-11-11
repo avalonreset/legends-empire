@@ -249,6 +249,12 @@ class KnowledgeTests(unittest.TestCase):
             self.assertEqual(0, main(args + ["--apply", "--approved-plan-sha256", approval]))
         self.assertTrue((self.vault / DEST / "reference/index.md").is_file())
 
+    def test_edr_batch_size_bounds_enforced(self):
+        from claude_empire.knowledge import MAX_FILES
+        from claude_empire.transaction import MAX_TRANSACTION_WRITES
+        self.assertEqual(MAX_FILES, 148)
+        self.assertEqual(MAX_TRANSACTION_WRITES, 150)
+
 
 if __name__ == "__main__":
     unittest.main()

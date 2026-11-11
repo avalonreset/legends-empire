@@ -31,6 +31,9 @@ from .transaction import (
     TransactionValidationError,
 )
 
+if os.name == "nt":
+    from .windows_fs import os_proxy as os
+
 
 DEFAULT_STALE_AFTER_SECONDS = 60
 DEFAULT_CLEAR_AFTER_SECONDS = 3600
@@ -189,6 +192,8 @@ def _parse_arguments(argv: Sequence[str]) -> ParsedArguments:
 
 
 def _supports_confined_runtime() -> bool:
+    if getattr(os, "native_confined", False):
+        return True
     required_dir_fd = (os.open, os.mkdir, os.stat, os.unlink, os.link)
     return (
         os.name != "nt"
@@ -503,17 +508,26 @@ def _atomic_create(descriptor: int, name: str, data: bytes) -> bool:
         os.fsync(file_descriptor)
         os.close(file_descriptor)
         file_descriptor = -1
-        try:
-            os.link(
-                temporary,
-                name,
-                src_dir_fd=descriptor,
-                dst_dir_fd=descriptor,
-                follow_symlinks=False,
-            )
+        if getattr(os, "native_confined", False):
+            try:
+                os.stat(name, dir_fd=descriptor, follow_symlinks=False)
+                return False
+            except FileNotFoundError:
+                pass
+            os.rename(temporary, name, src_dir_fd=descriptor, dst_dir_fd=descriptor)
             linked = True
-        except FileExistsError:
-            return False
+        else:
+            try:
+                os.link(
+                    temporary,
+                    name,
+                    src_dir_fd=descriptor,
+                    dst_dir_fd=descriptor,
+                    follow_symlinks=False,
+                )
+                linked = True
+            except FileExistsError:
+                return False
         _fsync_directory(descriptor)
         return True
     except OSError as exc:

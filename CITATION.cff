@@ -8,8 +8,8 @@ authors:
 repository-code: 'https://github.com/avalonreset/legends-empire'
 url: 'https://github.com/avalonreset/legends-empire'
 license: MIT
-version: 0.3.4
-date-released: '2026-11-05'
+version: 0.3.5
+date-released: '2026-11-11'
 keywords:
   - obsidian
   - claude-code

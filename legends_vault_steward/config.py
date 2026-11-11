@@ -6,13 +6,14 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
+from .paths import read_bounded_json
+
 PACKAGE_DIR = Path(__file__).resolve().parent
 DEFAULT_CONFIG_PATH = PACKAGE_DIR / "data" / "default.json"
 
 
 def _read_json(path: Path) -> dict[str, Any]:
-    with path.open("r", encoding="utf-8") as handle:
-        data = json.load(handle)
+    data = read_bounded_json(path)
     if not isinstance(data, dict):
         raise ValueError(f"config must be a JSON object: {path}")
     return data

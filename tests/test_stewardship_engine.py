@@ -173,6 +173,17 @@ class StewardshipTests(unittest.TestCase):
         self.assertIn("note.unreadable", [f["code"] for f in report["findings"]])
         self.assertTrue(compare(report, report)["coverage_incomplete"])
 
+    def test_bounded_json_rejects_oversized_and_duplicate_keys(self):
+        from legends_vault_steward.paths import read_bounded_json
+        dup = Path(self.tmp.name) / "dup.json"
+        dup.write_text('{"a": 1, "a": 2}', encoding="utf-8")
+        with self.assertRaises(ValueError):
+            read_bounded_json(dup)
+        big = Path(self.tmp.name) / "big.json"
+        big.write_text('{"x": "' + ("a" * 2048) + '"}', encoding="utf-8")
+        with self.assertRaises(ValueError):
+            read_bounded_json(big, max_bytes=1024)
+
 
 if __name__ == "__main__":
     unittest.main()

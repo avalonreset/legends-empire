@@ -343,13 +343,17 @@ else:
             raise
 
     class _Entry:
-        def __init__(self, adapter, parent_fd, name):
+        def __init__(self, adapter, parent_fd, name, caller_fd=None):
             self._adapter, self._parent_fd, self.name = adapter, parent_fd, name
+            self._caller_fd = caller_fd
             self.path = name
 
         def stat(self, *, follow_symlinks=True):
+            fd = self._parent_fd
+            if fd not in self._adapter._directories and self._caller_fd is not None:
+                fd = self._caller_fd
             return self._adapter.stat(
-                self.name, dir_fd=self._parent_fd, follow_symlinks=follow_symlinks)
+                self.name, dir_fd=fd, follow_symlinks=follow_symlinks)
 
         def is_dir(self, *, follow_symlinks=True):
             return _stat.S_ISDIR(self.stat(follow_symlinks=follow_symlinks).st_mode)
@@ -374,9 +378,11 @@ else:
             return self.path
 
     class _Scandir:
-        def __init__(self, adapter, fd, names):
+        def __init__(self, adapter, fd, names, caller_fd=None):
             self._adapter, self._fd = adapter, fd
+            self._caller_fd = caller_fd
             self._iterator = iter(names)
+            self._entered = False
 
         def __iter__(self):
             return self
@@ -385,9 +391,10 @@ else:
             if self._fd is None:
                 raise StopIteration
             try:
-                return _Entry(self._adapter, self._fd, next(self._iterator))
+                return _Entry(self._adapter, self._fd, next(self._iterator), self._caller_fd)
             except StopIteration:
-                self.close()
+                if not self._entered:
+                    self.close()
                 raise
 
         def close(self):
@@ -396,6 +403,7 @@ else:
                 self._fd = None
 
         def __enter__(self):
+            self._entered = True
             return self
 
         def __exit__(self, *_):
@@ -876,9 +884,10 @@ else:
                     self.close(fd)
 
         def scandir(self, path="."):
+            caller_fd = path if isinstance(path, int) else None
             fd = self.dup(path) if isinstance(path, int) else self.open(path, self.O_DIRECTORY)
             try:
-                return _Scandir(self, fd, self._names(self._directory(fd)))
+                return _Scandir(self, fd, self._names(self._directory(fd)), caller_fd=caller_fd)
             except BaseException:
                 self.close(fd)
                 raise

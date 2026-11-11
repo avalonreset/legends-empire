@@ -13,6 +13,7 @@ from urllib.parse import unquote
 sys.dont_write_bytecode = True
 
 ROOT = Path(__file__).resolve().parents[1]
+TOOL_VERSION = "0.3.5"
 SKIP = {".git", ".venv", "dist", "build", "__pycache__", ".integration", "out"}
 REQUIRED = [
     "README.md",
@@ -20,6 +21,8 @@ REQUIRED = [
     "NOTICE",
     "THIRD_PARTY_NOTICES.md",
     "ATTRIBUTION.md",
+    "CITATION.cff",
+    "PRIVACY.md",
     "AGENTS.md",
     "SECURITY.md",
     "SUPPORT.md",
@@ -28,14 +31,20 @@ REQUIRED = [
     "CHANGELOG.md",
     "VERSION",
     ".legends-module",
+    ".legends-router-pin",
     "docs/AGENT-RECIPE.md",
     "docs/install-guide.md",
     "docs/stewardship.md",
     "docs/knowledge-packs.md",
     "docs/home-adapter.md",
+    "docs/router-provenance.json",
     "skills/cto-legends/SKILL.md",
     "knowledge/stewardship/pack.json",
     "assets/manifest.json",
+    "assets/banner.png",
+    "assets/banner.webp",
+    "assets/preview.png",
+    "assets/social-preview.png",
 ]
 TEXT_SUFFIXES = {".md", ".py", ".json", ".toml", ".yml", ".in", ".txt", ".cfg", ".ini", ".cff"}
 FORBIDDEN = [
@@ -136,6 +145,21 @@ def check(root: Path = ROOT) -> list[str]:
         except Exception as exc:
             errors.append(f"Invalid knowledge/stewardship/pack.json: {exc}")
 
+    prov_path = root / "docs" / "router-provenance.json"
+    pin_path = root / ".legends-router-pin"
+    skill_path = root / "skills" / "cto-legends" / "SKILL.md"
+    if prov_path.is_file() and pin_path.is_file() and skill_path.is_file():
+        try:
+            prov = json.loads(prov_path.read_text(encoding="utf-8-sig"))
+            expected_commit = pin_path.read_text(encoding="utf-8-sig").strip()
+            actual_skill_sha = hashlib.sha256(skill_path.read_bytes()).hexdigest()
+            if prov.get("source_commit") != expected_commit:
+                errors.append("docs/router-provenance.json source_commit mismatch with .legends-router-pin")
+            if prov.get("router_skill_sha256") != actual_skill_sha:
+                errors.append("docs/router-provenance.json router_skill_sha256 mismatch with skills/cto-legends/SKILL.md")
+        except Exception as exc:
+            errors.append(f"Invalid docs/router-provenance.json: {exc}")
+
     for path in root.rglob("*"):
         rel = path.relative_to(root)
         if not path.is_file() or any(p in SKIP or p.endswith(".egg-info") for p in rel.parts):
@@ -157,6 +181,9 @@ def check(root: Path = ROOT) -> list[str]:
             continue
         if "\u2014" in text or "\u2013" in text:
             errors.append(f"Disallowed dash in copy: {rel}")
+        for line_no, line in enumerate(text.splitlines(), start=1):
+            if re.search(r"(?<!`)`[^`]*\\`[^`]*`(?!`)", line):
+                errors.append(f"Backslash-escaped backtick inside single-backtick span: {rel}:{line_no}")
         for target_link in re.findall(r"\[[^\]]*\]\(([^)]+)\)", text):
             if target_link.startswith(("https://", "http://", "mailto:", "#")):
                 continue

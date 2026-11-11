@@ -44,10 +44,12 @@ Exit codes:
 
 import argparse
 import hashlib
+import ipaddress
 import json
 import math
 import os
 import re
+import socket
 import sys
 import urllib.error
 import urllib.parse
@@ -61,6 +63,7 @@ PLUGIN_ROOT = Path(__file__).resolve().parent.parent
 if str(PLUGIN_ROOT) not in sys.path:
     sys.path.insert(0, str(PLUGIN_ROOT))
 
+from claude_empire import __version__
 from claude_empire.paths import VaultSelectionError, assert_within, resolve_vault_root
 from claude_empire.transaction import (
     MutationLock,
@@ -68,6 +71,51 @@ from claude_empire.transaction import (
     _atomic_vault_write,
     _safe_vault_path,
 )
+
+if os.name == "nt":
+    from claude_empire.windows_fs import os_proxy as os
+
+
+class _NoRedirectHandler(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        raise urllib.error.HTTPError(
+            req.full_url, code, "Redirects are disabled", headers, fp
+        )
+
+
+def _build_opener():
+    return urllib.request.build_opener(
+        urllib.request.ProxyHandler({}),
+        _NoRedirectHandler(),
+    )
+
+
+def _assert_safe_resolved_host(url):
+    parsed = validate_ollama_base_url(url)
+    if parsed is None:
+        raise ValueError("Invalid Ollama URL")
+    host = (parsed.hostname or "").strip()
+    port = parsed.port or (443 if parsed.scheme == "https" else 80)
+    infos = socket.getaddrinfo(host, port, socket.AF_UNSPEC, socket.SOCK_STREAM)
+    if not infos:
+        raise ValueError(f"Could not resolve host {host!r}")
+    for info in infos:
+        addr = info[4][0].split("%", 1)[0]
+        ip = ipaddress.ip_address(addr)
+        if ip.is_link_local or ip.is_unspecified or ip.is_multicast:
+            raise ValueError(f"Refusing non-routable/metadata IP {addr} for {host!r}")
+
+
+_STD_URLOPEN = urllib.request.urlopen
+
+
+def _urlopen(req, timeout=None):
+    url = req.full_url if isinstance(req, urllib.request.Request) else str(req)
+    base_url = url.rsplit("/api/", 1)[0]
+    _assert_safe_resolved_host(base_url)
+    if urllib.request.urlopen is not _STD_URLOPEN:
+        return urllib.request.urlopen(req, timeout=timeout)
+    return _build_opener().open(req, timeout=timeout)
 
 VAULT_ROOT = Path.cwd().resolve()
 META_DIR = VAULT_ROOT / ".vault-meta"
@@ -255,6 +303,10 @@ def cosine(a, b):
     return dot / (na * nb)
 
 
+MAX_CANDIDATES_BYTES = 1_048_576
+MAX_CACHE_BYTES = 8 * 1024 * 1024
+
+
 def validate_ollama_base_url(url):
     """Accept only credential-free HTTP(S) base URLs."""
 
@@ -272,6 +324,15 @@ def validate_ollama_base_url(url):
         or parsed.fragment
     ):
         return None
+    host = (parsed.hostname or "").strip().lower()
+    if host in {"metadata.google.internal", "instance-data"} or host.endswith(".local"):
+        return None
+    try:
+        ip = ipaddress.ip_address(host.split("%", 1)[0])
+    except ValueError:
+        ip = None
+    if ip is not None and (ip.is_link_local or ip.is_unspecified or ip.is_multicast):
+        return None
     return parsed
 
 
@@ -281,7 +342,7 @@ def ollama_url(allow_remote):
     if parsed is None:
         log(
             "ERR: OLLAMA_URL must be a credential-free http(s) base URL "
-            "without a query or fragment."
+            "without a query, fragment, or link-local/unspecified target."
         )
         sys.exit(EXIT_USAGE)
     if not allow_remote:
@@ -299,10 +360,17 @@ def ollama_alive(url):
     if validate_ollama_base_url(url) is None:
         return False, []
     try:
-        req = urllib.request.Request(f"{url}/api/tags", method="GET")
+        req = urllib.request.Request(
+            f"{url}/api/tags",
+            headers={"User-Agent": f"legends-empire/{__version__}"},
+            method="GET",
+        )
         # `url` passed the credential-free HTTP(S) validator above.
-        with urllib.request.urlopen(req, timeout=OLLAMA_TIMEOUT_SEC) as resp:  # nosec B310
-            data = json.loads(resp.read(MAX_RESPONSE_BYTES))
+        with _urlopen(req, timeout=OLLAMA_TIMEOUT_SEC) as resp:  # nosec B310
+            raw = resp.read(MAX_RESPONSE_BYTES + 1)
+            if len(raw) > MAX_RESPONSE_BYTES:
+                return False, []
+            data = json.loads(raw)
             models = [
                 model["name"]
                 for model in data.get("models", [])
@@ -311,7 +379,7 @@ def ollama_alive(url):
                 and model["name"]
             ]
             return True, models
-    except (urllib.error.URLError, json.JSONDecodeError, OSError):
+    except (urllib.error.URLError, json.JSONDecodeError, ValueError, OSError):
         return False, []
 
 
@@ -322,12 +390,18 @@ def embed_one(url, model, text):
     req = urllib.request.Request(
         f"{url}/api/embed",
         data=payload,
-        headers={"Content-Type": "application/json"},
+        headers={
+            "Content-Type": "application/json",
+            "User-Agent": f"legends-empire/{__version__}",
+        },
         method="POST",
     )
     # `url` passed the credential-free HTTP(S) validator above.
-    with urllib.request.urlopen(req, timeout=EMBED_TIMEOUT_SEC) as resp:  # nosec B310
-        data = json.loads(resp.read(MAX_RESPONSE_BYTES))
+    with _urlopen(req, timeout=EMBED_TIMEOUT_SEC) as resp:  # nosec B310
+        raw = resp.read(MAX_RESPONSE_BYTES + 1)
+        if len(raw) > MAX_RESPONSE_BYTES:
+            raise ValueError("Ollama response exceeds size limit")
+        data = json.loads(raw)
         embeddings = data.get("embeddings")
         if not isinstance(embeddings, list) or len(embeddings) != 1:
             return []
@@ -335,9 +409,11 @@ def embed_one(url, model, text):
 
 
 def load_cache():
-    if not EMBED_CACHE_PATH.is_file():
+    if EMBED_CACHE_PATH.is_symlink() or not EMBED_CACHE_PATH.is_file():
         return {}
     try:
+        if EMBED_CACHE_PATH.stat().st_size > MAX_CACHE_BYTES:
+            return {}
         cache = json.loads(EMBED_CACHE_PATH.read_text(encoding="utf-8"))
         return cache if isinstance(cache, dict) else {}
     except (json.JSONDecodeError, OSError):
@@ -368,9 +444,9 @@ def save_cache(cache):
                 meta_fd=meta_fd,
             )
     finally:
-        if meta_fd >= 0:
+        if meta_fd is not None and meta_fd >= 0:
             os.close(meta_fd)
-        if root_fd >= 0:
+        if root_fd is not None and root_fd >= 0:
             os.close(root_fd)
 
 
@@ -386,12 +462,17 @@ def load_chunk(chunk_rel_path):
         or re.match(r"^[A-Za-z]:", chunk_rel_path)
     ):
         return None
-    p = (VAULT_ROOT / rel).resolve()
+    raw_p = VAULT_ROOT / rel
+    if raw_p.is_symlink():
+        return None
+    p = raw_p.resolve()
     if not p.is_relative_to((META_DIR / "chunks").resolve()):
         return None
     if not p.is_file():
         return None
     try:
+        if p.stat().st_size > MAX_CACHE_BYTES:
+            return None
         return json.loads(p.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError):
         return None
@@ -530,12 +611,23 @@ def main(argv=None):
         return EXIT_USAGE
 
     if args.candidates == "-":
-        cand_text = sys.stdin.read()
+        cand_text = sys.stdin.read(MAX_CANDIDATES_BYTES + 1)
+        if len(cand_text.encode("utf-8")) > MAX_CANDIDATES_BYTES:
+            log("ERR: candidates input exceeds 1 MB limit")
+            return EXIT_CANDIDATES
     else:
         try:
+            raw_cand_path = Path(args.candidates)
+            if not raw_cand_path.is_absolute():
+                raw_cand_path = VAULT_ROOT / raw_cand_path
+            if raw_cand_path.is_symlink():
+                raise OSError("candidates path may not be a symlink")
             candidate_path = assert_within(VAULT_ROOT, args.candidates)
+            _safe_vault_path(VAULT_ROOT, candidate_path.relative_to(VAULT_ROOT).as_posix())
+            if candidate_path.stat().st_size > MAX_CANDIDATES_BYTES:
+                raise OSError("candidates file exceeds 1 MB limit")
             cand_text = candidate_path.read_text(encoding="utf-8")
-        except (VaultSelectionError, OSError) as exc:
+        except (VaultSelectionError, TransactionError, OSError) as exc:
             log(f"ERR: candidates path is not a readable in-vault file: {exc}")
             return EXIT_CANDIDATES
     try:

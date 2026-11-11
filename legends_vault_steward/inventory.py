@@ -88,8 +88,11 @@ def walk_notes(vault: VaultRoot, config: dict) -> InventoryResult:
                 continue
             rel, is_link = inspected
             try:
+                stat = path.lstat()
+                if stat.st_size > 8 * 1024 * 1024:
+                    result.skipped_unreadable.append(rel)
+                    continue
                 data = path.read_bytes()
-                stat = path.stat()
             except OSError:
                 result.skipped_unreadable.append(rel)
                 continue

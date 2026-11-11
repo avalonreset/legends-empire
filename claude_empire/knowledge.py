@@ -22,7 +22,7 @@ from .transaction import (
 
 PACK_SCHEMA = "legends.knowledge-pack/v1"
 STATE_SCHEMA = "legends.knowledge-pack-state/v1"
-MAX_FILES = 256
+MAX_FILES = 148
 MAX_BYTES = 8 * 1024 * 1024
 
 

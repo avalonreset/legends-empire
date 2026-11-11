@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 from . import __version__
 from .observe import observe
-from .paths import ReportPathError, resolve_vault_root, validate_report_dir
+from .paths import ReportPathError, read_bounded_json, resolve_vault_root, validate_report_dir
 from .report import render_json, render_markdown, write_reports
 
 MUTATING_COMMANDS: tuple[str, ...] = ()
@@ -77,7 +77,7 @@ def _cmd_scan(args: argparse.Namespace) -> int:
     report = observe(str(vault.given), config_path=args.config, include_notes=include, review_limit=args.review_limit, profile=args.profile)
     if args.baseline:
         from .review import compare
-        before = json.loads(Path(args.baseline).read_text(encoding="utf-8"))
+        before = read_bounded_json(args.baseline)
         report["comparison"] = compare(before, report)
         if args.expect_changed:
             delta = report["comparison"]

@@ -21,11 +21,11 @@ if [ "$MAX_BYTES" -le 0 ]; then
 fi
 
 is_codex_empire_vault() {
-  [ -f ".vault-meta/codex-empire.vault" ] && return 0
+  [ ! -L ".vault-meta" ] && [ ! -L ".vault-meta/codex-empire.vault" ] && [ -f ".vault-meta/codex-empire.vault" ] && return 0
   return 1
 }
 
-[ -f "$HOT_CACHE" ] || exit 0
+[ ! -L "wiki" ] && [ ! -L "$HOT_CACHE" ] && [ -f "$HOT_CACHE" ] || exit 0
 is_codex_empire_vault || exit 0
 
 head -c "$MAX_BYTES" "$HOT_CACHE"

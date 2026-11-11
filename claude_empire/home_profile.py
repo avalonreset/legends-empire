@@ -7,12 +7,50 @@ from __future__ import annotations
 
 from datetime import datetime
 import json
+import os
 from pathlib import Path
 import re
+import stat
+import sys
 import uuid
 
 from . import home_adapter as adapter
+from .ledgers import strict_json_loads
+from .paths import is_name_surrogate
 from .transaction import read_vault_regular, sha256_bytes
+
+_DARWIN_SYMLINK_DIRS = frozenset({"/var", "/tmp", "/etc"})
+
+
+def _read_spec_json(specification: str | Path) -> dict:
+    source = Path(specification).expanduser().absolute()
+    for part in (source, *source.parents):
+        if sys.platform == "darwin" and part.as_posix() in _DARWIN_SYMLINK_DIRS:
+            continue
+        if part.exists() and is_name_surrogate(part.lstat()):
+            adapter.fail("record specification must not traverse a symlink or junction")
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_BINARY", 0)
+    fd = os.open(source, flags)
+    try:
+        st = os.fstat(fd)
+        if not stat.S_ISREG(st.st_mode):
+            raise OSError("record specification is not a regular file")
+        if st.st_size > 65536:
+            adapter.fail("record specification exceeds 64 KiB")
+        chunks: list[bytes] = []
+        remaining = 65537
+        while remaining > 0:
+            chunk = os.read(fd, remaining)
+            if not chunk:
+                break
+            chunks.append(chunk)
+            remaining -= len(chunk)
+        raw = b"".join(chunks)
+    finally:
+        os.close(fd)
+    if len(raw) > 65536:
+        adapter.fail("record specification exceeds 64 KiB")
+    return strict_json_loads(raw.decode("utf-8"))
 
 BASE = "wiki/integrations/aimh-home/shared-root"
 PROFILE = f"{BASE}/profile.json"
@@ -182,11 +220,8 @@ def note(fields: dict, body: str) -> bytes:
 
 def scaffold_bundle(root: Path, specification: str | Path, operation_id: str, generated_at: str) -> dict:
     try:
-        source = Path(specification)
-        if source.stat().st_size > 65536:
-            adapter.fail("record specification exceeds 64 KiB")
-        spec = json.loads(source.read_text(encoding="utf-8"))
-    except (OSError, ValueError, TypeError):
+        spec = _read_spec_json(specification)
+    except (OSError, ValueError, TypeError, UnicodeError):
         adapter.fail("record specification must be readable JSON")
     if not isinstance(spec, dict) or spec.get("schema") != "legends.home-records/v1":
         adapter.fail("unknown record specification")

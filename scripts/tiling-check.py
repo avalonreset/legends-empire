@@ -30,15 +30,17 @@ Usage:
 
 import argparse
 import hashlib
+import ipaddress
 import json
 import math
 import os
 import re
+import socket
 import sys
 import urllib.error
 import urllib.parse
 import urllib.request
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -49,11 +51,14 @@ DEFAULT_MODEL = "nomic-embed-text"
 OLLAMA_TIMEOUT_SEC = 3
 EMBED_TIMEOUT_SEC = 30
 MAX_RESPONSE_BYTES = 4 * 1024 * 1024  # 4 MB; embeddings can be ~10 KB each
+MAX_CACHE_BYTES = 8 * 1024 * 1024
+MAX_THRESHOLDS_BYTES = 1_048_576
 
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
 if str(PLUGIN_ROOT) not in sys.path:
     sys.path.insert(0, str(PLUGIN_ROOT))
 
+from claude_empire import __version__
 from claude_empire.paths import VaultSelectionError, resolve_vault_root
 from claude_empire.transaction import (
     MutationLock,
@@ -61,6 +66,51 @@ from claude_empire.transaction import (
     _atomic_vault_write,
     _safe_vault_path,
 )
+
+if os.name == "nt":
+    from claude_empire.windows_fs import os_proxy as os
+
+
+class _NoRedirectHandler(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        raise urllib.error.HTTPError(
+            req.full_url, code, "Redirects are disabled", headers, fp
+        )
+
+
+def _build_opener():
+    return urllib.request.build_opener(
+        urllib.request.ProxyHandler({}),
+        _NoRedirectHandler(),
+    )
+
+
+def _assert_safe_resolved_host(url: str) -> None:
+    parsed = _validate_ollama_base_url(url)
+    if parsed is None:
+        raise ValueError("invalid Ollama HTTP(S) URL")
+    host = (parsed.hostname or "").strip()
+    port = parsed.port or (443 if parsed.scheme == "https" else 80)
+    infos = socket.getaddrinfo(host, port, socket.AF_UNSPEC, socket.SOCK_STREAM)
+    if not infos:
+        raise ValueError(f"could not resolve host {host!r}")
+    for info in infos:
+        addr = info[4][0].split("%", 1)[0]
+        ip = ipaddress.ip_address(addr)
+        if ip.is_link_local or ip.is_unspecified or ip.is_multicast:
+            raise ValueError(f"refusing non-routable/metadata IP {addr} for {host!r}")
+
+
+_STD_URLOPEN = urllib.request.urlopen
+
+
+def _urlopen(req, timeout=None):
+    url = req.full_url if isinstance(req, urllib.request.Request) else str(req)
+    base_url = url.rsplit("/api/", 1)[0]
+    _assert_safe_resolved_host(base_url)
+    if urllib.request.urlopen is not _STD_URLOPEN:
+        return urllib.request.urlopen(req, timeout=timeout)
+    return _build_opener().open(req, timeout=timeout)
 
 VAULT_ROOT = Path.cwd().resolve()
 WIKI_DIR = VAULT_ROOT / "wiki"
@@ -150,14 +200,28 @@ def _validate_ollama_base_url(url: str) -> urllib.parse.ParseResult | None:
         or parsed.fragment
     ):
         return None
+    host = (parsed.hostname or "").strip().lower()
+    if host in {"metadata.google.internal", "instance-data"} or host.endswith(".local"):
+        return None
+    try:
+        ip = ipaddress.ip_address(host.split("%", 1)[0])
+    except ValueError:
+        ip = None
+    if ip is not None and (ip.is_link_local or ip.is_unspecified or ip.is_multicast):
+        return None
     return parsed
 
 
 def _http_get_json(url: str, timeout: float) -> dict:
     if _validate_ollama_base_url(url.rsplit("/api/", 1)[0]) is None:
         raise ValueError("invalid Ollama HTTP(S) URL")
+    req = urllib.request.Request(
+        url,
+        headers={"User-Agent": f"legends-empire/{__version__}"},
+        method="GET",
+    )
     # `url` passed the credential-free HTTP(S) validator above.
-    with urllib.request.urlopen(url, timeout=timeout) as resp:  # nosec B310
+    with _urlopen(req, timeout=timeout) as resp:  # nosec B310
         raw = resp.read(MAX_RESPONSE_BYTES + 1)
     if len(raw) > MAX_RESPONSE_BYTES:
         raise RuntimeError("response exceeded size limit")
@@ -168,9 +232,17 @@ def _http_post_json(url: str, payload: dict, timeout: float) -> dict:
     if _validate_ollama_base_url(url.rsplit("/api/", 1)[0]) is None:
         raise ValueError("invalid Ollama HTTP(S) URL")
     data = json.dumps(payload).encode("utf-8")
-    req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
+    req = urllib.request.Request(
+        url,
+        data=data,
+        headers={
+            "Content-Type": "application/json",
+            "User-Agent": f"legends-empire/{__version__}",
+        },
+        method="POST",
+    )
     # `url` passed the credential-free HTTP(S) validator above.
-    with urllib.request.urlopen(req, timeout=timeout) as resp:  # nosec B310
+    with _urlopen(req, timeout=timeout) as resp:  # nosec B310
         raw = resp.read(MAX_RESPONSE_BYTES + 1)
     if len(raw) > MAX_RESPONSE_BYTES:
         raise RuntimeError("response exceeded size limit")
@@ -234,9 +306,15 @@ def cosine(a: list[float], b: list[float]) -> float:
 
 
 def load_cache(current_model: str) -> dict:
+    if CACHE_PATH.is_symlink():
+        log("ERR: cache path may not be a symlink")
+        sys.exit(EXIT_CACHE_CORRUPT)
     if not CACHE_PATH.exists():
         return {"version": 1, "model": current_model, "embeddings": {}}
     try:
+        if CACHE_PATH.stat().st_size > MAX_CACHE_BYTES:
+            log("ERR: cache exceeds size limit")
+            sys.exit(EXIT_CACHE_CORRUPT)
         with CACHE_PATH.open(encoding="utf-8") as f:
             data = json.load(f)
     except (OSError, json.JSONDecodeError) as exc:
@@ -274,19 +352,23 @@ def save_cache(cache: dict) -> None:
                 meta_fd=meta_fd,
             )
     finally:
-        if meta_fd >= 0:
+        if meta_fd is not None and meta_fd >= 0:
             os.close(meta_fd)
-        if root_fd >= 0:
+        if root_fd is not None and root_fd >= 0:
             os.close(root_fd)
 
 
 def load_thresholds() -> dict:
+    if THRESHOLDS_PATH.is_symlink():
+        raise OSError("thresholds path may not be a symlink")
     if not THRESHOLDS_PATH.exists():
         return {
             "version": 1, "model": DEFAULT_MODEL,
             "bands": {"error": 0.90, "review": 0.80},
             "calibrated": False, "calibration_pairs_labeled": 0,
         }
+    if THRESHOLDS_PATH.stat().st_size > MAX_THRESHOLDS_BYTES:
+        raise OSError("thresholds file exceeds size limit")
     with THRESHOLDS_PATH.open(encoding="utf-8") as f:
         return json.load(f)
 
@@ -382,6 +464,9 @@ def run_check(
             skipped_counts["escapes vault"] = skipped_counts.get("escapes vault", 0) + 1
             continue
         try:
+            if md.stat().st_size > MAX_BODY_BYTES:
+                skipped_counts["too_large"] = skipped_counts.get("too_large", 0) + 1
+                continue
             text = md.read_text(encoding="utf-8")
         except (OSError, UnicodeDecodeError):
             skipped_counts["read_error"] = skipped_counts.get("read_error", 0) + 1
@@ -411,7 +496,7 @@ def run_check(
         cache["embeddings"][rel] = {
             "hash": h,
             "embedding": emb,
-            "computed_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+            "computed_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         }
         pages.append((rel, emb))
         computed += 1
@@ -449,7 +534,7 @@ def run_check(
     out_lines: list[str] = []
     out_lines.append("# Semantic Tiling Report")
     out_lines.append("")
-    out_lines.append(f"- generated: {datetime.utcnow().isoformat(timespec='seconds')}Z")
+    out_lines.append(f"- generated: {datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}")
     out_lines.append(f"- model: {model}")
     out_lines.append(f"- ollama_url: {ollama_url}")
     out_lines.append(f"- thresholds: error>={error_}, review={review}-{error_}")
@@ -500,6 +585,8 @@ def cmd_peek(ollama_url: str, model: str) -> int:
     diag["cache_model"] = None
     if diag["cache_present"]:
         try:
+            if CACHE_PATH.is_symlink() or CACHE_PATH.stat().st_size > MAX_CACHE_BYTES:
+                raise OSError("unsafe or oversized cache file")
             with CACHE_PATH.open(encoding="utf-8") as f:
                 c = json.load(f)
             diag["cache_readable"] = (c.get("version") == 1
@@ -513,6 +600,8 @@ def cmd_peek(ollama_url: str, model: str) -> int:
     diag["thresholds_readable"] = False
     if diag["thresholds_present"]:
         try:
+            if THRESHOLDS_PATH.is_symlink() or THRESHOLDS_PATH.stat().st_size > MAX_THRESHOLDS_BYTES:
+                raise OSError("unsafe or oversized thresholds file")
             with THRESHOLDS_PATH.open(encoding="utf-8") as f:
                 t = json.load(f)
             diag["thresholds_readable"] = True

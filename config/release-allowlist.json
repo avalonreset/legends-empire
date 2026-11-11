@@ -48,7 +48,8 @@
     "THIRD_PARTY_NOTICES.md",
     "VERSION",
     "WIKI.md",
-    "ZCODE.md"
+    "ZCODE.md",
+    "docs/router-provenance.json"
   ],
   "include_globs": [
     ".github/*.md",

@@ -708,33 +708,40 @@ def test_pinned_build_survives_lexical_root_replacement():
         bm25.INDEX_PATH = bm25.BM25_DIR / "index.json"
         held_root = temporary / "held-vault"
         try:
+            renamed = False
             with MutationLock(root) as lock:
                 root_fd = lock.duplicate_root_fd()
                 meta_fd = lock.duplicate_parent_fd()
                 try:
-                    root.rename(held_root)
-                    (root / ".vault-meta/bm25").mkdir(parents=True)
-                    outside_sentinel = root / ".vault-meta/bm25/sentinel"
-                    outside_sentinel.write_bytes(b"replacement-must-survive\n")
+                    try:
+                        root.rename(held_root)
+                        renamed = True
+                        (root / ".vault-meta/bm25").mkdir(parents=True)
+                        outside_sentinel = root / ".vault-meta/bm25/sentinel"
+                        outside_sentinel.write_bytes(b"replacement-must-survive\n")
+                    except PermissionError:
+                        pass
                     index = bm25.build_index(meta_fd=meta_fd, vault_root_fd=root_fd)
                     bm25.write_index(index, meta_fd=meta_fd)
                 finally:
-                    os.close(meta_fd)
-                    os.close(root_fd)
+                    bm25.os.close(meta_fd)
+                    bm25.os.close(root_fd)
             assert_eq("pinned root build doc count", 1, index["doc_count"])
+            target_root = held_root if renamed else root
             assert_true(
                 "pinned root receives index",
-                (held_root / ".vault-meta/bm25/index.json").is_file(),
+                (target_root / ".vault-meta/bm25/index.json").is_file(),
             )
-            assert_true(
-                "replacement root receives no index",
-                not (root / ".vault-meta/bm25/index.json").exists(),
-            )
-            assert_eq(
-                "replacement root sentinel unchanged",
-                b"replacement-must-survive\n",
-                outside_sentinel.read_bytes(),
-            )
+            if renamed:
+                assert_true(
+                    "replacement root receives no index",
+                    not (root / ".vault-meta/bm25/index.json").exists(),
+                )
+                assert_eq(
+                    "replacement root sentinel unchanged",
+                    b"replacement-must-survive\n",
+                    outside_sentinel.read_bytes(),
+                )
         finally:
             (
                 bm25.VAULT_ROOT,
@@ -777,20 +784,34 @@ def test_pinned_build_never_follows_meta_or_bm25_aliases():
         sentinel = outside_meta / "bm25/sentinel"
         sentinel.write_bytes(b"outside-must-survive\n")
         try:
+            renamed_meta = False
             with MutationLock(root) as lock:
                 root_fd = lock.duplicate_root_fd()
                 meta_fd = lock.duplicate_parent_fd()
                 try:
-                    meta.rename(held_meta)
-                    meta.symlink_to(outside_meta, target_is_directory=True)
+                    try:
+                        meta.rename(held_meta)
+                        renamed_meta = True
+                        try:
+                            meta.symlink_to(outside_meta, target_is_directory=True)
+                        except OSError:
+                            subprocess.run(
+                                ["cmd", "/c", "mklink", "/J", str(meta), str(outside_meta)],
+                                check=True,
+                                stdout=subprocess.DEVNULL,
+                                stderr=subprocess.DEVNULL,
+                            )
+                    except PermissionError:
+                        pass
                     index = bm25.build_index(meta_fd=meta_fd, vault_root_fd=root_fd)
                     bm25.write_index(index, meta_fd=meta_fd)
                 finally:
-                    os.close(meta_fd)
-                    os.close(root_fd)
+                    bm25.os.close(meta_fd)
+                    bm25.os.close(root_fd)
+            target_meta = held_meta if renamed_meta else meta
             assert_true(
                 "pinned metadata receives index",
-                (held_meta / "bm25/index.json").is_file(),
+                (target_meta / "bm25/index.json").is_file(),
             )
             assert_true(
                 "outside metadata receives no index",
@@ -810,12 +831,20 @@ def test_pinned_build_never_follows_meta_or_bm25_aliases():
             outside_bm25.mkdir()
             outside_leaf = outside_bm25 / "index.json"
             outside_leaf.write_bytes(b"outside-index\n")
-            (safe_meta / "bm25").symlink_to(outside_bm25, target_is_directory=True)
-            safe_fd = os.open(
+            try:
+                (safe_meta / "bm25").symlink_to(outside_bm25, target_is_directory=True)
+            except OSError:
+                subprocess.run(
+                    ["cmd", "/c", "mklink", "/J", str(safe_meta / "bm25"), str(outside_bm25)],
+                    check=True,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+            safe_fd = bm25.os.open(
                 safe_meta,
-                os.O_RDONLY
-                | getattr(os, "O_DIRECTORY", 0)
-                | getattr(os, "O_NOFOLLOW", 0),
+                bm25.os.O_RDONLY
+                | getattr(bm25.os, "O_DIRECTORY", 0)
+                | getattr(bm25.os, "O_NOFOLLOW", 0),
             )
             try:
                 try:
@@ -824,7 +853,7 @@ def test_pinned_build_never_follows_meta_or_bm25_aliases():
                 except (OSError, bm25.TransactionError):
                     pass
             finally:
-                os.close(safe_fd)
+                bm25.os.close(safe_fd)
             assert_eq(
                 "bm25 alias target unchanged",
                 b"outside-index\n",

@@ -219,6 +219,49 @@ def test_report_path_cannot_overwrite_vault_content():
         ) = original
 
 
+def test_tiling_opener_and_native_cache_save():
+    old_proxy = os.environ.get("HTTP_PROXY")
+    os.environ["HTTP_PROXY"] = "http://127.0.0.1:9999"
+    try:
+        opener = tc._build_opener()
+        handlers = [type(h).__name__ for h in opener.handlers]
+        assert_true("tiling opener disables redirects", "_NoRedirectHandler" in handlers)
+        assert_true("tiling opener disables proxies", all(getattr(h, "proxies", {}) == {} for h in opener.handlers))
+    finally:
+        if old_proxy is None:
+            os.environ.pop("HTTP_PROXY", None)
+        else:
+            os.environ["HTTP_PROXY"] = old_proxy
+    for bad in ("http://169.254.169.254:11434", "http://[fe80::1]:11434", "http://0.0.0.0:11434"):
+        assert_eq(f"tiling blocks {bad}", None, tc._validate_ollama_base_url(bad))
+    original = (
+        tc.VAULT_ROOT,
+        tc.WIKI_DIR,
+        tc.META_DIR,
+        tc.CACHE_PATH,
+        tc.CACHE_LOCK,
+        tc.THRESHOLDS_PATH,
+    )
+    try:
+        with tempfile.TemporaryDirectory() as directory:
+            vault = Path(directory)
+            (vault / "wiki").mkdir()
+            (vault / ".obsidian").mkdir()
+            assert_true("tiling configure_vault", tc.configure_vault(str(vault)))
+            tc.save_cache({"version": 1, "model": "m1", "embeddings": {"a.md": {"hash": "h", "embedding": [1.0]}}})
+            loaded = tc.load_cache("m1")
+            assert_eq("tiling save_cache roundtrip", 1, len(loaded["embeddings"]))
+    finally:
+        (
+            tc.VAULT_ROOT,
+            tc.WIKI_DIR,
+            tc.META_DIR,
+            tc.CACHE_PATH,
+            tc.CACHE_LOCK,
+            tc.THRESHOLDS_PATH,
+        ) = original
+
+
 if __name__ == "__main__":
     try:
         test_cosine()
@@ -229,6 +272,7 @@ if __name__ == "__main__":
         test_cache_schema()
         test_url_guard_via_subprocess()
         test_report_path_cannot_overwrite_vault_content()
+        test_tiling_opener_and_native_cache_save()
     except Fail as exc:
         print(exc, file=sys.stderr)
         sys.exit(1)

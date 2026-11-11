@@ -94,6 +94,7 @@ PLUGIN_ROOT = Path(__file__).resolve().parent.parent
 if str(PLUGIN_ROOT) not in sys.path:
     sys.path.insert(0, str(PLUGIN_ROOT))
 
+from claude_empire import __version__
 from claude_empire.paths import VaultSelectionError, resolve_vault_root
 from claude_empire.transaction import (
     MutationLock,
@@ -104,6 +105,32 @@ from claude_empire.transaction import (
     _safe_vault_path,
     read_vault_regular,
 )
+
+if os.name == "nt":
+    from claude_empire.windows_fs import os_proxy as os
+
+
+class _NoRedirectHandler(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        raise urllib.error.HTTPError(
+            req.full_url, code, "Redirects are disabled", headers, fp
+        )
+
+
+def _build_opener():
+    return urllib.request.build_opener(
+        urllib.request.ProxyHandler({}),
+        _NoRedirectHandler(),
+    )
+
+
+_STD_URLOPEN = urllib.request.urlopen
+
+
+def _urlopen(req, timeout=None):
+    if urllib.request.urlopen is not _STD_URLOPEN:
+        return urllib.request.urlopen(req, timeout=timeout)
+    return _build_opener().open(req, timeout=timeout)
 
 VAULT_ROOT = Path.cwd().resolve()
 WIKI_DIR = VAULT_ROOT / "wiki"
@@ -608,6 +635,7 @@ def anthropic_api_prefix(api_key, page_title, page_body, chunk_text):
         data=body,
         headers={
             "Content-Type": "application/json",
+            "User-Agent": f"legends-empire/{__version__}",
             "x-api-key": api_key,
             "anthropic-version": "2023-06-01",
         },
@@ -615,7 +643,7 @@ def anthropic_api_prefix(api_key, page_title, page_body, chunk_text):
     )
     try:
         # The request target is the module-level fixed HTTPS Anthropic API URL.
-        with urllib.request.urlopen(req, timeout=ANTHROPIC_TIMEOUT_SEC) as resp:  # nosec B310
+        with _urlopen(req, timeout=ANTHROPIC_TIMEOUT_SEC) as resp:  # nosec B310
             raw = resp.read(ANTHROPIC_RESPONSE_MAX_BYTES + 1)
             if len(raw) > ANTHROPIC_RESPONSE_MAX_BYTES:
                 log("  anthropic-api response exceeded the safe byte limit")
@@ -763,7 +791,7 @@ def process_page(
     chunks = chunk_body(content)
     tier = pick_prefix_tier(force_synthetic, allow_egress=allow_egress)
     progress = (progress_label + " ") if progress_label else ""
-    page_rel = str(page_path.relative_to(VAULT_ROOT))
+    page_rel = page_path.relative_to(VAULT_ROOT).as_posix()
 
     planned = []
     active_paths = set()
@@ -1077,9 +1105,11 @@ def main():
         # lock. This prevents an index builder from observing and publishing a
         # partially reconciled chunk generation.
         with MutationLock(VAULT_ROOT, timeout=0.0) as mutation_lock:
-            root_fd = mutation_lock.duplicate_root_fd()
-            meta_fd = mutation_lock.duplicate_parent_fd()
+            root_fd = -1
+            meta_fd = -1
             try:
+                root_fd = mutation_lock.duplicate_root_fd()
+                meta_fd = mutation_lock.duplicate_parent_fd()
                 return process_selection(
                     args,
                     pages,
@@ -1087,8 +1117,10 @@ def main():
                     meta_fd=meta_fd,
                 )
             finally:
-                os.close(meta_fd)
-                os.close(root_fd)
+                if meta_fd is not None and meta_fd >= 0:
+                    os.close(meta_fd)
+                if root_fd is not None and root_fd >= 0:
+                    os.close(root_fd)
     except TransactionError as exc:
         log(f"ERR {exc.code}: {exc}")
         return EXIT_LOCK

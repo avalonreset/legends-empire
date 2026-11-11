@@ -3,6 +3,8 @@ name: Hermetic verification
 on:
   push:
     branches: [main]
+    tags:
+      - "v*"
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -116,7 +118,11 @@ jobs:
             tests/test_checkpoint_windows.py \
             tests/test_cli_approval.py \
             tests/test_cli_mode.py \
-            tests/test_vault_ops.py; do
+            tests/test_vault_ops.py \
+            tests/test_contextual_prefix.py \
+            tests/test_bm25_index.py \
+            tests/test_retrieve.py \
+            tests/test_tiling_check.py; do
             echo "=== $test_file ==="
             python "$test_file"
           done

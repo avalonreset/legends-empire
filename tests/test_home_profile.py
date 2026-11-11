@@ -209,6 +209,12 @@ class ProfileTests(unittest.TestCase):
         with self.assertRaises(TransactionError):
             self.scaffold(company_id="imagined-business")
 
+    def test_scaffold_spec_rejects_duplicate_keys_and_oversized_json(self):
+        spec_file = Path(self.temp.name) / "dup-spec.json"
+        spec_file.write_text('{"project": {"id": "p1"}, "project": {"id": "p2"}}', encoding="utf-8")
+        with self.assertRaises(TransactionError):
+            profile.scaffold_bundle(self.root, spec_file, "op-dup", STAMP)
+
 
 if __name__ == "__main__":
     unittest.main()

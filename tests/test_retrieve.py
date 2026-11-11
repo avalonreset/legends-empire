@@ -206,7 +206,7 @@ def test_embed_one_uses_current_single_input_ollama_api():
 
         @staticmethod
         def read(limit):
-            assert_eq("embedding response read is bounded", 4 * 1024 * 1024, limit)
+            assert_eq("embedding response read is bounded", 4 * 1024 * 1024 + 1, limit)
             return json.dumps({"embeddings": [[1.0, 2.0, 3.0]]}).encode()
 
     with unittest.mock.patch.object(
@@ -1270,6 +1270,24 @@ def test_no_rerank_flag_strategy_bm25_only():
         )
 
 
+def test_rerank_opener_and_native_cache_save():
+    with unittest.mock.patch.dict(os.environ, {"HTTPS_PROXY": "http://127.0.0.1:9999", "HTTP_PROXY": "http://127.0.0.1:9999"}):
+        opener = rerank._build_opener()
+        handlers = [type(h).__name__ for h in opener.handlers]
+        assert_true("rerank opener disables redirects", "_NoRedirectHandler" in handlers)
+        assert_true("rerank opener disables proxies", all(getattr(h, "proxies", {}) == {} for h in opener.handlers))
+    for bad in ("http://169.254.169.254:11434", "http://[fe80::1]:11434", "http://0.0.0.0:11434"):
+        assert_eq(f"rerank blocks {bad}", None, rerank.validate_ollama_base_url(bad))
+    with tempfile.TemporaryDirectory() as tmpdir:
+        sandbox = Path(tmpdir)
+        (sandbox / "wiki").mkdir()
+        (sandbox / ".obsidian").mkdir()
+        assert_true("rerank configure_vault", rerank.configure_vault(str(sandbox)))
+        rerank.save_cache({"key": [1.0, 2.0]})
+        loaded = rerank.load_cache()
+        assert_eq("rerank save_cache roundtrip", {"key": [1.0, 2.0]}, loaded)
+
+
 def main():
     print("=== test_retrieve.py ===")
     test_import_sibling_resolves_hyphenated_names()
@@ -1308,6 +1326,7 @@ def main():
     test_chunk_currency_accepts_crlf_pages()
     test_explain_flag_adds_diagnostics_block()
     test_no_rerank_flag_strategy_bm25_only()
+    test_rerank_opener_and_native_cache_save()
     print("\nAll retrieve tests passed.")
 
 

@@ -45,14 +45,14 @@ class AdapterTests(unittest.TestCase):
         # The invented resolver needs no third-party modules. Mock only its
         # dependency probe so standalone CI remains dependency-free; execute the
         # actual staged fixture subprocess for native readiness behavior.
-        real_run = subprocess.run
-        def synthetic_dependency(command, **kwargs):
-            if command[-2:] == ["-c", "import yaml"]:
-                return subprocess.CompletedProcess(command, 0, b"", b"")
-            return real_run(command, **kwargs)
-        runner = patch.object(adapter.subprocess, "run", side_effect=synthetic_dependency)
-        runner.start()
-        self.addCleanup(runner.stop)
+        real_find_spec = adapter.importlib.util.find_spec
+        def synthetic_find_spec(name, *args, **kwargs):
+            if name == "yaml":
+                return object()
+            return real_find_spec(name, *args, **kwargs)
+        spec_patcher = patch.object(adapter.importlib.util, "find_spec", side_effect=synthetic_find_spec)
+        spec_patcher.start()
+        self.addCleanup(spec_patcher.stop)
 
     def bundle(self, **changes):
         args = dict(empire=self.empire, home=self.home, project=PROJECT,
@@ -198,11 +198,31 @@ class AdapterTests(unittest.TestCase):
 
     def test_missing_native_dependency_is_actionable_without_vault_writes(self):
         self.apply()
-        with patch.object(adapter.subprocess, "run", return_value=subprocess.CompletedProcess([], 1, b"", b"missing")):
+        with patch.object(adapter.importlib.util, "find_spec", return_value=None):
             report = adapter.check_binding(self.empire, "synthetic", native=True)
         self.assertEqual(report["native_readiness"], "dependency_missing")
         self.assertIn("--native-python", report["native_requirement"])
         self.assertEqual(report["writes"], 0)
+        with patch.object(
+            adapter.subprocess,
+            "run",
+            return_value=subprocess.CompletedProcess([], 1, b"", b"ModuleNotFoundError: No module named 'yaml'\n"),
+        ):
+            report_explicit = adapter.check_binding(
+                self.empire, "synthetic", native=True, native_python=sys.executable
+            )
+        self.assertEqual(report_explicit["native_readiness"], "dependency_missing")
+        with self.assertRaises(TransactionError):
+            adapter.check_binding(
+                self.empire, "synthetic", native=True, native_python="relative/python"
+            )
+        in_vault_py = self.empire / "fake-python"
+        in_vault_py.write_bytes(b"#!/bin/sh\n")
+        in_vault_py.chmod(0o755)
+        with self.assertRaises(TransactionError):
+            adapter.check_binding(
+                self.empire, "synthetic", native=True, native_python=str(in_vault_py)
+            )
 
     def test_malformed_binding_refuses_without_traceback(self):
         self.apply()

@@ -1,10 +1,17 @@
 from __future__ import annotations
 
+import json
 import os
+import stat
+import sys
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 STEWARD_STATE_DIR = ".steward"
+MAX_JSON_INPUT_BYTES = 1_048_576
+_DARWIN_SYMLINK_DIRS = frozenset({"/var", "/tmp", "/etc"})
+_CFA_DIR_NAMES = ("Desktop", "Documents", "Pictures", "Videos", "Music", "Favorites")
 
 
 class PathEscapeError(ValueError):
@@ -13,6 +20,103 @@ class PathEscapeError(ValueError):
 
 class ReportPathError(ValueError):
     """Report --out is inside the vault but not under the reserved .steward tree."""
+
+
+def _is_symlink_or_junction(path: Path) -> bool:
+    if path.is_symlink():
+        return True
+    if hasattr(path, "is_junction"):
+        try:
+            if path.is_junction():
+                return True
+        except OSError:
+            return True
+    return False
+
+
+def check_no_symlink_chain(
+    raw: str | os.PathLike[str],
+    *,
+    error_cls: type[Exception] = PathEscapeError,
+) -> Path:
+    path = Path(raw).expanduser()
+    abs_path = Path(os.path.abspath(path))
+    for part in (abs_path, *abs_path.parents):
+        if sys.platform == "darwin" and part.as_posix() in _DARWIN_SYMLINK_DIRS:
+            continue
+        if _is_symlink_or_junction(part):
+            raise error_cls(f"path must not traverse a symlink or junction: {raw}")
+    return abs_path
+
+
+def check_not_cfa_protected(resolved: Path) -> None:
+    if os.name != "nt":
+        return
+    roots: list[Path] = []
+    for env_key in ("USERPROFILE", "OneDrive", "OneDriveConsumer", "OneDriveCommercial"):
+        val = os.environ.get(env_key, "").strip()
+        if val:
+            try:
+                roots.append(Path(val).resolve())
+            except OSError:
+                continue
+    for base in roots:
+        for folder in _CFA_DIR_NAMES:
+            protected = base / folder
+            try:
+                resolved.relative_to(protected)
+                raise ReportPathError(
+                    f"report --out targets a Windows Controlled Folder Access protected directory: {resolved}"
+                )
+            except ValueError:
+                continue
+
+
+def _reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    obj: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in obj:
+            raise ValueError(f"duplicate JSON object key: {key}")
+        obj[key] = value
+    return obj
+
+
+def _reject_nonfinite_constant(token: str) -> Any:
+    raise ValueError(f"non-standard JSON constant is not allowed: {token}")
+
+
+def read_bounded_json(
+    raw: str | os.PathLike[str],
+    *,
+    max_bytes: int = MAX_JSON_INPUT_BYTES,
+) -> Any:
+    abs_path = check_no_symlink_chain(raw, error_cls=ValueError)
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_BINARY", 0)
+    fd = os.open(abs_path, flags)
+    try:
+        st = os.fstat(fd)
+        if not stat.S_ISREG(st.st_mode):
+            raise ValueError(f"JSON input is not a regular file: {raw}")
+        if st.st_size > max_bytes:
+            raise ValueError(f"JSON input exceeds {max_bytes}-byte limit: {raw}")
+        chunks: list[bytes] = []
+        remaining = max_bytes + 1
+        while remaining > 0:
+            chunk = os.read(fd, remaining)
+            if not chunk:
+                break
+            chunks.append(chunk)
+            remaining -= len(chunk)
+        data = b"".join(chunks)
+    finally:
+        os.close(fd)
+    if len(data) > max_bytes:
+        raise ValueError(f"JSON input exceeds {max_bytes}-byte limit: {raw}")
+    return json.loads(
+        data.decode("utf-8"),
+        object_pairs_hook=_reject_duplicate_keys,
+        parse_constant=_reject_nonfinite_constant,
+    )
 
 
 @dataclass(frozen=True)
@@ -31,13 +135,12 @@ class VaultRoot:
 
 def resolve_vault_root(raw: str | os.PathLike[str]) -> VaultRoot:
     given = Path(raw).expanduser()
+    check_no_symlink_chain(given, error_cls=PathEscapeError)
     if not given.exists():
         raise FileNotFoundError(f"vault root does not exist: {given}")
     if not given.is_dir():
         raise NotADirectoryError(f"vault root is not a directory: {given}")
     real = given.resolve()
-    if given.is_symlink() and not _is_contained(real, real):
-        raise PathEscapeError(f"vault root symlink is not self-contained: {given}")
     return VaultRoot(given=given, real=real)
 
 
@@ -68,26 +171,16 @@ def safe_rel_posix(path: Path, vault: VaultRoot) -> str | None:
 
 
 def inspect_file(path: Path, vault: VaultRoot) -> tuple[str, bool] | None:
-    """Return (vault-relative posix path, is_symlink) or None if the file escapes."""
-    if path.is_symlink():
-        try:
-            target = path.resolve()
-        except OSError:
-            return None
-        if not _is_contained(target, vault.real):
-            return None
-        try:
-            rel = path.relative_to(vault.real).as_posix()
-        except ValueError:
-            return None
-        return rel, True
+    """Return (vault-relative posix path, is_symlink) or None if the file escapes or is a link."""
+    if _is_symlink_or_junction(path):
+        return None
     if not is_contained(path, vault):
         return None
     return rel_posix(path, vault), False
 
 
 def _resolved_out(raw: str | os.PathLike[str]) -> Path:
-    path = Path(raw).expanduser()
+    path = check_no_symlink_chain(raw, error_cls=ReportPathError)
     try:
         return path.resolve(strict=False)
     except OSError as exc:
@@ -106,9 +199,10 @@ def is_reserved_steward_dir(path: Path, vault: VaultRoot) -> bool:
 def validate_report_dir(raw: str | os.PathLike[str], vault: VaultRoot) -> Path:
     """Allow --out only outside the vault, or under <vault>/.steward/.
 
-    Resolves symlinks before the check so a .steward link into inbox is refused.
+    Refuses symlinks/junctions in the path chain and Windows CFA protected folders.
     """
     resolved = _resolved_out(raw)
+    check_not_cfa_protected(resolved)
     if resolved.exists() and not resolved.is_dir():
         raise ReportPathError(f"report --out must be a directory, not a file: {resolved}")
     if not is_contained(resolved, vault):

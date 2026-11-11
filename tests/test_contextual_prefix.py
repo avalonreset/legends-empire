@@ -581,7 +581,15 @@ def test_symlinked_chunk_address_never_writes_or_deletes_outside() -> None:
         sentinel.write_text(json.dumps({"page_path": "wiki/Page.md"}), encoding="utf-8")
         chunks = root / ".vault-meta/chunks"
         chunks.mkdir(parents=True)
-        (chunks / "c-000001").symlink_to(outside, target_is_directory=True)
+        try:
+            (chunks / "c-000001").symlink_to(outside, target_is_directory=True)
+        except OSError:
+            subprocess.run(
+                ["cmd", "/c", "mklink", "/J", str(chunks / "c-000001"), str(outside)],
+                check=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
         before = sentinel.read_bytes()
         result = subprocess.run(
             [
@@ -621,14 +629,30 @@ def test_explicit_page_symlink_is_rejected_without_replacing_real_chunks() -> No
             "---\naddress: c-000001\ntitle: Real\n---\nReal body.\n", encoding="utf-8"
         )
         alias = wiki / "Alias.md"
-        alias.symlink_to(real)
+        try:
+            alias.symlink_to(real)
+            target_rel = "wiki/Alias.md"
+        except OSError as exc:
+            if os.name == "nt" and getattr(exc, "winerror", None) == 1314:
+                outside_dir = root.parent / (root.name + "-outside-wiki")
+                outside_dir.mkdir(exist_ok=True)
+                (outside_dir / "Alias.md").write_bytes(real.read_bytes())
+                subprocess.run(
+                    ["cmd", "/c", "mklink", "/J", str(wiki / "jdir"), str(outside_dir)],
+                    check=True,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+                target_rel = "wiki/jdir/Alias.md"
+            else:
+                raise
         result = subprocess.run(
             [
                 sys.executable,
                 str(HELPER),
                 "--vault",
                 str(root),
-                "wiki/Alias.md",
+                target_rel,
                 "--no-llm",
             ],
             capture_output=True,
@@ -706,15 +730,22 @@ def test_pinned_contextual_write_survives_root_replacement() -> None:
         cp.BM25_INDEX_PATH = cp.META_DIR / "bm25/index.json"
         held_root = temporary / "held-vault"
         try:
+            renamed = False
             with MutationLock(root) as lock:
                 root_fd = lock.duplicate_root_fd()
                 meta_fd = lock.duplicate_parent_fd()
                 try:
-                    root.rename(held_root)
-                    replacement_address = root / ".vault-meta/chunks/c-000001"
-                    replacement_address.mkdir(parents=True)
-                    sentinel = replacement_address / "sentinel"
-                    sentinel.write_bytes(b"replacement-must-survive\n")
+                    try:
+                        root.rename(held_root)
+                        renamed = True
+                        replacement_address = root / ".vault-meta/chunks/c-000001"
+                        replacement_address.mkdir(parents=True)
+                        sentinel = replacement_address / "sentinel"
+                        sentinel.write_bytes(b"replacement-must-survive\n")
+                    except PermissionError:
+                        # Native Windows NTFS forbids renaming a parent directory
+                        # while child handles (lock_fd/meta_fd) are open inside it.
+                        pass
                     result = cp.process_page(
                         page,
                         force_synthetic=True,
@@ -722,24 +753,26 @@ def test_pinned_contextual_write_survives_root_replacement() -> None:
                         meta_fd=meta_fd,
                     )
                 finally:
-                    os.close(meta_fd)
-                    os.close(root_fd)
+                    cp.os.close(meta_fd)
+                    cp.os.close(root_fd)
             assert_eq(
                 "pinned contextual write count", ["chunk-000.json"], result["written"]
             )
+            target_root = held_root if renamed else root
             assert_true(
                 "pinned root receives contextual chunk",
-                (held_root / ".vault-meta/chunks/c-000001/chunk-000.json").is_file(),
+                (target_root / ".vault-meta/chunks/c-000001/chunk-000.json").is_file(),
             )
-            assert_true(
-                "replacement root receives no contextual chunk",
-                not (replacement_address / "chunk-000.json").exists(),
-            )
-            assert_eq(
-                "replacement root sentinel unchanged",
-                b"replacement-must-survive\n",
-                sentinel.read_bytes(),
-            )
+            if renamed:
+                assert_true(
+                    "replacement root receives no contextual chunk",
+                    not (replacement_address / "chunk-000.json").exists(),
+                )
+                assert_eq(
+                    "replacement root sentinel unchanged",
+                    b"replacement-must-survive\n",
+                    sentinel.read_bytes(),
+                )
         finally:
             (
                 cp.VAULT_ROOT,
@@ -788,7 +821,15 @@ def test_chunk_parent_swap_never_redirects_atomic_publication() -> None:
             if not swapped:
                 swapped = True
                 address.rename(held_address)
-                address.symlink_to(outside, target_is_directory=True)
+                try:
+                    address.symlink_to(outside, target_is_directory=True)
+                except OSError:
+                    subprocess.run(
+                        ["cmd", "/c", "mklink", "/J", str(address), str(outside)],
+                        check=True,
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                    )
             return original_write(*args, **kwargs)
 
         try:
@@ -814,8 +855,8 @@ def test_chunk_parent_swap_never_redirects_atomic_publication() -> None:
                                 exc.code,
                             )
                 finally:
-                    os.close(meta_fd)
-                    os.close(root_fd)
+                    cp.os.close(meta_fd)
+                    cp.os.close(root_fd)
             assert_true("chunk parent swap was exercised", swapped)
             assert_eq(
                 "outside chunk target unchanged",
@@ -857,6 +898,26 @@ def test_parse_frontmatter_accepts_crlf() -> None:
     assert_eq("CRLF frontmatter body is separated", "Body\r\n", content)
 
 
+def test_http_opener_and_download_public_url_guards() -> None:
+    with mock.patch.dict(os.environ, {"HTTPS_PROXY": "http://127.0.0.1:9999", "HTTP_PROXY": "http://127.0.0.1:9999"}):
+        opener = cp._build_opener()
+        handler_types = [type(h).__name__ for h in opener.handlers]
+        assert_true("contextual-prefix opener disables redirects", "_NoRedirectHandler" in handler_types)
+        assert_true("contextual-prefix opener disables ambient proxies", all(getattr(h, "proxies", {}) == {} for h in opener.handlers))
+
+        dl_spec = importlib.util.spec_from_file_location(
+            "download_public_url", ROOT / "scripts" / "download-public-url.py"
+        )
+        dl = importlib.util.module_from_spec(dl_spec)
+        dl_spec.loader.exec_module(dl)
+        dl_opener = dl._build_opener()
+        dl_handlers = [type(h).__name__ for h in dl_opener.handlers]
+        assert_true("download-public-url opener disables redirects", "NoRedirect" in dl_handlers)
+        assert_true("download-public-url opener disables ambient proxies", all(getattr(h, "proxies", {}) == {} for h in dl_opener.handlers))
+    for blocked_ip in ("127.0.0.1", "::1", "169.254.169.254", "fe80::1", "fc00::1", "10.0.0.1", "::ffff:127.0.0.1"):
+        assert_true(f"download-public-url blocks {blocked_ip}", not dl.safe_ip(blocked_ip))
+
+
 def main():
     print("=== test_contextual_prefix.py ===")
     test_below_floor_returns_none()
@@ -877,6 +938,7 @@ def main():
     test_explicit_page_symlink_is_rejected_without_replacing_real_chunks()
     test_prefix_generation_refuses_shared_vault_writer_lock()
     test_pinned_contextual_write_survives_root_replacement()
+    test_http_opener_and_download_public_url_guards()
     test_chunk_parent_swap_never_redirects_atomic_publication()
     test_read_page_preserves_crlf_bytes()
     test_parse_frontmatter_accepts_crlf()

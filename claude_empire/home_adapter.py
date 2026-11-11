@@ -5,6 +5,7 @@ an entitlement, tenancy boundary, or proof that a particular project is ready.
 """
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
 from pathlib import Path, PurePosixPath
@@ -18,6 +19,7 @@ from .transaction import TransactionValidationError, read_vault_regular, sha256_
 
 PIN = Path(__file__).resolve().parents[1] / "config/home-compatibility.json"
 SCHEMA = "legends.home-binding/v1"
+_DARWIN_SYMLINK_DIRS = frozenset({"/var", "/tmp", "/etc"})
 
 
 def fail(message: str):
@@ -225,10 +227,32 @@ def check_binding(empire: Path, binding_id: str, native: bool = False, project: 
         if report["mismatches"]:
             fail("refusing to execute unqualified Home scripts")
         root = Path(report["home_root"])
-        interpreter = Path(native_python) if native_python else Path(sys.executable)
-        if not interpreter.is_absolute() or not interpreter.is_file():
-            fail("--native-python must name an existing absolute trusted Python interpreter")
-        interpreter = interpreter.resolve()
+        empire_resolved = empire.resolve()
+        if native_python is not None:
+            if any(ord(c) < 32 for c in str(native_python)):
+                fail("--native-python must name an existing absolute trusted Python interpreter")
+            raw_interp = Path(native_python).expanduser()
+            if not raw_interp.is_absolute():
+                fail("--native-python must name an existing absolute trusted Python interpreter")
+            for part in (raw_interp, *raw_interp.parents):
+                if sys.platform == "darwin" and part.as_posix() in _DARWIN_SYMLINK_DIRS:
+                    continue
+                if part.exists() and is_name_surrogate(part.lstat()):
+                    fail("--native-python must not traverse a symlink or junction")
+            if not raw_interp.is_file() or not os.access(raw_interp, os.X_OK):
+                fail("--native-python must name an existing absolute trusted Python interpreter")
+            interpreter = raw_interp.resolve()
+            if interpreter.is_relative_to(root) or interpreter.is_relative_to(empire_resolved):
+                fail("--native-python must be outside the Empire and Home vault roots")
+        else:
+            interpreter = Path(sys.executable)
+            if not interpreter.is_absolute() or not interpreter.is_file():
+                fail("--native-python must name an existing absolute trusted Python interpreter")
+            interpreter = interpreter.resolve()
+            if importlib.util.find_spec("yaml") is None:
+                report["native_readiness"] = "dependency_missing"
+                report["native_requirement"] = "Use --native-python with a trusted Home Python environment containing PyYAML. Standalone Empire does not require it."
+                return report
         env = {k: v for k, v in os.environ.items() if not k.upper().startswith("PYTHON")}
         # Only explicit native check executes the separately installed, pinned resolver.
         # Do not import Home in the Empire process or include private note contents.
@@ -238,12 +262,6 @@ def check_binding(empire: Path, binding_id: str, native: bool = False, project: 
             pin = json.loads(PIN.read_text(encoding="utf-8"))
             with tempfile.TemporaryDirectory(prefix="empire-home-check-") as temp:
                 stage = Path(temp)
-                dependency = subprocess.run([str(interpreter), "-B", "-E", "-s", "-c", "import yaml"],
-                                            cwd=stage, env=env, capture_output=True, timeout=15)
-                if dependency.returncode:
-                    report["native_readiness"] = "dependency_missing"
-                    report["native_requirement"] = "Use --native-python with a trusted Home Python environment containing PyYAML. Standalone Empire does not require it."
-                    return report
                 for path, digest in pin["files"].items():
                     if path.endswith(".py"):
                         payload = read(root, path).replace(b"\r\n", b"\n")
@@ -253,6 +271,13 @@ def check_binding(empire: Path, binding_id: str, native: bool = False, project: 
                 command = [str(interpreter), "-B", "-E", "-s", str(stage / "resolve-context.py"),
                            "--vault", str(root), "--project", selected_project]
                 result = subprocess.run(command, cwd=stage, env=env, capture_output=True, timeout=60)
+                if result.returncode != 0 and (
+                    b"No module named 'yaml'" in result.stderr
+                    or b'No module named "yaml"' in result.stderr
+                ):
+                    report["native_readiness"] = "dependency_missing"
+                    report["native_requirement"] = "Use --native-python with a trusted Home Python environment containing PyYAML. Standalone Empire does not require it."
+                    return report
         except (OSError, subprocess.TimeoutExpired):
             fail("native resolver unavailable or timed out; no readiness claim")
         report["native_readiness"] = "ready" if result.returncode == 0 else "refused"

@@ -78,6 +78,9 @@ from claude_empire.transaction import (
     read_vault_regular,
 )
 
+if os.name == "nt":
+    from claude_empire.windows_fs import os_proxy as os
+
 VAULT_ROOT = Path.cwd().resolve()
 META_DIR = VAULT_ROOT / ".vault-meta"
 CHUNKS_DIR = META_DIR / "chunks"
@@ -718,10 +721,12 @@ def corrupt_index(reason):
 
 
 def load_index():
-    if not INDEX_PATH.is_file():
+    if INDEX_PATH.is_symlink() or not INDEX_PATH.is_file():
         log(f"ERR: no index at {INDEX_PATH}. Run `bm25-index.py build` first.")
         sys.exit(EXIT_INDEX_MISSING)
     try:
+        if INDEX_PATH.stat().st_size > 64 * 1024 * 1024:
+            corrupt_index("index exceeds size limit")
         raw = INDEX_PATH.read_text(encoding="utf-8")
     except OSError:
         corrupt_index("index is unreadable")
@@ -817,14 +822,18 @@ def main():
     if args.cmd == "build":
         try:
             with MutationLock(VAULT_ROOT, timeout=0.0) as mutation_lock:
-                root_fd = mutation_lock.duplicate_root_fd()
-                meta_fd = mutation_lock.duplicate_parent_fd()
+                root_fd = -1
+                meta_fd = -1
                 try:
+                    root_fd = mutation_lock.duplicate_root_fd()
+                    meta_fd = mutation_lock.duplicate_parent_fd()
                     index = build_index(meta_fd=meta_fd, vault_root_fd=root_fd)
                     write_index(index, meta_fd=meta_fd)
                 finally:
-                    os.close(meta_fd)
-                    os.close(root_fd)
+                    if meta_fd is not None and meta_fd >= 0:
+                        os.close(meta_fd)
+                    if root_fd is not None and root_fd >= 0:
+                        os.close(root_fd)
                 log(f"Wrote {INDEX_PATH}  docs={index['doc_count']}  vocab={len(index['vocab'])}  avg_dl={index['avg_dl']:.1f}")
         except TransactionError as exc:
             log(f"ERR {exc.code}: {exc}")

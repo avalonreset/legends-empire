@@ -35,15 +35,21 @@ Read [the installation guide](install-guide.md), [vault stewardship workflow](st
 | Initialize new vault | `python scripts/claude-empire.py init <path> --operation-id ID --generated-at ISO [--approved-plan-sha256 HASH --apply]` | Preview-first creation of a separate Obsidian vault with `.claude-empire.json`, `wiki/`, and `.raw/` |
 | Adopt existing vault | `python scripts/claude-empire.py adopt <path> --operation-id ID --generated-at ISO [--approved-plan-sha256 HASH --apply]` | Preview-first additive adoption preserving existing user notes and Obsidian config |
 | Migrate legacy layout | `python scripts/claude-empire.py migrate --vault <vault> --operation-id ID --generated-at ISO [--approved-plan-sha256 HASH --apply]` | Additive provenance ledger migration; preserves `.raw/.manifest.json` byte-for-byte |
-| Source capture | `python scripts/claude-empire.py capture plan\|apply --vault <vault> ...` | Plans and copies local `inbox/` sources into immutable content-addressed `.raw/` storage |
-| Methodology routing | `python scripts/claude-empire.py mode get\|set --vault <vault> ...` | Reads or transactionally configures `generic`, `lyt`, `para`, or `zettelkasten` mode |
+| Source capture | `python scripts/claude-empire.py capture plan\|apply --vault <vault> [--inbox DIR] [--max-items N] [--max-total-bytes N] [--max-file-bytes N] [--operation-id ID] [--generated-at ISO] [--approved-plan-sha256 HASH] [--apply] [sources ...]` | Plans and copies local `inbox/` sources into immutable content-addressed `.raw/` storage |
+| Capture adapter manifest | `python scripts/claude-empire.py capture adapters` | Emits declared capture adapter maturity and offline/consent boundaries |
+| External capture plan | `python scripts/claude-empire.py capture external-plan <url\|image\|pdf\|youtube\|epub\|ocr> <source> [--approved-host HOST]` | Creates an inert, consent-gated external capture adapter plan without network or file writes |
+| Durable capture queue | `python scripts/claude-empire.py capture queue list\|enqueue\|claim\|complete\|fail\|resume\|recover --vault <vault> [--timeout SEC] [--lock-stale-after SEC] ...` | Operates the durable `.vault-meta/capture-queue/` state machine (`list [--state STATE]`, `enqueue <adapter> <source>`, `claim [item_id] [--worker ID]`, `complete <item_id> <token> <json>`, `fail <item_id> <token> <error> [--permanent]`, `resume [item_id] [--stale-after SEC] [--claimed-only] [--force]`, `recover [--force-stale-lock]`) |
+| Methodology routing | `python scripts/claude-empire.py mode get\|set --vault <vault> [generic\|lyt\|para\|zettelkasten] [--operation-id ID] [--generated-at ISO] [--approved-plan-sha256 HASH] [--apply]` | Reads or transactionally configures `generic`, `lyt`, `para`, or `zettelkasten` mode |
+| DragonScale extension | `python scripts/claude-empire.py extension dragonscale [--vault <vault>] [--check] [--operation-id ID] [--generated-at ISO] [--approved-plan-sha256 HASH] [--apply]` | Checks (`--check`) or transactionally scaffolds missing DragonScale compatibility state |
+| Host lifecycle hooks | `python scripts/claude-empire.py hook session-start` / `python scripts/claude-empire.py hook stop` | Bounded read-only `SessionStart` context adapter (`CLAUDE_EMPIRE_SESSION_CONTEXT=1`) and `Stop` recovery status reporter |
 | Inspect transaction | `python scripts/claude-empire.py transaction inspect --vault <vault> <bundle.json>` | Validates `claude-empire.transaction.v1` bundle preconditions and computes `approval_sha256` |
-| Apply transaction | `python scripts/claude-empire.py transaction apply --vault <vault> <bundle.json> --approved-plan-sha256 HASH` | Applies a reviewed bundle using atomic handle/POSIX confinement and crash journals |
-| Recover transaction | `python scripts/claude-empire.py transaction recover --vault <vault>` | Rolls back interrupted operations from `.vault-meta/transactions/` journals |
-| Explicit Git checkpoint | `python scripts/claude-empire.py checkpoint <operation-id> --vault <vault> [--as-of YYYY-MM-DD]` | Commits one completed transaction through a temporary Git index after blob verification |
+| Apply transaction | `python scripts/claude-empire.py transaction apply --vault <vault> <bundle.json> --approved-plan-sha256 HASH [--timeout SEC] [--stale-after SEC]` | Applies a reviewed bundle using atomic handle/POSIX confinement and crash journals |
+| Recover transaction | `python scripts/claude-empire.py transaction recover --vault <vault> [--timeout SEC] [--stale-after SEC] [--force-stale-lock]` | Rolls back interrupted operations from `.vault-meta/transactions/` journals |
+| Explicit Git checkpoint | `python scripts/claude-empire.py checkpoint <operation-id> --vault <vault> [--message MSG] [--include-raw] [--skip-lint] [--as-of YYYY-MM-DD]` | Commits one completed transaction through a temporary Git index after blob verification |
 | Research evidence intake | `python scripts/claude-empire.py research-evidence verify\|plan <package> --workspace <id> [--vault <vault>]` | Offline verification and intake planning for DataForSEO and Firecrawl v1 evidence banks |
-| Package & contract gates | `python scripts/claude-empire.py package validate` / `contracts --verify` | Verifies router-native skill allowlist, hooks schema, and capability contracts |
-| Reproducible release ZIP | `python scripts/claude-empire.py release build --output <zip>` / `release audit <zip>` | Builds and self-audits a deterministic stored ZIP from a clean Git worktree |
+| Package & contract gates | `python scripts/claude-empire.py package validate` / `python scripts/claude-empire.py contracts [--vault <vault>] [--verify] [--check-only] [--capability ID]` | Verifies router-native skill allowlist, hooks schema, and capability contracts |
+| Reproducible release ZIP | `python scripts/claude-empire.py release build --output <zip> [--source-date-epoch INT]` / `python scripts/claude-empire.py release audit <zip>` | Builds and self-audits a deterministic stored ZIP from a clean Git worktree |
+| Release gate evaluation | `python scripts/claude-empire.py release gates [--execute] [--gate ID] [--timeout SEC]` | Plans or executes declared offline release verification gates without publishing |
 
 ## Vault stewardship (`legends-vault-stewardship`)
 
@@ -65,10 +71,12 @@ Read [the installation guide](install-guide.md), [vault stewardship workflow](st
 
 | Goal | Command | Behavior |
 |---|---|---|
-| Prepare shared-root slots | `python scripts/claude-empire.py home-adapter prepare --vault <vault> --operation-id ID --generated-at ISO` | Previews `EMPIRE-ENTRY.md` and Home-compatible directory slot markers |
-| Scaffold project/company/brand | `python scripts/claude-empire.py home-adapter scaffold --vault <vault> --spec <json> --operation-id ID --generated-at ISO` | Previews canonical `Projects/Active/<id>/` and `Workspaces/` records from an explicit JSON spec |
-| Inspect separate Home | `python scripts/claude-empire.py home-adapter inspect --home <home-root>` | Verifies pinned Home v0.5.2 core digests without modifying files |
-| Plan / apply / detach binding | `python scripts/claude-empire.py home-adapter plan\|apply\|detach\|list\|check ...` | Manages reference-only bindings under `wiki/integrations/aimh-home/<binding-id>/` |
+| Prepare shared-root slots | `python scripts/claude-empire.py home-adapter prepare --vault <vault> --operation-id ID --generated-at ISO [--approved-plan-sha256 HASH --apply]` | Previews or applies `EMPIRE-ENTRY.md` and Home-compatible directory slot markers |
+| Compose root instructions | `python scripts/claude-empire.py home-adapter compose --vault <vault> --home-source <home-root> --operation-id ID --generated-at ISO [--approved-plan-sha256 HASH --apply]` | Previews or applies exact-provenance shared-root `AGENTS.md` / `CLAUDE.md` composition |
+| Scaffold project/company/brand | `python scripts/claude-empire.py home-adapter scaffold --vault <vault> --spec <json> --operation-id ID --generated-at ISO [--approved-plan-sha256 HASH --apply]` | Previews or applies canonical `Projects/Active/<id>/` and `Workspaces/` records from an explicit JSON spec |
+| Install Home into shared root | `python scripts/claude-empire.py home-adapter install --vault <vault> --home-source <home-root> --operation-id ID --generated-at ISO [--approved-plan-sha256 HASH --apply]` | Previews or applies inventory-bound multi-batch (`<= 150` files/batch) Home installation into a shared root |
+| Inspect separate Home | `python scripts/claude-empire.py home-adapter inspect --home <home-root> [--project <context.md>]` | Verifies pinned Home v0.5.2 core digests without modifying files |
+| Plan / apply / detach / check binding | `python scripts/claude-empire.py home-adapter plan\|apply\|detach\|list\|check --vault <vault> [--binding-id ID] [--home <home-root>] [--project <context.md>] [--shared-root] [--native] [--native-python <exe>] [--operation-id ID] [--generated-at ISO] [--approved-plan-sha256 HASH] [--apply]` | Manages and verifies reference-only bindings under `wiki/integrations/aimh-home/<binding-id>/` |
 
 ## EDR and Security Guardrails
 

@@ -7,6 +7,22 @@ implementation record for older releases.
 
 ## [Unreleased]
 
+## [0.3.5] - 2026-11-11
+
+### Added
+
+- Added `docs/router-provenance.json` recording the vendored `skills/cto-legends/SKILL.md` SHA-256 digest and source router commit pin, enforced by `scripts/check_release.py` and included in `config/release-allowlist.json`.
+- Expanded `docs/AGENT-RECIPE.md` to document `capture adapters`, `capture external-plan`, `capture queue list|enqueue|claim|complete|fail|resume|recover`, `extension dragonscale`, `hook session-start`, `hook stop`, `release gates`, `home-adapter compose`, and `home-adapter install`.
+
+### Changed
+
+- Hardened HTTP transport across `scripts/download-public-url.py`, `scripts/contextual-prefix.py`, `scripts/rerank.py`, and `scripts/tiling-check.py` with `urllib.request.ProxyHandler({})`, non-redirecting `HTTPRedirectHandler` openers, IPv4/IPv6 DNS resolution checks rejecting link-local (`169.254.0.0/16`, `fe80::/10`), unspecified, multicast, and non-global targets, bounded response reads (`MAX_RESPONSE_BYTES + 1`), and canonical `legends-empire/0.3.5` `User-Agent` headers.
+- Routed `scripts/contextual-prefix.py`, `scripts/bm25-index.py`, `scripts/rerank.py`, `scripts/tiling-check.py`, and `claude_empire/legacy_lock.py` through `claude_empire.windows_fs.os_proxy` on native Windows 11 so `dir_fd` operations, atomic cache replacement, and descriptor cleanup run natively without `NotImplementedError` or double-close `EBADF` exceptions, and added all four script test suites to the `windows-latest` CI matrix.
+- Aligned `MAX_FILES` in `claude_empire/knowledge.py` (`148` files plus 2 pack state files) and `MAX_TRANSACTION_WRITES` in `claude_empire/transaction.py` (`150`) with the `BATCH_SIZE <= 150` Windows Defender anti-ransomware transaction batch ceiling.
+- Added symlink/reparse-point refusal (`O_NOFOLLOW` / ancestor chain checks), Windows Controlled Folder Access output checks, and bounded file reads across `scripts/download-public-url.py`, `scripts/bm25-index.py`, `scripts/rerank.py`, `scripts/tiling-check.py`, `scripts/read-hot-cache.sh`, `claude_empire/home_profile.py`, and `legends_vault_steward`.
+- Replaced the inline `python -c "import yaml"` probe in `claude_empire/home_adapter.py` with `importlib.util.find_spec("yaml")` for the active interpreter and validated `--native-python` paths as absolute, non-symlink executable files outside the vault and module roots.
+- Replaced deprecated `datetime.utcnow()` in `scripts/tiling-check.py` with timezone-aware `datetime.now(timezone.utc)` and upgraded `scripts/check_release.py` to enforce router provenance and single-backtick Markdown hygiene.
+
 ## [0.3.4] - 2026-11-05
 
 ### Added
