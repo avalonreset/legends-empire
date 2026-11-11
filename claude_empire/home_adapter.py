@@ -234,14 +234,13 @@ def check_binding(empire: Path, binding_id: str, native: bool = False, project: 
             raw_interp = Path(native_python).expanduser()
             if not raw_interp.is_absolute():
                 fail("--native-python must name an existing absolute trusted Python interpreter")
-            for part in (raw_interp, *raw_interp.parents):
-                if sys.platform == "darwin" and part.as_posix() in _DARWIN_SYMLINK_DIRS:
-                    continue
-                if part.exists() and is_name_surrogate(part.lstat()):
-                    fail("--native-python must not traverse a symlink or junction")
+            if raw_interp.is_relative_to(root) or raw_interp.is_relative_to(empire_resolved):
+                fail("--native-python must be outside the Empire and Home vault roots")
             if not raw_interp.is_file() or not os.access(raw_interp, os.X_OK):
                 fail("--native-python must name an existing absolute trusted Python interpreter")
             interpreter = raw_interp.resolve()
+            if not interpreter.is_file() or not os.access(interpreter, os.X_OK):
+                fail("--native-python must name an existing absolute trusted Python interpreter")
             if interpreter.is_relative_to(root) or interpreter.is_relative_to(empire_resolved):
                 fail("--native-python must be outside the Empire and Home vault roots")
         else:
