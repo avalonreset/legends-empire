@@ -71,6 +71,7 @@ OPERATION_TYPES = {
     "home-records",
     "home-install",
     "home-upgrade",
+    "ontology",
 }
 
 # Transaction journals, host locks, derived indexes, queues, and hook state are
@@ -559,7 +560,27 @@ def _assert_no_existing_portable_alias(
                     "CASEFOLD_PATH_ALIAS",
                     f"vault already contains a portable path alias for {normalized}: {alias}",
                 )
-            if part not in names or index == len(PurePosixPath(normalized).parts) - 1:
+            if part not in names:
+                # Enumeration did not list the name, yet the filesystem may
+                # still resolve it (an NTFS 8.3 short name or another
+                # filesystem-level alias of a differently named entry).
+                try:
+                    if isinstance(handle, Path):
+                        os.lstat(handle / part)
+                    else:
+                        os.lstat(part, dir_fd=handle)
+                except (FileNotFoundError, NotADirectoryError):
+                    return
+                except OSError as exc:
+                    raise TransactionValidationError(
+                        "UNSAFE_VAULT_PATH",
+                        f"cannot verify the path identity of {normalized}: {exc}",
+                    ) from exc
+                raise TransactionValidationError(
+                    "PORTABLE_PATH_ALIAS",
+                    f"{normalized} resolves to an entry listed under another name",
+                )
+            if index == len(PurePosixPath(normalized).parts) - 1:
                 return
             if isinstance(handle, Path):
                 handle = handle / part
@@ -3289,7 +3310,11 @@ def _validate_markdown(data: bytes, relative_path: str) -> None:
         raise TransactionValidationError(
             "INVALID_MARKDOWN", f"{relative_path} is not UTF-8"
         ) from exc
-    if text.startswith("---\n") and "\n---\n" not in text[4:]:
+    if (
+        text.startswith("---\n")
+        and not text[4:].startswith("---\n")
+        and "\n---\n" not in text[4:]
+    ):
         raise TransactionValidationError(
             "INVALID_MARKDOWN", f"{relative_path} has unterminated frontmatter"
         )
@@ -3343,6 +3368,14 @@ def _validate_operation_write_scope(
             "RESERVED_WRITE_PATH",
             f"product and runtime internals cannot be bundle targets: {relative}",
         )
+    if operation_type == "ontology":
+        from .ontology_grammar import OntologyRuleError, check_target_lexical
+
+        try:
+            check_target_lexical(relative, write_mode)
+        except OntologyRuleError as exc:
+            raise TransactionValidationError(exc.code, exc.message) from exc
+        return
     if operation_type == "home-upgrade":
         from .home_upgrade import write_allowed as upgrade_write_allowed
         if not upgrade_write_allowed(relative, write_mode):
@@ -3445,13 +3478,76 @@ def _validate_operation_write_scope(
             )
 
 
+def _validate_ontology_bundle(
+    prepared: Iterable[PreparedWrite],
+    bundle: Mapping[str, Any],
+    *,
+    vault_root: Path | None,
+    originals: Mapping[str, bytes | None],
+    root_fd: int | None = None,
+    meta_fd: int | None = None,
+) -> None:
+    """Apply the ontology bundle rules (spec 5.5) to a prepared bundle."""
+
+    from .ontology_grammar import OntologyRuleError, validate_bundle
+
+    if vault_root is None:
+        raise TransactionValidationError(
+            "ONTOLOGY_CONFIG_INVALID", "ontology validation requires the vault root"
+        )
+
+    def read(relative: str) -> bytes | None:
+        return read_vault_regular(
+            vault_root,
+            relative,
+            limit=MAX_TRANSACTION_FILE_BYTES,
+            missing_ok=True,
+            root_fd=root_fd,
+            meta_fd=meta_fd,
+        )
+
+    preconditions = {
+        _normalize_vault_path(path): digest
+        for path, digest in dict(bundle.get("read_preconditions") or {}).items()
+    }
+    writes = [
+        (write.relative_path, originals.get(write.relative_path), write.content)
+        for write in prepared
+    ]
+    try:
+        validate_bundle(
+            bundle,
+            writes,
+            vault_root=vault_root,
+            read=read,
+            preconditions=preconditions,
+        )
+    except OntologyRuleError as exc:
+        raise TransactionValidationError(exc.code, exc.message) from exc
+
+
 def _validate_operation_bundle_scope(
     operation_type: str,
     prepared: Iterable[PreparedWrite],
     bundle: Mapping[str, Any] | None = None,
+    *,
+    vault_root: Path | None = None,
+    originals: Mapping[str, bytes | None] | None = None,
+    root_fd: int | None = None,
+    meta_fd: int | None = None,
 ) -> None:
     """Validate coupled path sets that cannot be checked one write at a time."""
 
+    if operation_type == "ontology":
+        _validate_ontology_bundle(
+            prepared,
+            dict(bundle or {}),
+            vault_root=vault_root,
+            originals=originals or {},
+            root_fd=root_fd,
+            meta_fd=meta_fd,
+        )
+        return
     if operation_type == "home-upgrade":
         from .home_upgrade import validate_prepared
         validate_prepared(prepared, dict(bundle or {}))
@@ -3558,6 +3654,7 @@ def _prepare_writes(
     seen: set[str] = set()
     seen_casefold: dict[str, str] = {}
     prepared: list[PreparedWrite] = []
+    ontology_originals: dict[str, bytes | None] = {}
     total_content_bytes = 0
     total_backup_bytes = 0
     if backups_fd is None:
@@ -3694,6 +3791,8 @@ def _prepare_writes(
                 meta_fd=meta_fd,
             )
             assert original_content is not None
+            if bundle.get("operation_type") == "ontology":
+                ontology_originals[normalized] = original_content
             if sha256_bytes(original_content) != current_hash:
                 raise TransactionConflict(
                     "EXPECTED_HASH_MISMATCH",
@@ -3733,7 +3832,15 @@ def _prepare_writes(
             "expected_hashes contains paths that are not writes: "
             + ", ".join(extra_expected),
         )
-    _validate_operation_bundle_scope(str(bundle.get("operation_type")), prepared, bundle)
+    _validate_operation_bundle_scope(
+        str(bundle.get("operation_type")),
+        prepared,
+        bundle,
+        vault_root=vault_root,
+        originals=ontology_originals,
+        root_fd=root_fd,
+        meta_fd=meta_fd,
+    )
     _validate_provenance_writes(vault_root, prepared, root_fd=root_fd, meta_fd=meta_fd)
     return prepared
 
@@ -4756,6 +4863,13 @@ def inspect_bundle(
         if root_fd is not None:
             os.close(root_fd)
     expanded_hash = _canonical_json_hash(expanded)
+    extra: dict[str, Any] = {}
+    if operation_type == "ontology":
+        from .ontology_grammar import plan_summary
+
+        extra["ontology"] = plan_summary(
+            expanded, [(write.relative_path, write.content) for write in prepared]
+        )
     return {
         "schema": "claude-empire.transaction-plan.v1",
         "operation_id": operation_id,
@@ -4770,6 +4884,7 @@ def inspect_bundle(
         "approval_sha256": plan_approval_sha256(
             vault, expanded, prepared, vault_identity=vault_identity
         ),
+        **extra,
     }
 
 

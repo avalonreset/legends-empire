@@ -48,6 +48,7 @@ CORE_TRANSACTION_TYPES = {
     "lint-fix",
     "markdown",
     "migration",
+    "ontology",
     "save",
     "setup",
 }
