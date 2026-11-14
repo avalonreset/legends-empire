@@ -316,7 +316,7 @@ customer record satisfies a newer schema.
 ## Compatibility contract
 
 The current qualified pin is Home **v0.7.0**, commit
-`8a45fbb42f1311f0c4abf1edd3f2f1b8c16707f7`.
+`20bd7d0d9e40ed7d547a3694b058d8bbb2ac1f4f`.
 The archived v0.6.7 pin at `d3907d2f8ef767764e8dd0b5933d9e92547fe3dc`,
 v0.6.5 pin at `80ee69331b3ede789d7b8211bcc93ee2370eb1c1`,
 v0.6.4 pin at `6881179537e843f1450f33e5e86d01164d51c398`,

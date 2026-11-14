@@ -49,6 +49,18 @@ def _evidence(operation: dict):
     return pin, previous, new_rows, old_rows, old
 
 
+def finish_slices(metadata: dict, size: int | None = None) -> list[dict]:
+    """Split finish metadata into bounded transactions; the state marker goes last."""
+    size = size or installer.BATCH_SIZE
+    others = [p for p in metadata if p != installer.STATE]
+    chunks = [{p: metadata[p] for p in others[i:i + size]} for i in range(0, len(others), size)] or [{}]
+    if installer.STATE in metadata:
+        if len(chunks[-1]) >= size:
+            chunks.append({})
+        chunks[-1][installer.STATE] = metadata[installer.STATE]
+    return [c for c in chunks if c]
+
+
 def validate_prepared(prepared, operation: dict) -> None:
     try:
         pin, previous, rows, old_rows, old = _evidence(operation)
@@ -307,13 +319,15 @@ def apply_upgrade(root: Path, plan: dict, batches: list[dict], completion: dict)
              if p not in owned and p not in plan["file_hashes"]}
     if before != after:
         adapter.fail("member sessions changed during upgrade; installation remains incomplete")
-    finish = profile.bundle(root, completion["metadata"], "home-upgrade",
-                            plan["operation_id"] + "-finish", plan["generated_at"], prior)
-    finish.update(completion["evidence"])
-    finish["read_preconditions"].update(completion["verification"])
-    finish["read_preconditions"].update({p: h for p, h in plan["guard_hashes"].items()
-                                        if p not in completion["metadata"]})
-    apply_bundle(root, finish, approved_plan_sha256=inspect_bundle(root, finish)["approval_sha256"])
+    for index, chunk in enumerate(finish_slices(completion["metadata"])):
+        suffix = "-finish" if index == 0 else f"-finish-{index + 1}"
+        finish = profile.bundle(root, chunk, "home-upgrade", plan["operation_id"] + suffix,
+                                plan["generated_at"], {p: prior[p] for p in chunk})
+        finish.update(completion["evidence"])
+        finish["read_preconditions"].update(completion["verification"])
+        finish["read_preconditions"].update({p: h for p, h in plan["guard_hashes"].items()
+                                            if p not in completion["metadata"]})
+        apply_bundle(root, finish, approved_plan_sha256=inspect_bundle(root, finish)["approval_sha256"])
     report = adapter.inspect_home(root)
     if report["mismatches"]:
         adapter.fail("upgrade finished but final compatibility check failed")

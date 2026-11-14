@@ -162,7 +162,8 @@ def install_plan(root: Path, source: str | Path, operation_id: str, generated_at
     if report["mismatches"]:
         adapter.fail("Home source core is not qualified")
     inventory = adapter.read(source_root, "PACKAGE-INTEGRITY.json").replace(b"\r\n", b"\n")
-    rows = inventory_rows(inventory)
+    pin = adapter.qualified_pin(report["commit"])
+    rows = inventory_rows(inventory, pin)
     contents = {"PACKAGE-INTEGRITY.json": inventory}
     excluded = []
     for path, row in rows.items():
@@ -213,6 +214,7 @@ def install_plan(root: Path, source: str | Path, operation_id: str, generated_at
                                  {STATE: old_state} if old_state else {})
         if initial["writes"]:
             initial["home_inventory"] = inventory.decode()
+            initial["home_pin_commit"] = pin["commit"]
             batches.append(initial)
         items = list(pending.items())
         for index in range(0, len(items), BATCH_SIZE):
@@ -222,6 +224,7 @@ def install_plan(root: Path, source: str | Path, operation_id: str, generated_at
             identity = sha256_bytes(profile.encoded({p: sha256_bytes(b) for p, b in content.items()}))[:16]
             part = content_bundle(root, content, source_root, operation_id + "-" + identity, generated_at)
             part["home_inventory"] = inventory.decode()
+            part["home_pin_commit"] = pin["commit"]
             batches.append(part)
     completion = {**state, "status": "installed"}
     plan = {"schema": "legends.home-install-plan/v1", "scope": "headless-capabilities",
@@ -250,6 +253,7 @@ def apply_install(root: Path, plan: dict, batches: list[dict], completion: dict)
     finish = profile.bundle(root, {STATE: profile.encoded(completion["state"])}, "home-install",
                             plan["operation_id"] + "-finish", plan["generated_at"], {STATE: old} if old else {})
     finish["home_inventory"] = completion["inventory"]
+    finish["home_pin_commit"] = plan["commit"]
     finish["read_preconditions"].update(plan["verification_hashes"])
     if finish["writes"]:
         approval = inspect_bundle(root, finish)["approval_sha256"]

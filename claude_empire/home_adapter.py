@@ -51,6 +51,8 @@ def safe_root(value: str | Path) -> Path:
         fail("Home root contains control characters")
     path = Path(value).expanduser().absolute()
     for part in (path, *path.parents):
+        if sys.platform == "darwin" and part.as_posix() in _DARWIN_SYMLINK_DIRS:
+            continue
         if part.exists() and is_name_surrogate(part.lstat()):
             fail("Home paths must not traverse a symlink or junction")
     if not path.is_dir():

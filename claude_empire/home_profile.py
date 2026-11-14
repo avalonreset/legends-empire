@@ -213,7 +213,7 @@ def compose_bundle(root: Path, source: str | Path, operation_id: str, generated_
     report = adapter.inspect_home(source_root)
     if report["mismatches"]:
         adapter.fail("composition requires a qualified separately obtained Home source")
-    pin = json.loads(adapter.PIN.read_text(encoding="utf-8"))
+    pin = adapter.qualified_pin(report["commit"])
     home = adapter.read(source_root, "AGENTS.md")
     if sha256_bytes(home.replace(b"\r\n", b"\n")) != pin["files"]["AGENTS.md"]:
         adapter.fail("composition source must contain the original pinned Home contract")
