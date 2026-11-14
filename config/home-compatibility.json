@@ -1,7 +1,7 @@
 {
-  "commit": "20bd7d0d9e40ed7d547a3694b058d8bbb2ac1f4f",
+  "commit": "b5b1f53a88e0eb109cf4b1428a89f3f80cd36cf1",
   "files": {
-    "AGENTS.md": "137c5827d5f8bd2b6bd54ac43d033fdbd818b8343a5bce9045dd7350dd0f4af3",
+    "AGENTS.md": "30a06a6965cfe41194a766c26e1ae29007ec98509cb1a749e94cba069d70b3ad",
     "AI Team/Knowledge/Scripts/build-checklists.py": "acefe73aaddd6e6686ce6dfce8aa2cda1fc4f63eb37a468c4ee69d19a54b8e40",
     "AI Team/Knowledge/Scripts/build-skill-index.py": "f16c555063d04b9bda71b49d754170445c9c36cfac7594b2df85310501fcce3d",
     "AI Team/Knowledge/Scripts/capture-pages.py": "d0f2800d9c3c7b0050d23d3a5f61e33b25ae1f091638837e4857f70691089126",
@@ -30,9 +30,9 @@
     "AI Team/Knowledge/Scripts/team_contracts.py": "93b0d51aae813ddd09c3691d69af2192bd0b8cfdb5d487593f83f1c7db7137fe",
     "AI Team/Knowledge/Scripts/team_lib.py": "0c76d55189d0612a626c1643fb5bfd19542a0e34c2117297147c88967d1cf8d4",
     "AI Team/Knowledge/Scripts/update-check.py": "28d770d6e005d552fd4be599a14cf32053ae9ddb0244e2e2e34d5f381dac3f39",
-    "PACKAGE-INTEGRITY.json": "3676ad2cf09436231482f7016728370bbd024ec1d2dec975ec12c67919cf5251"
+    "PACKAGE-INTEGRITY.json": "24ce7fa57e1697f0ca9738b0a901090a44e6262cc208f5c142618174f9909022"
   },
   "normalization": "CRLF-to-LF",
-  "release": "v0.7.0",
+  "release": "v0.7.2",
   "schema": "legends.home-compatibility/v1"
 }
