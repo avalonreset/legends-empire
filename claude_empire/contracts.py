@@ -36,6 +36,7 @@ CORE_TRANSACTION_TYPES = {
     "home-compose",
     "home-records",
     "home-install",
+    "home-upgrade",
     "autoresearch",
     "base",
     "canvas",

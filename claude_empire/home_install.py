@@ -16,14 +16,14 @@ from .transaction import apply_bundle, inspect_bundle, read_vault_regular, sha25
 STATE = f"{profile.BASE}/installation.json"
 SCHEMA = "legends.home-installation/v1"
 ROOTS = ("AI Team/", "Workspaces/", "Projects/", "_system/", "_templates/", "Home/", "_assets/", "_examples/")
-EXACT = {".agents/skills/aimh/SKILL.md", ".claude/skills/aimh/SKILL.md", "LICENSE.md", "THIRD_PARTY_NOTICES.md", "QUICKSTART.md", "requirements-dev.txt"}
-EXACT.update({"README.md", "KNOWN-LIMITATIONS.md", "PREVIEW-VERIFICATION.md", "PRIVACY.md",
-              "CONTRIBUTING.md", "ROLLBACK.md", "CHANGELOG.md"})
+EXACT = {".agents/skills/aimh/SKILL.md", ".claude/skills/aimh/SKILL.md", "THIRD_PARTY_NOTICES.md", "QUICKSTART.md", "requirements-dev.txt"}
+EXACT.update({"README.md", "KNOWN-LIMITATIONS.md", "PREVIEW-VERIFICATION.md",
+              "CONTRIBUTING.md", "ROLLBACK.md", "CHANGELOG.md", "UPDATE.md"})
 SUFFIXES = {".md", ".json", ".py", ".txt", ".base", ".canvas", ".css", ".svg", ".yaml", ".yml", ".sh"}
 BATCH_SIZE = 150
 
 
-def selected(path: str) -> bool:
+def legacy_selected(path: str) -> bool:
     if path in EXACT:
         return True
     if path.startswith("_third-party/"):
@@ -31,11 +31,36 @@ def selected(path: str) -> bool:
         return PurePosixPath(path).suffix in {".md", ".txt", ".json"} or name in {"LICENSE", "NOTICE"} or name.endswith("-LICENSE")
     return path.startswith(ROOTS) and (PurePosixPath(path).suffix in SUFFIXES or PurePosixPath(path).name in (".keep", ".gitkeep"))
 
+def selected(path: str) -> bool:
+    if path in ("LICENSE.md", "PRIVACY.md", "AI Team/Knowledge/Scripts/check-license.py") or path.startswith("_system/license/"):
+        return False
+    return (legacy_selected(path)
+            or (path.startswith("Assets/") and (PurePosixPath(path).suffix in SUFFIXES
+                                               or PurePosixPath(path).name == ".keep"))
+            or (path.startswith("AI Team/Knowledge/Avatars/team-cards/")
+                and PurePosixPath(path).suffix in {".webp", ".png"})
+            or path == ".obsidian/plugins/aimh-projects/data.json")
+
 
 def mutable_seed(path: str) -> bool:
     # These are explicitly owner-operated session/approval records, not methods
     # or executable code. Preserve initial hashes, but never freeze their updates.
     return path == "AI Team/Sessions/handoff.md"
+
+def content_bundle(root: Path, contents: dict[str, bytes], source: Path,
+                   operation_id: str, generated_at: str) -> dict:
+    """Portrait dependencies use verified content_file writes, never plugin code."""
+    writes = []
+    for path, payload in contents.items():
+        try:
+            content = {"content": payload.decode("utf-8")}
+        except UnicodeError:
+            content = {"content_file": str(source / path), "sha256": sha256_bytes(payload)}
+        writes.append({"path": path, "mode": "create", **content})
+    return {"schema": "claude-empire.transaction.v1", "operation_type": "home-install",
+            "operation_id": operation_id, "generated_at": generated_at,
+            "expected_hashes": {p: None for p in contents}, "read_preconditions": {},
+            "writes": writes}
 
 
 def valid_seed(payload: bytes) -> bool:
@@ -48,8 +73,8 @@ def valid_seed(payload: bytes) -> bool:
             and re.search(r"(?m)^type:\s*['\"]?handoff['\"]?\s*$", front[1]) is not None)
 
 
-def inventory_rows(payload: bytes) -> dict[str, dict]:
-    pin = json.loads(adapter.PIN.read_text(encoding="utf-8"))
+def inventory_rows(payload: bytes, pin: dict | None = None) -> dict[str, dict]:
+    pin = pin or adapter.qualified_pin()
     if sha256_bytes(payload.replace(b"\r\n", b"\n")) != pin["files"]["PACKAGE-INTEGRITY.json"]:
         adapter.fail("Home inventory is not the qualified release inventory")
     try:
@@ -81,8 +106,8 @@ def validate_prepared(prepared, operation: dict) -> None:
     if not isinstance(payload, str):
         adapter.fail("Home install transaction requires its pinned inventory")
     raw = payload.encode()
-    rows = inventory_rows(raw)
-    pin = json.loads(adapter.PIN.read_text(encoding="utf-8"))
+    pin = adapter.qualified_pin(operation.get("home_pin_commit"))
+    rows = inventory_rows(raw, pin)
     expected_files = {path: row["sha256"] for path, row in rows.items() if selected(path)}
     expected_files["PACKAGE-INTEGRITY.json"] = pin["files"]["PACKAGE-INTEGRITY.json"]
     for write in prepared:
@@ -112,12 +137,13 @@ def installation_status(root: Path) -> str:
         return "invalid-installation"
     if not isinstance(state, dict) or state.get("schema") != SCHEMA or state.get("status") != "installed":
         return "incomplete-installation"
-    pin = json.loads(adapter.PIN.read_text(encoding="utf-8"))
+    pin = adapter.pin_for(root)
     inventory = read_vault_regular(root, "PACKAGE-INTEGRITY.json")
     if inventory is None:
         return "invalid-installation"
-    rows = inventory_rows(inventory)
-    expected = {path: row["sha256"] for path, row in rows.items() if selected(path)}
+    rows = inventory_rows(inventory, pin)
+    selector = selected if state.get("selection_profile") == 2 else legacy_selected
+    expected = {path: row["sha256"] for path, row in rows.items() if selector(path)}
     expected["PACKAGE-INTEGRITY.json"] = pin["files"]["PACKAGE-INTEGRITY.json"]
     if state.get("commit") != pin["commit"] or state.get("files") != expected:
         return "invalid-installation"
@@ -152,7 +178,9 @@ def install_plan(root: Path, source: str | Path, operation_id: str, generated_at
         try:
             payload.decode("utf-8")
         except UnicodeError:
-            adapter.fail(f"selected Home content is not UTF-8: {path}")
+            if not (path.startswith("AI Team/Knowledge/Avatars/team-cards/")
+                    and PurePosixPath(path).suffix in {".webp", ".png"}):
+                adapter.fail(f"selected Home content is not UTF-8: {path}")
         contents[path] = payload
     pending, observed = {}, {}
     verify_hashes = {}
@@ -167,7 +195,7 @@ def install_plan(root: Path, source: str | Path, operation_id: str, generated_at
         else:
             adapter.fail(f"destination differs; no overwrite or migration is implicit: {path}")
     files = {path: sha256_bytes(payload) for path, payload in sorted(contents.items())}
-    state = {"schema": SCHEMA, "status": "installing", "commit": report["commit"],
+    state = {"schema": SCHEMA, "status": "installing", "commit": report["commit"], "selection_profile": 2,
              "release": report["release"], "scope": "headless-capabilities", "files": files,
              "mutable_seed_files": sorted(p for p in files if mutable_seed(p)),
              "excluded_files": len(excluded), "desktop_plugins_activated": False}
@@ -192,7 +220,7 @@ def install_plan(root: Path, source: str | Path, operation_id: str, generated_at
             # Content-derived suffix makes a resumed remaining batch distinct
             # from a previous terminal transaction with the same user operation ID.
             identity = sha256_bytes(profile.encoded({p: sha256_bytes(b) for p, b in content.items()}))[:16]
-            part = profile.bundle(root, content, "home-install", operation_id + "-" + identity, generated_at)
+            part = content_bundle(root, content, source_root, operation_id + "-" + identity, generated_at)
             part["home_inventory"] = inventory.decode()
             batches.append(part)
     completion = {**state, "status": "installed"}

@@ -1,0 +1,26 @@
+{
+  "schema": "legends.home-compatibility/v1",
+  "release": "v0.5.2",
+  "commit": "c18ff16c69e7ba4bcbb556472b0fd8c9bb930c9d",
+  "normalization": "CRLF-to-LF",
+  "files": {
+    "AGENTS.md": "571adc64f647a5ade8a113bcdf3b23bdd961228330704ab9f74848cfcf04da0c",
+    "PACKAGE-INTEGRITY.json": "e3f00f38b9786a63042185b16fef1b3be659d54449b373e3ff07086ebfaf82b8",
+    "AI Team/Knowledge/Scripts/build-skill-index.py": "41e4b0ee3559e324d2f5eb8b403e373d4d738af6d1e446f3a40e89920540effd",
+    "AI Team/Knowledge/Scripts/check-links.py": "9f40860ca1243a1c3bb9080b954d769abad63c7f339830c82f8f09208d5e5430",
+    "AI Team/Knowledge/Scripts/check-pack.py": "36c5500dcd0540f9f81078cb52fad6bbf70559500364feba58a16d1b07889662",
+    "AI Team/Knowledge/Scripts/complete-task.py": "cd71232145060578e34e7a61992ff51ee800f907a0e6d50c4b29158e8b4e96d7",
+    "AI Team/Knowledge/Scripts/fleet-snapshot.py": "d933b22190bfdc709ddd16d4908fa4d98c7240a6f5e952d875360e2efb109272",
+    "AI Team/Knowledge/Scripts/foundation_lib.py": "1f416d128e179a308627435541f72ea8f35bf3c4341481704c85fe12fc7cf090",
+    "AI Team/Knowledge/Scripts/freeze-task.py": "4a433ed6cd72cf98e72ae00aa17fc19c535c6a0c6d35c8c87c46d24423738ee5",
+    "AI Team/Knowledge/Scripts/guard-task-edit.py": "13dc421dc2d11ac4dfaf280842005ec1678c274c531d49a8a5a8cb495e1f60db",
+    "AI Team/Knowledge/Scripts/import-prior-work.py": "48d4c9dba9b16b126487339b676e9e49b793d2789e5aafd25236b3ed6305d326",
+    "AI Team/Knowledge/Scripts/prepare-task.py": "59cd9da36f9102e12308b82a3939675d09a3f2a7daf0d51cd492ead96af352a8",
+    "AI Team/Knowledge/Scripts/resolve-context.py": "4295ead37a4848948a7e4ec6631bf9b3e7270ba296d79a81018a821d33ec0a12",
+    "AI Team/Knowledge/Scripts/secret-scan.py": "2213d699775f5df0c3f8ed557818619342995494f7bed3e3e788297ffcb3a465",
+    "AI Team/Knowledge/Scripts/team-record.py": "c3df3898aadef98948926b109431334e1b285546ed02cb40fc0a3fc0855f0fae",
+    "AI Team/Knowledge/Scripts/team-records.py": "7e4a8bec0d55bf8eec48abb2dfd1841bbb6962126afcd35628ea92940cc5bede",
+    "AI Team/Knowledge/Scripts/team_contracts.py": "22f7b3587e6999eb342a1dc812de94b63ec186f90f9f9e0df15f4d4d9fea52d7",
+    "AI Team/Knowledge/Scripts/team_lib.py": "007edbca608ae4befc3e51f1194d098a8fb160e6e8a1b2f2d03750213a1fde23"
+  }
+}

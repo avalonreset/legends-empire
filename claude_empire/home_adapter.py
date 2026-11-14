@@ -21,6 +21,26 @@ PIN = Path(__file__).resolve().parents[1] / "config/home-compatibility.json"
 SCHEMA = "legends.home-binding/v1"
 _DARWIN_SYMLINK_DIRS = frozenset({"/var", "/tmp", "/etc"})
 
+def qualified_pin(commit: str | None = None) -> dict:
+    """Use only packaged, reviewed fingerprints; retain prior installed releases."""
+    candidates = [PIN, *sorted(PIN.parent.glob("home-compatibility-v*.json"))]
+    for path in candidates:
+        pin = json.loads(path.read_text(encoding="utf-8"))
+        if commit is None or pin.get("commit") == commit:
+            return pin
+    fail("installed Home release has no qualified fingerprint; preserve it and qualify before updating")
+
+
+def pin_for(root: Path) -> dict:
+    state = read_vault_regular(root, "wiki/integrations/aimh-home/shared-root/installation.json")
+    if state is not None:
+        try:
+            commit = json.loads(state)["commit"]
+        except (ValueError, TypeError, KeyError):
+            fail("invalid Home installation identity")
+        return qualified_pin(commit)
+    return qualified_pin()
+
 
 def fail(message: str):
     raise TransactionValidationError("HOME_ADAPTER", message)
@@ -58,7 +78,7 @@ def read(root: Path, path: str) -> bytes:
 
 def inspect_home(home: str | Path, project: str | None = None) -> dict:
     root = safe_root(home)
-    pin = json.loads(PIN.read_text(encoding="utf-8"))
+    pin = pin_for(root)
     mismatches = []
     composition = False
     for path, expected in pin["files"].items():
@@ -258,7 +278,7 @@ def check_binding(empire: Path, binding_id: str, native: bool = False, project: 
         try:
             # Fresh private staging avoids unpinned imports/bytecode in the Home
             # Scripts directory. Recheck the exact bytes being executed.
-            pin = json.loads(PIN.read_text(encoding="utf-8"))
+            pin = pin_for(root)
             with tempfile.TemporaryDirectory(prefix="empire-home-check-") as temp:
                 stage = Path(temp)
                 for path, digest in pin["files"].items():

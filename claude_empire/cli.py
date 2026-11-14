@@ -36,6 +36,7 @@ from .knowledge import attachment_bundle
 from . import home_adapter
 from . import home_profile
 from . import home_install
+from . import home_upgrade
 from .mode_config import validate_mode_folders
 from .package_validation import validate_package
 from .paths import (
@@ -762,6 +763,17 @@ def command_home_adapter(args: argparse.Namespace) -> int:
         report = home_adapter.check_binding(root, args.binding_id, args.native, args.project, args.native_python)
         _emit(report)
         return 0 if report["compatibility"] in ("pinned-core", "detached") and report["native_readiness"] not in ("refused", "dependency_missing") else 2
+    if args.home_command == "upgrade":
+        plan, batches, completion = home_upgrade.upgrade_plan(
+            root, args.home_source, args.operation_id, args.generated_at, args.backup_root)
+        if not args.apply or plan["status"] == "noop":
+            _emit({k: v for k, v in plan.items()
+                   if k not in ("file_hashes", "observed_hashes", "guard_hashes", "session_hashes", "backup_hashes")})
+            return 2 if plan.get("conflicts") else 0
+        if not args.approved_plan_sha256 or not hmac.compare_digest(args.approved_plan_sha256, plan["approved_plan_sha256"]):
+            home_adapter.fail("review the exact upgrade plan and supply its approved-plan-sha256")
+        _emit(home_upgrade.apply_upgrade(root, plan, batches, completion))
+        return 0
     if args.home_command == "install":
         plan, batches, completion = home_install.install_plan(root, args.home_source, args.operation_id, args.generated_at)
         if not args.apply:
@@ -1346,15 +1358,17 @@ def build_parser() -> argparse.ArgumentParser:
             adapter.add_argument("--native-python", help="Absolute trusted Home Python interpreter with PyYAML; only with --native")
             adapter.add_argument("--native", action="store_true", help="Explicitly run the pinned Home project resolver")
         adapter.set_defaults(handler=command_home_adapter)
-    for verb in ("prepare", "compose", "scaffold", "install"):
+    for verb in ("prepare", "compose", "scaffold", "install", "upgrade"):
         profile = home_commands.add_parser(verb)
         profile.add_argument("--vault", required=True)
         profile.add_argument("--operation-id", required=True)
         profile.add_argument("--generated-at", required=True)
         profile.add_argument("--apply", action="store_true")
         _add_approval_argument(profile)
-        if verb in ("compose", "install"):
+        if verb in ("compose", "install", "upgrade"):
             profile.add_argument("--home-source", required=True, help="Separately authorized original pinned Home installation")
+        if verb == "upgrade":
+            profile.add_argument("--backup-root", help="Existing full pre-upgrade vault backup outside the vault; required for apply")
         if verb == "scaffold":
             profile.add_argument("--spec", required=True, help="Explicit original record specification JSON")
         profile.set_defaults(handler=command_home_adapter)

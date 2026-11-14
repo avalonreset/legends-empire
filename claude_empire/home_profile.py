@@ -157,6 +157,28 @@ def composed_agents() -> bytes:
             "The Home capability installation remains optional and separately licensed.\n").encode()
 
 
+def _extract_license_gate(home_bytes: bytes) -> bytes | None:
+    try:
+        lines = home_bytes.decode("utf-8").replace("\r\n", "\n").split("\n")
+    except UnicodeDecodeError:
+        return None
+    out = []
+    inside = False
+    for line in lines:
+        if inside and line.startswith("## "):
+            break
+        trimmed = line.rstrip(" \t\r\f\v")
+        if not inside and trimmed == "## License gate":
+            inside = True
+        if inside:
+            out.append(trimmed)
+    if not inside:
+        return None
+    while out and out[-1] == "":
+        out.pop()
+    return ("\n".join(out) + "\n").encode("utf-8")
+
+
 def composition_valid(root: Path, pin: dict) -> bool:
     payload = read_vault_regular(root, COMPOSITION)
     if payload is None:
@@ -172,11 +194,16 @@ def composition_valid(root: Path, pin: dict) -> bool:
     actual = read_vault_regular(root, "AGENTS.md")
     if home is None or owner is None or actual is None:
         return False
-    return (sha256_bytes(home.replace(b"\r\n", b"\n")) == pin["files"]["AGENTS.md"]
+    base = (sha256_bytes(home.replace(b"\r\n", b"\n")) == pin["files"]["AGENTS.md"]
             and state.get("home_agents_sha256") == sha256_bytes(home)
-            and state.get("owner_agents_sha256") == sha256_bytes(owner)
-            and state.get("generated_agents_sha256") == sha256_bytes(composed_agents())
-            and actual == composed_agents())
+            and state.get("owner_agents_sha256") == sha256_bytes(owner))
+    gate = _extract_license_gate(home)
+    stock = composed_agents()
+    stock_candidates = [stock] + ([stock + b"\n" + gate] if gate else [])
+    for candidate in stock_candidates:
+        if state.get("generated_agents_sha256") == sha256_bytes(candidate) and actual == candidate:
+            return base
+    return False
 
 
 def compose_bundle(root: Path, source: str | Path, operation_id: str, generated_at: str) -> dict:

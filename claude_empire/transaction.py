@@ -70,6 +70,7 @@ OPERATION_TYPES = {
     "home-compose",
     "home-records",
     "home-install",
+    "home-upgrade",
 }
 
 # Transaction journals, host locks, derived indexes, queues, and hook state are
@@ -3342,6 +3343,11 @@ def _validate_operation_write_scope(
             "RESERVED_WRITE_PATH",
             f"product and runtime internals cannot be bundle targets: {relative}",
         )
+    if operation_type == "home-upgrade":
+        from .home_upgrade import write_allowed as upgrade_write_allowed
+        if not upgrade_write_allowed(relative, write_mode):
+            raise TransactionValidationError("WRITE_SCOPE_VIOLATION", "Home upgrade path is outside its managed release scope")
+        return
     if operation_type == "home-install":
         from .home_install import write_allowed as install_write_allowed
         if not install_write_allowed(relative, write_mode):
@@ -3446,6 +3452,10 @@ def _validate_operation_bundle_scope(
 ) -> None:
     """Validate coupled path sets that cannot be checked one write at a time."""
 
+    if operation_type == "home-upgrade":
+        from .home_upgrade import validate_prepared
+        validate_prepared(prepared, dict(bundle or {}))
+        return
     if operation_type == "home-install":
         from .home_install import validate_prepared
         validate_prepared(prepared, dict(bundle or {}))

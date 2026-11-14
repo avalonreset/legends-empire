@@ -6,6 +6,23 @@ The shared-root profile uses Home-compatible business/project records even befor
 Home is installed. A separately obtained Home capability layer can then occupy
 its native locations without creating a second ontology or task system.
 
+## One root, two responsibilities
+
+The folder name is the owner's choice. A standalone Home folder and an Empire
+vault can have different names while using the same Home-relative paths.
+When the owner asks to add Home to an existing Empire, use the shared-root
+profile by default: `Projects/`, `Workspaces/`, `AI Team/`, `Assets/`, and `Home/`
+are inside that selected root. Do not create another business vault or nest a
+second full Home folder. A separately selected existing Home workspace can still
+use the reference-only route.
+
+Empire owns the entry point, the wider life knowledge, and owner instructions.
+Home owns its installed methods, library, native scripts and shipped templates.
+Member-created companies, brands, project tasks, evidence, sessions and lessons
+remain member records. A release inventory is an ownership boundary, not
+permission to overwrite everything under a folder. Conflicting owner files
+are reported for reconciliation rather than replaced.
+
 Resolve the module through the single `cto-legends handoff legends-empire`
 router. The commands below use the installed module's `scripts/claude-empire.py`.
 They do not acquire Home, authenticate GitHub, install packages, or grant a license.
@@ -86,21 +103,25 @@ python scripts/claude-empire.py home-adapter install --vault /srv/Empire \
 Installation validates the pinned release inventory and every selected source
 file. Only inventory-owned UTF-8 methods, brains, workflows, native scripts,
 indexes and templates in `AI Team/`, `Workspaces/`, `Projects/`, `_system/`,
-`_templates/`, `Home/`, and supported `_assets/` are included. Untracked customer
+`_templates/`, `Home/`, `Assets/`, and supported `_assets/` are included. Untracked customer
 records and modified selected release files are never silently copied.
 The exact project-local `.agents/skills/aimh/SKILL.md` and
 `.claude/skills/aimh/SKILL.md` entries, QUICKSTART.md, requirements-dev.txt,
 qualified text `_examples/` and license/attribution notices are
 included. They do not replace the CTO router or activate desktop plugins.
 Pinned root help documents (README, KNOWN-LIMITATIONS, PREVIEW-VERIFICATION,
-PRIVACY, CONTRIBUTING, ROLLBACK and CHANGELOG, all `.md`) keep native onboarding
+PRIVACY, CONTRIBUTING, ROLLBACK, CHANGELOG and UPDATE, all `.md`) keep native onboarding
 links functional. If an existing root already owns a differing document at one
 of these paths, installation refuses; resolve that layout explicitly or use the
 separate-root adapter. The installer never overwrites owner documentation.
 
 This is a **headless capability layer**, not a full Home desktop installation.
-It excludes `.obsidian` plugins/settings, maintainer folders,
-non-text assets and packaged tooling. Existing Obsidian settings remain owned by
+It excludes executable `.obsidian` plugins, general desktop settings, maintainer
+folders, non-text assets other than the release's team-card portraits, and packaged
+tooling. The inactive `.obsidian/plugins/aimh-projects/data.json` release default
+is included because Home's native structure validator reads its role schema.
+An existing nonidentical settings file is a conflict; no plugin is enabled.
+Existing Obsidian settings remain owned by
 the user; dashboard rendering, plugin activation and complete package validation
 are separate work. Existing nonidentical destination files cause a conflict.
 Identical files are reused. No implicit migration or overwrite occurs.
@@ -136,7 +157,9 @@ Unknown conflicts still require explicit resolution. No extra authority is grant
 
 Shared-root inspection accepts that exact generated contract only when both source
 hashes, Home pin and composition provenance verify. Editing the generated contract
-or either recorded snapshot refuses; there is no general AGENTS drift exemption.
+or either recorded snapshot refuses; there is no AGENTS drift exemption of any
+kind. Owner-specific guidance belongs in linked vault records, not in the
+generated root contract.
 Retain these local snapshots as private licensed/owner material, not public module
 source. Root `CLAUDE.md`/`CODEX.md`, settings and other instructions are not rewritten.
 
@@ -246,10 +269,62 @@ route note and every Home/business file. It works even if Home is unavailable.
 Discovery labels it disabled; check reports `detached` without invoking Home.
 Repeated detach is a no-op. To reconnect, create a fresh reviewed binding ID.
 
+## Upgrade the installed layer in the same root
+
+The `upgrade` command preserves the selected root name, owner instructions,
+customer records, the member handoff and all files outside the managed release.
+Only unchanged files owned by the previous qualified inventory can be replaced.
+New paths that collide with member content are conflicts. Retired release files
+remain in place and are listed in the plan; they are never silently deleted.
+
+First make a full backup of the vault outside the vault. Keep the old release and
+runtime available for unfinished work. The command verifies rollback copies of
+every replaced release file and managed metadata; the backup path is not just
+an acknowledgment. Finish and close existing native sessions before upgrading.
+The guard searches nested session records and refuses open or unrecognized
+records. It does not silently rewrite frozen rules or cancel assignments.
+
+```sh
+python scripts/claude-empire.py home-adapter upgrade --vault /srv/MyVault \
+  --home-source /path/to/authorized-new-home --backup-root /backups/MyVault-before-home \
+  --operation-id upgrade-home --generated-at 2026-10-09T00:00:00Z
+```
+
+Review `conflicts`, `backup_missing_or_different`, `changed_paths`, and
+`retired_files_preserved`. Resolve conflicts deliberately, then generate a fresh
+plan. Repeat the exact arguments with `--apply --approved-plan-sha256 REVIEWED_HASH`.
+Source, destination or plan drift invalidates the review. No release discovery,
+download or automatic acceptance of an unknown future release occurs.
+
+An update first marks the managed installation incomplete, applies recoverable
+batches, verifies the new release files, and finally updates the Home contract
+snapshot, composition record and shared-root bindings together. Empire's root
+`AGENTS.md` and preserved owner instructions stay byte-identical. The plugin
+activation list and wider desktop settings are not changed.
+
+If interrupted between completed batches, keep the original backup and source,
+preview the same upgrade again, and review its new hash before resuming. An
+in-flight transaction may require the existing transaction recovery workflow
+first. Do not remove the incomplete marker manually or restore the old inventory
+on top of partly updated files. A full rollback is a separate deliberate restore
+from the preserved backup. Relocated bindings require explicit rebinding.
+
+Afterwards run `home-adapter check`, then Home's native checks for the selected
+project or work. A verified installation does not assert that every existing
+customer record satisfies a newer schema.
+
 ## Compatibility contract
 
-The qualified pin is Home **v0.5.2**, commit
-`c18ff16c69e7ba4bcbb556472b0fd8c9bb930c9d`.
+The current qualified pin is Home **v0.7.0**, commit
+`8a45fbb42f1311f0c4abf1edd3f2f1b8c16707f7`.
+The archived v0.6.7 pin at `d3907d2f8ef767764e8dd0b5933d9e92547fe3dc`,
+v0.6.5 pin at `80ee69331b3ede789d7b8211bcc93ee2370eb1c1`,
+v0.6.4 pin at `6881179537e843f1450f33e5e86d01164d51c398`,
+v0.6.2 pin at `e24a3731ca8d60408a1569c1e1172dc6f85996e0`,
+v0.6.1 pin at `6569cd736c31da7dd454d17aea501c75852f3072`, and v0.5.2 pin at
+`c18ff16c69e7ba4bcbb556472b0fd8c9bb930c9d` remain available so updating
+the adapter does not invalidate an existing managed installation before its
+Home upgrade. The installed manifest selects its qualified pin.
 `config/home-compatibility.json` contains only path/hash metadata for the operating
 contract, integrity inventory and native scripts, with CRLF normalized to LF.
 `pinned-core` means those specific bytes match. It is not a claim that an entire
