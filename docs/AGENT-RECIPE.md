@@ -24,7 +24,7 @@ Read [the installation guide](install-guide.md), [vault stewardship workflow](st
    python scripts/claude-empire.py doctor --vault /path/to/vault
    python scripts/claude-empire.py lint --vault /path/to/vault --format json
    ```
-4. Every mutating workflow (`init`, `adopt`, `migrate`, `capture apply`, `mode set`, `extension dragonscale`, `knowledge attach`, `home-adapter`, `transaction apply`) runs in preview/dry-run mode first and emits a canonical `approved_plan_sha256`. Applying requires `--apply --approved-plan-sha256 <sha256>` with the exact pinned `--operation-id` and `--generated-at`.
+4. Every mutating workflow (`init`, `adopt`, `migrate`, `capture apply`, `mode set`, `extension dragonscale`, `knowledge attach`, `home-adapter`, `transaction apply`, `ontology propose`, `ontology certify`) runs in preview/dry-run mode first and emits a canonical `approved_plan_sha256`. Applying requires `--apply --approved-plan-sha256 <sha256>` with the exact pinned `--operation-id` and `--generated-at`.
 
 ## Core CLI and workflow reference (`scripts/claude-empire.py`)
 
@@ -50,6 +50,21 @@ Read [the installation guide](install-guide.md), [vault stewardship workflow](st
 | Package & contract gates | `python scripts/claude-empire.py package validate` / `python scripts/claude-empire.py contracts [--vault <vault>] [--verify] [--check-only] [--capability ID]` | Verifies router-native skill allowlist, hooks schema, and capability contracts |
 | Reproducible release ZIP | `python scripts/claude-empire.py release build --output <zip> [--source-date-epoch INT]` / `python scripts/claude-empire.py release audit <zip>` | Builds and self-audits a deterministic stored ZIP from a clean Git worktree |
 | Release gate evaluation | `python scripts/claude-empire.py release gates [--execute] [--gate ID] [--timeout SEC]` | Plans or executes declared offline release verification gates without publishing |
+
+## Ontology engine (`ontology`)
+
+| Goal | Command | Behavior and safety boundary |
+|---|---|---|
+| Derived ontology index | `python scripts/claude-empire.py ontology index [--vault <vault>] [--as-of ISO] [--check] [--dry-run]` | Builds or checks `.vault-meta/ontology/index.json` entity, fact, and alias index |
+| Entity & alias resolution | `python scripts/claude-empire.py ontology resolve <term> [--vault <vault>]` | Fast deterministic resolution of entity IDs, aliases, or titles to primary vault notes (exits: 0=found, 3=ambiguous, 4=not found) |
+| Fact prerequisite gating | `python scripts/claude-empire.py ontology need --keys <k1,k2> [--vault <vault>] [--as-of ISO] [--no-values]` | Evaluates fact certification and freshness gates before automated actions (exits: 0=certified, 10=draft, 11=missing, 12=conflict, 13=stale) |
+| Natural language query | `python scripts/claude-empire.py ontology ask "<question>" [--vault <vault>]` | Suggests matching entities, certified facts, and provenance states for conversational queries |
+| Propose entity & alias tags | `python scripts/claude-empire.py ontology propose [--vault <vault>] [--operation-id ID] [--batch-size N]` | Emits reversible `operation_type: "ontology"` bundles proposing `entity_id` and normalized `aliases` for untagged notes |
+| Prepare certified bundle | `python scripts/claude-empire.py ontology certify --keys <k1> --class owner\|evidence [--digest PATH] [--evidence LOCATOR] [--operation-id ID] [--generated-at ISO]` | Prepares an owner- or evidence-certified transaction bundle with pinned digest / evidence preconditions |
+| Deterministic benchmark | `python scripts/claude-empire.py ontology bench [--vault <vault>] [--as-of ISO]` | Runs the deterministic benchmark evaluating query latency, wrong-record elimination, and gating accuracy |
+
+### Exact Differential Replacement (EDR) for Ontology Operations
+Ontology transaction operations (`operation_type: "ontology"`) enforce strict Exact Differential Replacement (EDR): notes may only modify declared ontology frontmatter keys (`entity_id`, `entity_type`, `about`, `aliases`, `fact.*`, `evidence.*`, `certified_*`, `certified_on`, `review_after`, `last_verified`, `fact_source`). All non-ontology frontmatter blocks in their exact original order, comments, byte-for-byte UTF-8 BOM, uniform newline (`\n` or `\r\n`), and markdown body bytes must be identical. Header-only mutations prevent agents from altering user body text during fact cataloging.
 
 ## Vault stewardship (`legends-vault-stewardship`)
 

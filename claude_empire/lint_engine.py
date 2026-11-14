@@ -119,6 +119,7 @@ class _Frontmatter:
     fields: frozenset[str]
     aliases: tuple[str, ...]
     end_offset: int
+    has_nested: bool = False
 
 
 @dataclass(frozen=True)
@@ -243,15 +244,26 @@ def _parse_frontmatter(text: str) -> _Frontmatter:
     lines = raw.splitlines()
     fields: set[str] = set()
     aliases: list[str] = []
+    has_nested = False
     index = 0
     while index < len(lines):
         line = lines[index]
+        if line.startswith(" ") or line.startswith("\t"):
+            s_line = line.strip()
+            if not s_line.startswith("- "):
+                has_nested = True
+            elif ":" in s_line:
+                has_nested = True
         match = _TOP_LEVEL_YAML_KEY_RE.match(line)
         if not match:
             index += 1
             continue
         key = match.group(1).casefold()
         value = (match.group(2) or "").strip()
+        if value in ("|", ">", "|-", ">-", "|+", ">+"):
+            has_nested = True
+        if value.startswith("{") and value.endswith("}") and not (value.startswith("{{") and value.endswith("}}")):
+            has_nested = True
         fields.add(key)
         if key in {"alias", "aliases"}:
             if value:
@@ -272,7 +284,7 @@ def _parse_frontmatter(text: str) -> _Frontmatter:
         index += 1
 
     unique_aliases = tuple(sorted(set(aliases), key=_path_sort_key))
-    return _Frontmatter(True, frozenset(fields), unique_aliases, closing_end)
+    return _Frontmatter(True, frozenset(fields), unique_aliases, closing_end, has_nested)
 
 
 def _mask_range(blocked: list[bool], start: int, end: int) -> None:
@@ -1183,6 +1195,23 @@ def lint_vault(
     configuration_errors.sort(key=_entry_sort_key)
     provenance_errors = _provenance_errors(vault_root, as_of=audit_date)
 
+    ontology_findings: list[dict[str, Any]] = []
+    try:
+        try:
+            from . import ontology as ont
+        except ImportError:
+            from claude_empire import ontology as ont
+        idx_doc, _ = ont.build_index(vault_root, as_of=audit_date.isoformat(), write_file=False)
+        for f in idx_doc.get("findings", []):
+            ontology_findings.append({
+                "code": f["code"],
+                "path": f["path"],
+                "detail": f.get("detail", ""),
+            })
+    except Exception as exc:
+        pass
+    ontology_findings.sort(key=lambda item: (item["path"], item["code"]))
+
     categories: dict[str, list[dict[str, Any]]] = {
         "dead_links": dead_links,
         "ambiguous_targets": ambiguous_targets,
@@ -1194,8 +1223,17 @@ def lint_vault(
         "read_errors": read_errors,
         "configuration_errors": configuration_errors,
         "provenance_errors": provenance_errors,
+        "ontology_findings": ontology_findings,
     }
-    category_counts = {name: len(entries) for name, entries in categories.items()}
+    ontology_warnings = {"ontology_superseded_value", "ontology_review_overdue"}
+    category_counts = {
+        name: (
+            sum(1 for f in entries if f.get("code") not in ontology_warnings)
+            if name == "ontology_findings"
+            else len(entries)
+        )
+        for name, entries in categories.items()
+    }
     issues_found = sum(category_counts.values())
 
     report: dict[str, Any] = {
@@ -1326,6 +1364,13 @@ def render_markdown(report: dict[str, Any]) -> str:
                 f"- {_code(item['path'])}"
                 f"{':' + _code(item['field']) if item.get('field') else ''}: "
                 f"{item['message']}"
+            ),
+        ),
+        (
+            "Ontology Findings",
+            "ontology_findings",
+            lambda item: (
+                f"- {_code(item['path'])}: {_code(item['code'])} ({item['detail']})"
             ),
         ),
         (

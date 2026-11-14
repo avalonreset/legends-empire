@@ -359,6 +359,93 @@ def command_release_gates(args: argparse.Namespace) -> int:
     return 0 if not args.execute or report["ready"] else 1
 
 
+def command_ontology_index(args: argparse.Namespace) -> int:
+    selection = _selection(args)
+    from . import ontology as ont
+    if args.check:
+        index_doc, check_code = ont.check_index(selection.root, as_of=args.as_of)
+        if check_code == 0:
+            _emit({"status": "fresh", "schema": ont.INDEX_SCHEMA, "as_of": index_doc.get("as_of") if index_doc else None})
+            return 0
+        _emit({"status": "stale", "exit_code": check_code})
+        return check_code
+    idx, code = ont.build_index(selection.root, as_of=args.as_of, write_file=not args.dry_run)
+    _emit(idx)
+    return code
+
+
+def command_ontology_resolve(args: argparse.Namespace) -> int:
+    selection = _selection(args)
+    from . import ontology as ont
+    rep, code = ont.resolve_term(selection.root, args.term)
+    _emit(rep)
+    return code
+
+
+def command_ontology_need(args: argparse.Namespace) -> int:
+    selection = _selection(args)
+    from . import ontology as ont
+    keys = [k.strip() for k in args.keys.split(",")] if args.keys else []
+    fields = [f.strip() for f in args.fields.split(",")] if args.fields else None
+    rep, code = ont.need_keys(
+        selection.root,
+        keys=keys,
+        entity=args.entity,
+        fields=fields,
+        no_values=args.no_values,
+        as_of=args.as_of,
+    )
+    _emit(rep)
+    return code
+
+
+def command_ontology_ask(args: argparse.Namespace) -> int:
+    selection = _selection(args)
+    from . import ontology as ont
+    rep, code = ont.ask_question(selection.root, args.question)
+    _emit(rep)
+    return code
+
+
+def command_ontology_propose(args: argparse.Namespace) -> int:
+    selection = _selection(args)
+    from . import ontology as ont
+    bundles, paths, code = ont.propose_bundles(
+        selection.root,
+        operation_id=args.operation_id,
+        as_of=args.as_of,
+        batch_size=args.batch_size,
+    )
+    _emit({"status": "complete", "proposed_bundles": paths, "count": len(bundles)})
+    return code
+
+
+def command_ontology_certify(args: argparse.Namespace) -> int:
+    selection = _selection(args)
+    from . import ontology as ont
+    keys = [k.strip() for k in args.keys.split(",")] if args.keys else []
+    bundle, bundle_path, code = ont.certify_bundle(
+        selection.root,
+        keys=keys,
+        cert_class=args.cert_class,
+        operation_id=args.operation_id,
+        generated_at=args.generated_at,
+        digest=args.digest,
+        evidence=args.evidence,
+        approved_plan_sha256=args.approved_plan_sha256,
+    )
+    _emit({"status": "complete", "bundle": bundle, "path": bundle_path})
+    return code
+
+
+def command_ontology_bench(args: argparse.Namespace) -> int:
+    selection = _selection(args)
+    from . import ontology as ont
+    res = ont.run_benchmark(selection.root, as_of=args.as_of)
+    _emit(res)
+    return 0
+
+
 def _capture_inputs(
     args: argparse.Namespace,
 ) -> tuple[Path, CaptureConfig, CaptureBudget, list[Path]]:
@@ -1437,6 +1524,61 @@ def build_parser() -> argparse.ArgumentParser:
         "--as-of", help="Pin provenance freshness audit date (YYYY-MM-DD)"
     )
     checkpoint.set_defaults(handler=command_checkpoint)
+
+    ontology = subcommands.add_parser(
+        "ontology", help="Ontology engine queries, validation, and proposals"
+    )
+    ontology_commands = ontology.add_subparsers(dest="ontology_command", required=True)
+
+    ont_index = ontology_commands.add_parser("index", help="Build or check derived ontology index")
+    _add_vault_argument(ont_index)
+    ont_index.add_argument("--as-of", help="Audit date in YYYY-MM-DD format")
+    ont_index.add_argument("--check", action="store_true", help="Check whether stored index matches current vault state")
+    ont_index.add_argument("--dry-run", action="store_true", help="Scan vault without writing index.json")
+    ont_index.set_defaults(handler=command_ontology_index)
+
+    ont_resolve = ontology_commands.add_parser("resolve", help="Resolve entity ID or alias to primary note")
+    _add_vault_argument(ont_resolve)
+    ont_resolve.add_argument("term", help="Entity ID, alias, or query term")
+    ont_resolve.set_defaults(handler=command_ontology_resolve)
+
+    ont_need = ontology_commands.add_parser("need", help="Validate fact existence, freshness, and certification")
+    _add_vault_argument(ont_need)
+    ont_need.add_argument("--keys", help="Comma-separated fact keys (e.g. entity.field1,entity.field2)")
+    ont_need.add_argument("--entity", help="Entity ID if querying specific fields")
+    ont_need.add_argument("--fields", help="Comma-separated fields under --entity")
+    ont_need.add_argument("--no-values", action="store_true", help="Omit fact values from output")
+    ont_need.add_argument("--as-of", help="Audit date in YYYY-MM-DD format")
+    ont_need.set_defaults(handler=command_ontology_need)
+
+    ont_ask = ontology_commands.add_parser("ask", help="Suggest entities and facts for conversational questions")
+    _add_vault_argument(ont_ask)
+    ont_ask.add_argument("question", help="Natural language query")
+    ont_ask.set_defaults(handler=command_ontology_ask)
+
+    ont_propose = ontology_commands.add_parser("propose", help="Propose entity_id and alias transaction bundles")
+    _add_vault_argument(ont_propose)
+    ont_propose.add_argument("--operation-id", default="ontology-proposals", help="Operation ID")
+    ont_propose.add_argument("--as-of", help="Audit date in YYYY-MM-DD format")
+    ont_propose.add_argument("--batch-size", type=int, default=150, help="Max writes per bundle (<=150)")
+    ont_propose.set_defaults(handler=command_ontology_propose)
+
+    ont_certify = ontology_commands.add_parser("certify", help="Prepare a certified owner or evidence bundle")
+    _add_vault_argument(ont_certify)
+    ont_certify.add_argument("--keys", required=True, help="Comma-separated fact keys to certify")
+    ont_certify.add_argument("--class", dest="cert_class", choices=["owner", "evidence"], default="owner", help="Certification class")
+    ont_certify.add_argument("--digest", help="Path to reviewed digest note for owner certification")
+    ont_certify.add_argument("--evidence", help="Evidence locator for evidence certification")
+    ont_certify.add_argument("--operation-id", default="ontology-certify", help="Operation ID")
+    ont_certify.add_argument("--generated-at", help="ISO timestamp for bundle generation")
+    _add_approval_argument(ont_certify)
+    ont_certify.set_defaults(handler=command_ontology_certify)
+
+    ont_bench = ontology_commands.add_parser("bench", help="Run deterministic benchmark against active vault")
+    _add_vault_argument(ont_bench)
+    ont_bench.add_argument("--as-of", help="Audit date in YYYY-MM-DD format")
+    ont_bench.set_defaults(handler=command_ontology_bench)
+
     return parser
 
 

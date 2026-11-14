@@ -4,6 +4,8 @@ import hashlib
 import uuid
 from collections import Counter
 from datetime import datetime, timezone
+import json
+from pathlib import Path
 from typing import Any
 
 from .classify import classify_notes
@@ -204,6 +206,36 @@ def observe(
     freshness_findings.extend(operation_findings)
 
     inventory_findings: list[Finding] = []
+    # Check ontology signals if index exists
+    idx_path = Path(vault.as_posix) / ".vault-meta/ontology/index.json"
+    if idx_path.exists():
+        try:
+            raw_idx = json.loads(idx_path.read_text(encoding="utf-8"))
+            for f_key, f_data in raw_idx.get("facts", {}).items():
+                st = f_data.get("state")
+                f_path = f_data.get("path")
+                if st == "conflict":
+                    inventory_findings.append(
+                        Finding(
+                            code="ontology.conflict",
+                            severity="high",
+                            path=f_path,
+                            record_class=None,
+                            message=f"Ontology fact {f_key} has conflicting uncertified values across notes",
+                        )
+                    )
+                elif st == "stale":
+                    inventory_findings.append(
+                        Finding(
+                            code="ontology.stale_fact",
+                            severity="medium",
+                            path=f_path,
+                            record_class=None,
+                            message=f"Ontology fact {f_key} is stale (review overdue or evidence mismatch)",
+                        )
+                    )
+        except Exception:
+            pass
     for escaped in inventory.skipped_escapes:
         inventory_findings.append(
             Finding(

@@ -18,6 +18,9 @@ This deterministic fixture demonstrates a small, connected, synthetic vault.
 
 - [[Example Source]]
 - [[Aster batch policy]]
+- [[Bakery Supplier Invoice]]
+- [[Health Inspection Report]]
+- [[Old Brochure]]
 
 ## Concepts
 
@@ -26,6 +29,7 @@ This deterministic fixture demonstrates a small, connected, synthetic vault.
 ## Entities
 
 - [[Example Maintainer]]
+- [[Example Bakery]]
 
 ## Questions
 

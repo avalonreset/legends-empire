@@ -136,6 +136,7 @@ _BOOTSTRAP_COMMON_PATHS = {
     "wiki/log.md",
     "wiki/meta/ledgers/claim-ledger.json",
     "wiki/meta/ledgers/source-ledger.json",
+    "wiki/meta/start-here-ontology.md",
     "wiki/overview.md",
 }
 _SETUP_EXTENSION_PATHS = {
@@ -2686,6 +2687,9 @@ class _RuntimeStore:
                 "CORRUPT_RUNTIME_STATE", "transactions runtime is unavailable"
             )
         try:
+            if operation.backups_fd is not None:
+                os.close(operation.backups_fd)
+                operation.backups_fd = None
             _remove_pinned_runtime_tree_at(
                 self.transactions_fd, operation.name, operation.fd
             )
@@ -2694,6 +2698,8 @@ class _RuntimeStore:
                 "CORRUPT_RUNTIME_STATE",
                 f"cannot remove transaction {operation.name}: {exc}",
             ) from exc
+        finally:
+            operation.close()
 
     def close(self) -> None:
         if self.transactions_fd is not None:

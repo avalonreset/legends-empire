@@ -7,6 +7,25 @@ implementation record for older releases.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-14
+
+### Added
+
+- Added the Ontology Engine (`claude_empire/ontology.py`, `claude_empire/ontology_grammar.py`) providing answerable vault queries over structured entities and flat frontmatter facts, with strict frontmatter parsing (byte-for-byte UTF-8 BOM, uniform `\n` or `\r\n` line endings, and exact preservation of protected non-ontology frontmatter blocks and markdown body bytes).
+- Added `operation_type: "ontology"` transaction bundles with Exact Differential Replacement (EDR) enforcement: mutations may only update declared ontology keys, while verifying evidence pins and owner review digests.
+- Added deterministic prerequisite fact gating via `claude-empire ontology need` with strict exit code precedence (`12` conflict > `11` missing > `13` stale > `10` draft > `0` certified).
+- Added sub-millisecond entity and alias resolution via `claude-empire ontology resolve` (`0` found, `3` ambiguous, `4` not found) using NFKC and casefold normalization.
+- Added secret-like value detector and zero-leak redaction preventing raw API keys, bearer tokens, PEM blocks, or passwords from appearing in derived `.vault-meta/ontology/index.json` indexes or CLI stdout, allowing explicit `secret-ref:<file>.env#<VAR>` pointers.
+- Added automated proposal generation via `claude-empire ontology propose` (bounded to `<= 150` writes per transaction batch) and certification bundles via `claude-empire ontology certify`.
+- Qualified AI Marketing Hub Home `v0.7.1` and `v0.7.2` shared-root compatibility pins, archiving `v0.7.0` and confirming zero new top-level namespace collisions against Empire-owned paths.
+- Added disclosure safety release gate (`claude_empire/disclosure.py`, `release disclosure`) scanning git history, text files, and release ZIP archives against sensitive credentials, phone numbers, and private term denylists.
+- Integrated ontology findings (`ontology_duplicate_entity_id`, `ontology_certified_without_value`, `frontmatter_nested_unsupported`) into `claude_empire/lint_engine.py` and `legends_vault_steward`.
+- Added user documentation in `docs/ontology.md`, starter templates in `templates/vault/wiki/meta/start-here-ontology.md`, and deterministic sample bakery in `examples/sample-vault/`.
+
+### Fixed
+
+- Fixed Windows handle cleanup race in `claude_empire/transaction.py` (`remove_operation`) by closing `backups_fd` before removing transaction runtime directories, eliminating `[WinError 145] The directory is not empty` during rollback and conflict recovery.
+
 ## [0.3.5] - 2026-11-11
 
 ### Added

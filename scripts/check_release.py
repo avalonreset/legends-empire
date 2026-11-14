@@ -15,7 +15,7 @@ sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from claude_empire import disclosure  # noqa: E402
-TOOL_VERSION = "0.3.5"
+TOOL_VERSION = "0.4.0"
 SKIP = {".git", ".venv", "dist", "build", "__pycache__", ".integration", "out"}
 REQUIRED = [
     "README.md",

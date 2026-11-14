@@ -8,5 +8,28 @@
     {"id": "hot", "path": "wiki/hot.md", "max_words": 500, "max_age_days": 14},
     {"id": "index", "path": "wiki/index.md"}
   ],
-  "operations": {"review_after_days": 14}
+  "operations": {"review_after_days": 14},
+  "ontology_roots": [
+    "wiki/",
+    "Projects/Active/",
+    "Workspaces/Clients/Companies/",
+    "Workspaces/Clients/People/",
+    "Workspaces/Brands & Sites/",
+    "areas/",
+    "fleet/"
+  ],
+  "skip_dir_names": [
+    "node_modules",
+    "backups",
+    "_runtime",
+    "tmp",
+    "scratch",
+    "s1",
+    "output",
+    "_third-party",
+    ".raw",
+    ".vault-meta",
+    ".obsidian",
+    ".git"
+  ]
 }

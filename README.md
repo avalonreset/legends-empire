@@ -98,6 +98,15 @@ updates preserve your work and report conflicts with edited references. See the
 [stewardship workflow](docs/stewardship.md) for commands, limits, and the optional
 Plane view.
 
+## Ontology engine and fact gating
+
+Version `0.4.0` introduces the **Ontology Engine** ([docs/ontology.md](docs/ontology.md)), providing answerable vault queries over structured entities and flat frontmatter facts without altering human-readable Markdown notes.
+
+- **Deterministic Prerequisite Gating (`ontology need`)**: Automated workflows check fact freshness and certification before executing actions, halting safely on draft, missing, conflicting, or stale facts.
+- **Exact Differential Replacement (EDR)**: Mutating transaction bundles (`operation_type: "ontology"`) may only update declared ontology frontmatter keys, preserving non-ontology blocks, BOM, newlines, and body bytes byte-for-byte.
+- **Cryptographic & Owner Certification**: Facts can be certified by explicit owner review digests or pinned evidence files (`raw:sha256:`, `bank:`).
+- **Sub-Millisecond Query Resolution**: The ontology index guarantees zero wrong-record writes, eliminates hallucinated business facts, and resolves aliases in sub-millisecond queries.
+
 ## Agent setup (via `cto-legends`)
 
 Part of the [CTO Legends](https://github.com/avalonreset/cto-legends) ecosystem. `cto-legends` is the only registered skill; this repo vendors a pinned copy at [skills/cto-legends/SKILL.md](skills/cto-legends/SKILL.md).

@@ -37,6 +37,38 @@ def strip_fences(text: str) -> str:
     return "\n".join(kept)
 
 
+def has_nested_frontmatter(text: str) -> bool:
+    """Detect if YAML frontmatter contains nested mappings or block scalars."""
+    text = text.lstrip("\ufeff")
+    match = FRONTMATTER_RE.match(text)
+    if not match:
+        return False
+    raw = match.group(1)
+    current_list_key: str | None = None
+    for line in raw.splitlines():
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith(" ") or line.startswith("\t"):
+            stripped = line.strip()
+            if current_list_key and stripped.startswith("- "):
+                continue
+            return True
+        scalar = SIMPLE_SCALAR.match(line.strip())
+        if not scalar:
+            current_list_key = None
+            continue
+        val = scalar.group(2).strip()
+        if val in ("|", ">", "|-", ">-", "|+", ">+"):
+            return True
+        if val.startswith("{") and val.endswith("}"):
+            return True
+        if val == "":
+            current_list_key = scalar.group(1)
+            continue
+        current_list_key = None
+    return False
+
+
 def parse_frontmatter(text: str) -> tuple[dict[str, Any], str]:
     text = text.lstrip("\ufeff")
     match = FRONTMATTER_RE.match(text)
