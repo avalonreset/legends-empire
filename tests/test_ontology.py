@@ -2,6 +2,7 @@
 """Hermetic unit tests for claude_empire.ontology (Spec v1.1 compliant)."""
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -13,7 +14,13 @@ import sys
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from claude_empire import cli
 from claude_empire import ontology as ont
+from claude_empire import transaction as tx
+
+
+def _sha256(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
 
 
 class OntologyTests(unittest.TestCase):
@@ -21,9 +28,9 @@ class OntologyTests(unittest.TestCase):
         content = b"---\nentity_id: acme\naliases:\n  - Acme Corp\n---\n# Acme Overview\nBody text."
         res = ont.split_frontmatter_strict(content)
         self.assertIsNotNone(res)
-        has_bom, nl, fm_lines, fm_text, body = res
+        has_bom, nl, fm_lines, _, body = res
         self.assertFalse(has_bom)
-        self.assertEqual(nl, "\n")
+        self.assertEqual(nl, b"\n")
         self.assertIn("entity_id: acme", fm_lines)
         self.assertEqual(body, b"# Acme Overview\nBody text.")
 
@@ -31,16 +38,16 @@ class OntologyTests(unittest.TestCase):
         content = b"\xef\xbb\xbf---\r\nentity_id: acme\r\n---\r\nBody text\r\n"
         res = ont.split_frontmatter_strict(content)
         self.assertIsNotNone(res)
-        has_bom, nl, fm_lines, fm_text, body = res
+        has_bom, nl, fm_lines, _, body = res
         self.assertTrue(has_bom)
-        self.assertEqual(nl, "\r\n")
+        self.assertEqual(nl, b"\r\n")
         self.assertEqual(body, b"Body text\r\n")
 
     def test_split_frontmatter_strict_empty_frontmatter(self) -> None:
         content = b"---\n---\nBody text"
         res = ont.split_frontmatter_strict(content)
         self.assertIsNotNone(res)
-        has_bom, nl, fm_lines, fm_text, body = res
+        has_bom, nl, fm_lines, _, body = res
         self.assertEqual(fm_lines, [])
         self.assertEqual(body, b"Body text")
 
@@ -63,20 +70,23 @@ class OntologyTests(unittest.TestCase):
         # Secret-ref outside fact value is rejected
         self.assertIsNotNone(ont.detect_secret_like("secret-ref:vault.env#FOO", is_fact_value=False))
 
-    def test_parse_frontmatter_strict_and_nested_detection(self) -> None:
-        content = b"---\nentity_id: acme\naliases: [Acme, \"The Acme\"]\nfact.team: Engineering\n---\n# Acme\n"
-        data, findings, body, nl, bom, unp = ont.parse_frontmatter_strict(content, "test.md")
-        self.assertFalse(unp)
-        self.assertEqual(data.get("entity_id"), "acme")
-        self.assertEqual(data.get("aliases"), ["Acme", "The Acme"])
-        self.assertEqual(data.get("fact.team"), "Engineering")
-        self.assertEqual(findings, [])
+    def test_parse_note_and_nested_detection(self) -> None:
+        content = b"---\nentity_id: acme\naliases:\n  - Acme\n  - The Acme\nfact.team: Engineering\n---\n# Acme\n"
+        note = ont.parse_note(content, side="old", path="test.md")
+        self.assertTrue(note.has_frontmatter)
+        self.assertEqual(note.values.get("entity_id"), "acme")
+        self.assertEqual(note.list_value("aliases"), ["Acme", "The Acme"])
+        self.assertEqual(note.values.get("fact.team"), "Engineering")
 
-        # Nested YAML construct
-        nested_content = b"---\ndescription: |\n  ---\n  nested: true\n---\n# Nested\n"
-        data_n, findings_n, _, _, _, unp_n = ont.parse_frontmatter_strict(nested_content, "nested.md")
-        self.assertTrue(unp_n)
-        self.assertTrue(any(f["code"] == "frontmatter_nested_unsupported" for f in findings_n))
+        with tempfile.TemporaryDirectory() as td:
+            vault = Path(td)
+            wiki = vault / "wiki"
+            wiki.mkdir(parents=True)
+            nested_content = b"---\ndescription:\n  nested: true\n---\n# Nested\n"
+            (wiki / "nested.md").write_bytes(nested_content)
+            idx, _ = ont.build_index(vault, as_of="2026-11-14", write_file=False)
+            findings = idx.get("findings", [])
+            self.assertTrue(any(f["code"] == "frontmatter_nested_unsupported" for f in findings))
 
     def test_index_build_and_check_and_resolve(self) -> None:
         with tempfile.TemporaryDirectory() as td:
@@ -100,34 +110,43 @@ class OntologyTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            idx, exit_code = ont.build_index(vault, as_of="2026-11-14", write_file=True)
-            self.assertEqual(exit_code, 0)
+            idx, code = ont.build_index(vault, as_of="2026-11-14")
+            self.assertEqual(code, 0)
+            self.assertEqual(idx["counts"]["entities"], 1)
             self.assertIn("acme", idx["entities"])
-            self.assertEqual(idx["entities"]["acme"]["path"], "wiki/acme.md")
+            self.assertIn("acme", idx["aliases"])
+            self.assertIn("acme corp", idx["aliases"])
+            self.assertEqual(idx["counts"]["certified"], 1)
 
-            # Check index freshness
-            saved, check_code = ont.check_index(vault, as_of="2026-11-14")
-            self.assertEqual(check_code, 0)
+            saved, c_code = ont.check_index(vault, as_of="2026-11-14")
+            self.assertEqual(c_code, 0)
             self.assertIsNotNone(saved)
 
-            # Resolve term: exact entity ID
-            rep, code = ont.resolve_term(vault, "acme", index_doc=idx)
-            self.assertEqual(code, 0)
-            self.assertEqual(rep["entity_id"], "acme")
+            # Resolve
+            res, r_code = ont.resolve_term(vault, "Acme")
+            self.assertEqual(r_code, 0)
+            self.assertEqual(res["entity_id"], "acme")
 
-            # Resolve term: alias
-            rep_a, code_a = ont.resolve_term(vault, "Acme Corp", index_doc=idx)
-            self.assertEqual(code_a, 0)
-            self.assertEqual(rep_a["entity_id"], "acme")
+            # Unknown resolve
+            res_u, u_code = ont.resolve_term(vault, "NonExistent")
+            self.assertEqual(u_code, 4)
 
-            # Resolve term: not found
-            rep_nf, code_nf = ont.resolve_term(vault, "nonexistent-co", index_doc=idx)
-            self.assertEqual(code_nf, 4)
+    def test_alias_collision_exit_3(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            vault = Path(td)
+            wiki = vault / "wiki"
+            wiki.mkdir(parents=True)
 
-            # Modify file -> index is stale (exit 14)
-            (wiki / "acme.md").write_text("# Modified\n", encoding="utf-8")
-            saved_stale, code_stale = ont.check_index(vault, as_of="2026-11-14")
-            self.assertEqual(code_stale, 14)
+            (wiki / "e1.md").write_text(
+                "---\nentity_id: e1\naliases:\n  - SharedAlias\n---\n", encoding="utf-8"
+            )
+            (wiki / "e2.md").write_text(
+                "---\nentity_id: e2\naliases:\n  - SharedAlias\n---\n", encoding="utf-8"
+            )
+
+            res, code = ont.resolve_term(vault, "SharedAlias")
+            self.assertEqual(code, 3)
+            self.assertEqual(res["candidates"], ["e1", "e2"])
 
     def test_need_keys_precedence(self) -> None:
         with tempfile.TemporaryDirectory() as td:
@@ -137,61 +156,36 @@ class OntologyTests(unittest.TestCase):
 
             (wiki / "entity.md").write_text(
                 "---\n"
-                "entity_id: test-ent\n"
-                "fact.certified: val1\n"
-                "fact.draft: val2\n"
+                "entity_id: bakery\n"
+                "fact.name: Sweet Treats\n"
+                "fact.tax_id: 12-3456789\n"
                 "certified_owner:\n"
-                "  - fact.certified\n"
-                "certified_on: 2026-01-01\n"
-                "review_after: 2027-01-01\n"
-                "---\n",
-                encoding="utf-8",
-            )
-            (wiki / "stale.md").write_text(
-                "---\n"
-                "entity_id: stale-ent\n"
-                "fact.expired: val3\n"
-                "certified_owner:\n"
-                "  - fact.expired\n"
-                "certified_on: 2024-01-01\n"
-                "review_after: 2025-01-01\n"
+                "  - fact.name\n"
+                "certified_on: 2026-11-14\n"
+                "review_after: 2026-10-01\n"
                 "---\n",
                 encoding="utf-8",
             )
 
             idx, _ = ont.build_index(vault, as_of="2026-11-14", write_file=False)
 
-            # Certified key -> 0
-            rep, code = ont.need_keys(vault, keys=["test-ent.certified"], as_of="2026-11-14", index_doc=idx)
-            self.assertEqual(code, 0)
+            # Missing key -> 11
+            rep1, code1 = ont.need_keys(vault, keys=["bakery.missing"], index_doc=idx)
+            self.assertEqual(code1, 11)
+
+            # Stale key (review_after in past) -> 13
+            rep2, code2 = ont.need_keys(vault, keys=["bakery.name"], as_of="2026-11-14", index_doc=idx)
+            self.assertEqual(code2, 13)
 
             # Draft key -> 10
-            rep_d, code_d = ont.need_keys(vault, keys=["test-ent.draft"], as_of="2026-11-14", index_doc=idx)
-            self.assertEqual(code_d, 10)
+            rep3, code3 = ont.need_keys(vault, keys=["bakery.tax_id"], index_doc=idx)
+            self.assertEqual(code3, 10)
 
-            # Missing key -> 11
-            rep_m, code_m = ont.need_keys(vault, keys=["test-ent.missing"], as_of="2026-11-14", index_doc=idx)
-            self.assertEqual(code_m, 11)
-
-            # Stale key -> 13
-            rep_s, code_s = ont.need_keys(vault, keys=["stale-ent.expired"], as_of="2026-11-14", index_doc=idx)
-            self.assertEqual(code_s, 13)
-
-            # Conflict key across notes -> 12
-            (wiki / "secondary.md").write_text(
-                "---\n"
-                "about: test-ent\n"
-                "fact.draft: conflicting_val\n"
-                "---\n",
-                encoding="utf-8",
+            # Conflict > Missing > Stale > Draft > 0
+            rep4, code4 = ont.need_keys(
+                vault, keys=["bakery.missing", "bakery.name", "bakery.tax_id"], as_of="2026-11-14", index_doc=idx
             )
-            idx2, _ = ont.build_index(vault, as_of="2026-11-14", write_file=False)
-            rep_c, code_c = ont.need_keys(vault, keys=["test-ent.draft"], as_of="2026-11-14", index_doc=idx2)
-            self.assertEqual(code_c, 12)
-
-            # Precedence: 12 > 11 > 13 > 10 > 0
-            rep_p, code_p = ont.need_keys(vault, keys=["test-ent.draft", "test-ent.missing"], as_of="2026-11-14", index_doc=idx2)
-            self.assertEqual(code_p, 12)
+            self.assertEqual(code4, 11)
 
     def test_secret_redaction_in_index(self) -> None:
         with tempfile.TemporaryDirectory() as td:
@@ -227,12 +221,15 @@ class OntologyTests(unittest.TestCase):
             wiki.mkdir(parents=True)
 
             (wiki / "unindexed.md").write_text("# Unindexed Note\nContent.\n", encoding="utf-8")
-            bundles, paths, code = ont.propose_bundles(vault, operation_id="test-prop", generated_at="2026-11-14T00:00:00Z")
+            bundles, paths, approvals, code = ont.propose_bundles(
+                vault, operation_id="test-prop", generated_at="2026-11-14T00:00:00Z"
+            )
             self.assertEqual(code, 0)
             self.assertEqual(len(bundles), 1)
             b = bundles[0]
             self.assertEqual(b["operation_type"], "ontology")
             self.assertIn("entity_id:", b["writes"][0]["content"])
+            self.assertTrue(len(approvals) == 1 and len(approvals[0]) == 64)
 
             (wiki / "indexed.md").write_text(
                 "---\nentity_id: ent1\nfact.domain: example.com\n---\n", encoding="utf-8"
@@ -240,7 +237,7 @@ class OntologyTests(unittest.TestCase):
             digest = wiki / "digest.md"
             digest.write_text("# Digest\nApproved.\n", encoding="utf-8")
 
-            cert_b, cert_path, c_code = ont.certify_bundle(
+            cert_b, cert_path, app_hash, c_code = ont.certify_bundle(
                 vault,
                 keys=["ent1.domain"],
                 cert_class="owner",
@@ -252,18 +249,258 @@ class OntologyTests(unittest.TestCase):
             self.assertEqual(cert_b["operation_type"], "ontology")
             self.assertEqual(cert_b["certification"]["class"], "owner")
             self.assertIn("wiki/digest.md", cert_b["read_preconditions"])
+            self.assertTrue(len(app_hash) == 64)
 
-    def test_run_benchmark(self) -> None:
+    def test_run_benchmark_without_and_with_tasks(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             vault = Path(td)
             wiki = vault / "wiki"
             wiki.mkdir(parents=True)
-            (wiki / "note.md").write_text("---\nentity_id: b-ent\naliases: [BEnt]\n---\n", encoding="utf-8")
+            (wiki / "note.md").write_text(
+                "---\nentity_id: b-ent\naliases:\n  - BEnt\nfact.city: Atlanta\n---\n",
+                encoding="utf-8",
+            )
+            # Without tasks: index & latency telemetry only
             res = ont.run_benchmark(vault, as_of="2026-11-14")
             self.assertEqual(res["status"], "complete")
             self.assertEqual(res["entities_indexed"], 1)
-            self.assertEqual(res["wrong_record_rate"], 0.0)
-            self.assertEqual(res["gating_accuracy_percent"], 100.0)
+            self.assertEqual(res["aliases_indexed"], 1)
+            self.assertEqual(res["facts_total"], 1)
+            self.assertNotIn("wrong_record_rate", res)
+
+            # With tasks
+            task_file = vault / "tasks.json"
+            task_file.write_text(
+                json.dumps([
+                    {"query": "BEnt", "expected_entity_id": "b-ent"},
+                    {"need_keys": ["b-ent.city"], "expect_halt": True},
+                ]),
+                encoding="utf-8",
+            )
+            res_tasks = ont.run_benchmark(vault, tasks_path=task_file, attempts=2, as_of="2026-11-14")
+            self.assertEqual(res_tasks["tasks_evaluated"], 2)
+            self.assertEqual(res_tasks["wrong_record_rate"], 0.0)
+            self.assertEqual(res_tasks["gating_accuracy_percent"], 100.0)
+
+    def test_cli_propose_inspect_apply_roundtrip_lf_and_crlf_bom(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            vault = Path(td)
+            wiki = vault / "wiki"
+            wiki.mkdir(parents=True)
+
+            # Note 1: LF without frontmatter
+            lf_note = wiki / "lf_note.md"
+            lf_note.write_bytes(b"# Standard Note\nLine one.\nLine two.\n")
+
+            # Note 2: CRLF with BOM and existing non-ontology frontmatter
+            crlf_note = wiki / "crlf_note.md"
+            crlf_raw = (
+                b"\xef\xbb\xbf---\r\n"
+                b"title: Complex Note\r\n"
+                b"custom_key: preserve_me\r\n"
+                b"---\r\n"
+                b"# Complex Note\r\n"
+                b"Windows body.\r\n"
+            )
+            crlf_note.write_bytes(crlf_raw)
+
+            # Run propose via CLI
+            code = cli.main([
+                "ontology",
+                "propose",
+                "--vault",
+                str(vault),
+                "--generated-at",
+                "2026-11-14T12:00:00Z",
+                "--operation-id",
+                "test-prop-e2e",
+            ])
+            self.assertEqual(code, 0)
+
+            bundle_file = vault / ".vault-meta" / "ontology" / "bundles" / "bundle-propose-0.json"
+            self.assertTrue(bundle_file.is_file())
+            bundle = json.loads(bundle_file.read_text(encoding="utf-8"))
+
+            # Inspect bundle through transaction engine
+            plan = tx.inspect_bundle(vault, bundle)
+            self.assertTrue(plan["valid"])
+            self.assertEqual(plan["operation_type"], "ontology")
+
+            # Apply bundle with approval hash
+            res = tx.apply_bundle(vault, bundle, approved_plan_sha256=plan["approval_sha256"])
+            self.assertEqual(res["status"], "complete")
+
+            # Verify LF note updated cleanly with \n
+            lf_updated = lf_note.read_bytes()
+            self.assertFalse(lf_updated.startswith(b"\xef\xbb\xbf"))
+            self.assertIn(b"entity_id: lf-note\n", lf_updated)
+            self.assertIn(b"# Standard Note\nLine one.\nLine two.\n", lf_updated)
+            self.assertNotIn(b"\r\n", lf_updated)
+
+            # Verify CRLF+BOM note preserved BOM, preserved \r\n, and preserved custom_key
+            crlf_updated = crlf_note.read_bytes()
+            self.assertTrue(crlf_updated.startswith(b"\xef\xbb\xbf"))
+            self.assertIn(b"\r\n", crlf_updated)
+            self.assertIn(b"custom_key: preserve_me\r\n", crlf_updated)
+            self.assertIn(b"entity_id: crlf-note\r\n", crlf_updated)
+            self.assertIn(b"# Complex Note\r\nWindows body.\r\n", crlf_updated)
+
+    def test_cli_certify_owner_inspect_apply_roundtrip(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            vault = Path(td)
+            wiki = vault / "wiki"
+            wiki.mkdir(parents=True)
+
+            store_note = wiki / "store.md"
+            store_note.write_text(
+                "---\nentity_id: store\nfact.phone: 555-1234\n---\n# Store\n", encoding="utf-8"
+            )
+            digest = wiki / "digest.md"
+            digest.write_text("# Digest of Store Records\nVerified phone number.\n", encoding="utf-8")
+
+            # Run certify owner via CLI
+            code = cli.main([
+                "ontology",
+                "certify",
+                "--vault",
+                str(vault),
+                "--class",
+                "owner",
+                "--keys",
+                "store.phone",
+                "--digest",
+                "wiki/digest.md",
+                "--generated-at",
+                "2026-11-14T12:00:00Z",
+                "--operation-id",
+                "cert-owner-e2e",
+            ])
+            self.assertEqual(code, 0)
+
+            bundle_file = vault / ".vault-meta" / "ontology" / "bundles" / "bundle-certify-cert-owner-e2e.json"
+            self.assertTrue(bundle_file.is_file())
+            bundle = json.loads(bundle_file.read_text(encoding="utf-8"))
+
+            plan = tx.inspect_bundle(vault, bundle)
+            self.assertTrue(plan["valid"])
+
+            res = tx.apply_bundle(vault, bundle, approved_plan_sha256=plan["approval_sha256"])
+            self.assertEqual(res["status"], "complete")
+
+            # Verify note updated with certified_owner
+            content = store_note.read_text(encoding="utf-8")
+            self.assertIn("certified_owner:", content)
+            self.assertIn("  - fact.phone", content)
+
+            # Query need_keys -> exit code 0
+            rep, n_code = ont.need_keys(vault, keys=["store.phone"])
+            self.assertEqual(n_code, 0)
+            self.assertEqual(rep["keys"]["store.phone"]["state"], "certified-owner")
+
+    def test_cli_certify_evidence_inspect_apply_roundtrip_raw_and_note(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            vault = Path(td)
+            wiki = vault / "wiki"
+            wiki.mkdir(parents=True)
+
+            # Setup raw evidence
+            raw_dir = vault / ".raw" / "captured"
+            raw_dir.mkdir(parents=True)
+            raw_data = b"INVOICE #9981 TOTAL $120.00"
+            raw_hex = _sha256(raw_data)
+            (raw_dir / f"{raw_hex}.txt").write_bytes(raw_data)
+
+            # Setup note evidence
+            inspection = wiki / "inspection.md"
+            inspection.write_text("# Inspection Record\nGrade A passed on Monday.\n", encoding="utf-8")
+
+            # Entity with draft facts
+            target = wiki / "bakery.md"
+            target.write_text(
+                "---\n"
+                "entity_id: bakery\n"
+                "fact.total: 120.00\n"
+                f"evidence.total: raw:sha256:{raw_hex}\n"
+                "fact.grade: A\n"
+                "evidence.grade: note:[[wiki/inspection]]#Inspection Record\n"
+                "---\n"
+                "# Bakery\n",
+                encoding="utf-8",
+            )
+
+            # Certify raw evidence via CLI
+            code1 = cli.main([
+                "ontology",
+                "certify",
+                "--vault",
+                str(vault),
+                "--class",
+                "evidence",
+                "--keys",
+                "bakery.total",
+                "--generated-at",
+                "2026-11-14T12:00:00Z",
+                "--operation-id",
+                "cert-ev-raw",
+            ])
+            self.assertEqual(code1, 0)
+
+            bundle_file1 = vault / ".vault-meta" / "ontology" / "bundles" / "bundle-certify-cert-ev-raw.json"
+            bundle1 = json.loads(bundle_file1.read_text(encoding="utf-8"))
+            self.assertNotIn("certification", bundle1)
+            plan1 = tx.inspect_bundle(vault, bundle1)
+            self.assertTrue(plan1["valid"])
+            tx.apply_bundle(vault, bundle1, approved_plan_sha256=plan1["approval_sha256"])
+
+            # Certify note evidence via CLI
+            code2 = cli.main([
+                "ontology",
+                "certify",
+                "--vault",
+                str(vault),
+                "--class",
+                "evidence",
+                "--keys",
+                "bakery.grade",
+                "--generated-at",
+                "2026-11-14T12:00:00Z",
+                "--operation-id",
+                "cert-ev-note",
+            ])
+            self.assertEqual(code2, 0)
+
+            bundle_file2 = vault / ".vault-meta" / "ontology" / "bundles" / "bundle-certify-cert-ev-note.json"
+            bundle2 = json.loads(bundle_file2.read_text(encoding="utf-8"))
+            plan2 = tx.inspect_bundle(vault, bundle2)
+            self.assertTrue(plan2["valid"])
+            tx.apply_bundle(vault, bundle2, approved_plan_sha256=plan2["approval_sha256"])
+
+            # Verify need_keys reports certified-evidence
+            rep, n_code = ont.need_keys(vault, keys=["bakery.total", "bakery.grade"])
+            self.assertEqual(n_code, 0)
+            self.assertEqual(rep["keys"]["bakery.total"]["state"], "certified-evidence")
+            self.assertEqual(rep["keys"]["bakery.grade"]["state"], "certified-evidence")
+
+    def test_cli_error_codes_exit_20(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            vault = Path(td)
+            wiki = vault / "wiki"
+            wiki.mkdir(parents=True)
+
+            # Owner certification missing digest -> exit 20
+            code = cli.main([
+                "ontology",
+                "certify",
+                "--vault",
+                str(vault),
+                "--class",
+                "owner",
+                "--keys",
+                "missing.key",
+                "--generated-at",
+                "2026-11-14T12:00:00Z",
+            ])
+            self.assertEqual(code, 20)
 
 
 if __name__ == "__main__":

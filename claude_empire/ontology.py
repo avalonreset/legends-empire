@@ -1,7 +1,7 @@
 """Ontology engine for legends-empire.
 
 Standard library only. Provides index, resolve, need, ask, propose, certify, and bench.
-Conforms to Spec v1.1 (Sections 5.1-5.7 + Carbon Pre-Audit amendments).
+Conforms to Spec v1.1 (Sections 5.1-5.7 + Carbon Pre-Audit and Post-Diff amendments).
 Unifies with claude_empire.ontology_grammar for shared grammar, parser, and secret detection.
 """
 from __future__ import annotations
@@ -21,31 +21,51 @@ try:
     from .ontology_grammar import (
         BOM,
         EXCLUDED_TOP_LEVEL,
+        EXCLUDED_ANY_LEVEL,
         OntologyRuleError,
         ROOT_INSTRUCTION_FILES,
         Scope,
         WORKSPACE_CONFIG,
+        EVIDENCE_PACKAGE_DIR,
+        EVIDENCE_PACKAGE_MEMBERS,
         fact_secret_like_class,
         is_ontology_key,
         portable_key,
         resolve_scope,
         secret_like_class,
         split_frontmatter_strict as og_split_frontmatter_strict,
+        parse_note,
+        title_value,
+        _label,
+        _headings,
+        UNPARSEABLE,
+        Note,
+        Block,
     )
 except ImportError:
     from claude_empire.ontology_grammar import (
         BOM,
         EXCLUDED_TOP_LEVEL,
+        EXCLUDED_ANY_LEVEL,
         OntologyRuleError,
         ROOT_INSTRUCTION_FILES,
         Scope,
         WORKSPACE_CONFIG,
+        EVIDENCE_PACKAGE_DIR,
+        EVIDENCE_PACKAGE_MEMBERS,
         fact_secret_like_class,
         is_ontology_key,
         portable_key,
         resolve_scope,
         secret_like_class,
         split_frontmatter_strict as og_split_frontmatter_strict,
+        parse_note,
+        title_value,
+        _label,
+        _headings,
+        UNPARSEABLE,
+        Note,
+        Block,
     )
 
 # Schema identifiers
@@ -87,11 +107,26 @@ def _portable_name_key(path_str: str) -> str:
     return portable_key(str(path_str).replace("\\", "/"))
 
 
+def is_reparse_or_symlink(path: Path) -> bool:
+    """Check if path is a symlink or Windows junction / reparse point."""
+    try:
+        st = path.lstat()
+    except (FileNotFoundError, OSError):
+        return False
+    if path.is_symlink():
+        return True
+    if sys.platform == "win32":
+        if getattr(st, "st_file_attributes", 0) & 0x400:  # FILE_ATTRIBUTE_REPARSE_POINT
+            return True
+    return False
+
+
 def detect_secret_like(val: str, *, is_fact_value: bool = False) -> str | None:
     """Detect secrets in values using unified ontology_grammar rules. Returns pattern class name or None."""
     if is_fact_value:
         return fact_secret_like_class(val)
     return secret_like_class(val)
+
 
 def normalize_alias(alias: str) -> str:
     """Normalized alias form: NFKC + casefold + whitespace collapsed + trimmed."""
@@ -100,251 +135,73 @@ def normalize_alias(alias: str) -> str:
     return collapsed.casefold()
 
 
-def _unquote_yaml(s: str) -> str:
-    """Decode standard YAML quoting and escapes."""
-    if len(s) >= 2 and ((s.startswith("'") and s.endswith("'")) or (s.startswith('"') and s.endswith('"'))):
-        quote_char = s[0]
-        inner = s[1:-1]
-        if quote_char == "'":
-            return inner.replace("''", "'")
-        # Double quote escapes
-        res = []
-        i = 0
-        n = len(inner)
-        while i < n:
-            c = inner[i]
-            if c == "\\" and i + 1 < n:
-                nxt = inner[i + 1]
-                if nxt == '"':
-                    res.append('"'); i += 2; continue
-                elif nxt == "\\":
-                    res.append("\\"); i += 2; continue
-                elif nxt == "n":
-                    res.append("\n"); i += 2; continue
-                elif nxt == "r":
-                    res.append("\r"); i += 2; continue
-                elif nxt == "t":
-                    res.append("\t"); i += 2; continue
-                elif nxt == "x" and i + 3 < n:
-                    try:
-                        res.append(chr(int(inner[i + 2 : i + 4], 16)))
-                        i += 4; continue
-                    except ValueError:
-                        pass
-                elif nxt == "u" and i + 5 < n:
-                    try:
-                        res.append(chr(int(inner[i + 2 : i + 6], 16)))
-                        i += 6; continue
-                    except ValueError:
-                        pass
-            res.append(c)
-            i += 1
-        return "".join(res)
-    return s.strip()
-
-
-def _parse_inline_list(inner: str) -> list[str]:
-    """Quote-aware comma separation for inline list [a, b]."""
-    items = []
-    current: list[str] = []
-    in_single = False
-    in_double = False
-    escaped = False
-
-    for c in inner:
-        if escaped:
-            current.append(c)
-            escaped = False
-            continue
-        if c == "\\" and in_double:
-            current.append(c)
-            escaped = True
-            continue
-        if c == "'" and not in_double:
-            in_single = not in_single
-            current.append(c)
-            continue
-        if c == '"' and not in_single:
-            in_double = not in_double
-            current.append(c)
-            continue
-        if c == "," and not in_single and not in_double:
-            item_str = "".join(current).strip()
-            if item_str:
-                items.append(_unquote_yaml(item_str))
-            current = []
-            continue
-        current.append(c)
-
-    item_str = "".join(current).strip()
-    if item_str:
-        items.append(_unquote_yaml(item_str))
-    return items
-
-
-def split_frontmatter_strict(raw_bytes: bytes, path: str = "note.md") -> tuple[bool, str, list[str], str, bytes] | None:
-    """Split frontmatter strictly per BLOCKER-3 and Amendment 3.
-
-    Returns (has_bom, nl, fm_lines, fm_text, body_bytes) or None if no frontmatter.
-    """
-    if raw_bytes.count(BOM) > 1:
+def split_frontmatter_strict(content: bytes) -> tuple[bool, bytes, list[str], bytes, bytes] | None:
+    """Strict frontmatter splitter delegating to ontology_grammar."""
+    has_bom = content.startswith(BOM)
+    rest = content[len(BOM):] if has_bom else content
+    if BOM in rest:
         return None
     try:
-        sp = og_split_frontmatter_strict(raw_bytes, side="old", path=path)
+        split = og_split_frontmatter_strict(content, side="old", path="<note>")
     except OntologyRuleError:
         return None
-    if sp.nl is None:
+    if split.nl is None:
         return None
-    nl_str = sp.nl.decode("ascii")
-    try:
-        decoded_lines = [l.decode("utf-8") for l in sp.lines]
-    except UnicodeDecodeError:
-        return None
-    for line in decoded_lines:
-        if any(c in line for c in ("\u0085", "\u2028", "\u2029", "\ufeff")):
-            return None
-    fm_text = nl_str.join(decoded_lines)
-    return sp.bom, nl_str, decoded_lines, fm_text, sp.body
+    nl = split.nl
+    lines = [line.decode("utf-8", errors="replace") for line in split.lines]
+    return has_bom, nl, lines, b"", split.body
 
 
-def parse_frontmatter_strict(raw_bytes: bytes, rel_path: str = "") -> tuple[dict[str, Any], list[dict], bytes, str, bool, bool]:
-    """Parse frontmatter strictly with nested block detection.
-
-    Returns (data, findings, body_bytes, nl, has_bom, is_unparseable).
-    """
-    res = split_frontmatter_strict(raw_bytes)
-    if res is None:
-        return {}, [], raw_bytes, "\n", False, False
-
-    has_bom, nl, fm_lines, fm_text, body_bytes = res
-    findings: list[dict] = []
-    data: dict[str, Any] = {}
-    is_unparseable = False
-
-    current_list_key: str | None = None
-    seen_keys: set[str] = set()
-
-    for line_idx, line in enumerate(fm_lines, start=2):
-        if not line or line.startswith("#"):
-            continue
-
-        if line.startswith(" ") or line.startswith("\t"):
-            stripped = line.strip()
-            if current_list_key and stripped.startswith("- "):
-                val = _unquote_yaml(stripped[2:].strip())
-                existing = data.get(current_list_key)
-                if not isinstance(existing, list):
-                    existing = [] if existing is None else [existing]
-                existing.append(val)
-                data[current_list_key] = existing
-                continue
-            else:
-                # Unsupported nested YAML construct or indented map
-                findings.append({
-                    "code": "frontmatter_nested_unsupported",
-                    "path": rel_path,
-                    "detail": f"unsupported indented line at line {line_idx}",
-                })
-                is_unparseable = True
-                continue
-
-        # Column 0 key definition
-        m = re.match(r"^([A-Za-z0-9_.-]+):(?:\s*(.*))?$", line)
-        if not m:
-            findings.append({
-                "code": "frontmatter_nested_unsupported",
-                "path": rel_path,
-                "detail": f"non-scalar column 0 construct at line {line_idx}",
-            })
-            is_unparseable = True
-            current_list_key = None
-            continue
-
-        key = m.group(1)
-        raw_val = (m.group(2) or "").strip()
-
-        # Duplicate key check
-        if key in seen_keys:
-            findings.append({
-                "code": "ontology_duplicate_key",
-                "path": rel_path,
-                "detail": f"duplicate frontmatter key {key!r}",
-            })
-        seen_keys.add(key)
-
-        if raw_val == "" or raw_val == "[]":
-            current_list_key = key
-            data[key] = []
-            continue
-        elif raw_val in ("|", ">", "|-", ">-", "|+", ">+"):
-            findings.append({
-                "code": "frontmatter_nested_unsupported",
-                "path": rel_path,
-                "detail": f"unsupported block scalar {raw_val} at line {line_idx}",
-            })
-            is_unparseable = True
-            current_list_key = None
-            continue
-        elif raw_val.startswith("{{") and raw_val.endswith("}}"):
-            current_list_key = None
-            data[key] = raw_val
-            continue
-        elif raw_val.startswith("{") and raw_val.endswith("}"):
-            findings.append({
-                "code": "frontmatter_nested_unsupported",
-                "path": rel_path,
-                "detail": f"unsupported inline mapping at line {line_idx}",
-            })
-            is_unparseable = True
-            current_list_key = None
-            continue
-        elif raw_val.startswith("[") and raw_val.endswith("]"):
-            current_list_key = None
-            data[key] = _parse_inline_list(raw_val[1:-1].strip())
-            continue
-        else:
-            current_list_key = None
-            data[key] = _unquote_yaml(raw_val)
-
-    if is_unparseable:
-        return {}, findings, body_bytes, nl, has_bom, True
-
-    return data, findings, body_bytes, nl, has_bom, False
+def is_path_excluded(rel_path: str, exclusions: set[str]) -> bool:
+    """Check if a relative forward-slashed path matches exclusions or scope excluded prefixes."""
+    folded = _portable_name_key(rel_path)
+    for ex in exclusions:
+        ex_clean = ex.rstrip("/")
+        if folded == ex_clean or folded.startswith(ex_clean + "/"):
+            return True
+    parts = folded.split("/")
+    # Exclude internal / non-note folders at any depth
+    for part in parts[:-1]:
+        if part in ("node_modules", ".git", ".claude-empire", ".obsidian", ".vault-meta") or part in EXCLUDED_ANY_LEVEL:
+            return True
+    return False
 
 
 def get_ontology_roots(vault_root: Path) -> tuple[str, list[str], set[str]]:
     """Determine profile, roots, and exclusions per Spec 5.2 and Carbon Spec v1.1.
 
+    Fails closed (raising OntologyRuleError) on invalid config.
     Returns (profile, roots, exclusions).
     """
-    def _read_file(rel: str) -> bytes | None:
-        p = vault_root / rel
-        if p.is_file():
-            try:
-                data = p.read_bytes()
-                if rel == WORKSPACE_CONFIG:
-                    try:
-                        cfg = json.loads(data.decode("utf-8"))
-                        if "ontology.roots" in cfg and "ontology" not in cfg:
-                            cfg["ontology"] = {"roots": cfg["ontology.roots"]}
-                            return json.dumps(cfg).encode("utf-8")
-                    except Exception:
-                        pass
-                return data
-            except OSError:
-                return None
-        return None
+    vault_root = Path(vault_root).resolve()
+    from .transaction import read_vault_regular
 
-    try:
-        scope = resolve_scope(_read_file)
-        exclusions = set(scope.home_managed)
-        for rf in ROOT_INSTRUCTION_FILES:
-            exclusions.add(portable_key(rf))
-        for tl in EXCLUDED_TOP_LEVEL:
-            exclusions.add(portable_key(tl))
-        return scope.profile, list(scope.roots), exclusions
-    except OntologyRuleError:
-        return "standalone", ["wiki/"], set()
+    def _read_file(rel: str) -> bytes | None:
+        try:
+            data = read_vault_regular(vault_root, rel, missing_ok=True)
+            if data is not None and rel == WORKSPACE_CONFIG:
+                try:
+                    cfg = json.loads(data.decode("utf-8"))
+                    if "ontology.roots" in cfg and "ontology" not in cfg:
+                        cfg["ontology"] = {"roots": cfg["ontology.roots"]}
+                        return json.dumps(cfg).encode("utf-8")
+                except Exception:
+                    pass
+            return data
+        except OSError:
+            return None
+
+    # Fail-closed per M8-HIGH-3: do not swallow OntologyRuleError
+    scope = resolve_scope(_read_file)
+    exclusions: set[str] = set(scope.home_managed)
+    for rf in ROOT_INSTRUCTION_FILES:
+        exclusions.add(portable_key(rf))
+    for tl in EXCLUDED_TOP_LEVEL:
+        exclusions.add(portable_key(tl))
+    for ex in scope.excluded_prefixes:
+        exclusions.add(portable_key(ex))
+
+    return scope.profile, list(scope.roots), exclusions
 
 
 def verify_evidence(
@@ -353,25 +210,24 @@ def verify_evidence(
     evidence_ref: str,
     roots: list[str],
     exclusions: set[str],
-) -> tuple[bool, dict | None, str | None]:
+) -> tuple[bool, dict[str, str] | None, str | None]:
     """Verify evidence ref (raw, bank, note) per HIGH-1 & HIGH-2.
 
-    Returns (verified, precondition_pin, error_code).
+    Returns (verified, precondition_pins, error_code).
     """
     raw_m = RAW_SHA_RE.match(evidence_ref)
     if raw_m:
         target_hex = raw_m.group(1).lower()
-        # HIGH-2: look under .raw/captured/<hex>* or .raw/
         raw_dir = vault_root / ".raw"
         candidates: list[Path] = []
         captured_dir = raw_dir / "captured"
-        if captured_dir.exists():
+        if captured_dir.exists() and not is_reparse_or_symlink(captured_dir):
             for entry in captured_dir.iterdir():
-                if entry.is_file() and entry.name.lower().startswith(target_hex):
+                if entry.is_file() and not is_reparse_or_symlink(entry) and entry.name.lower().startswith(target_hex):
                     candidates.append(entry)
-        if raw_dir.exists():
+        if raw_dir.exists() and not is_reparse_or_symlink(raw_dir):
             for entry in raw_dir.iterdir():
-                if entry.is_file() and entry.name.lower().startswith(target_hex):
+                if entry.is_file() and not is_reparse_or_symlink(entry) and entry.name.lower().startswith(target_hex):
                     candidates.append(entry)
 
         for cand in candidates:
@@ -379,73 +235,88 @@ def verify_evidence(
                 content = cand.read_bytes()
                 if _sha256_bytes(content) == target_hex:
                     rel = cand.relative_to(vault_root).as_posix()
-                    return True, {"path": rel, "sha256": target_hex}, None
+                    return True, {rel: target_hex}, None
             except OSError:
                 continue
         return False, None, "ontology_evidence_hash_mismatch"
 
     bank_m = BANK_REF_RE.match(evidence_ref)
     if bank_m:
-        ws_id, rec_id = bank_m.group(1), bank_m.group(2)
-        # Search for workspaces/<ws_id>/research-evidence
-        for ws_dir_name in ("Workspaces", "workspaces"):
-            bank_dir = vault_root / ws_dir_name / ws_id / "research-evidence"
-            rec_file = bank_dir / "records" / f"{rec_id}.json"
-            if rec_file.is_file():
-                try:
-                    data = json.loads(rec_file.read_text(encoding="utf-8"))
-                    if data.get("status") != "revoked":
-                        rel = rec_file.relative_to(vault_root).as_posix()
-                        h = _sha256_bytes(rec_file.read_bytes())
-                        return True, {"path": rel, "sha256": h}, None
-                except Exception:
-                    pass
-        return False, None, "ontology_evidence_hash_mismatch"
+        ws_id, evidence_id = bank_m.groups()
+        package = f"{EVIDENCE_PACKAGE_DIR}/{evidence_id}"
+        pkg_dir = vault_root / package
+        if not pkg_dir.is_dir() or is_reparse_or_symlink(pkg_dir):
+            return False, None, "ontology_evidence_missing"
+
+        from .research_evidence import EvidenceError, verify_package
+        try:
+            report = verify_package(pkg_dir, workspace=ws_id)
+        except (EvidenceError, OSError, ValueError):
+            return False, None, "ontology_evidence_hash_mismatch"
+
+        if report.get("evidence_id") != evidence_id:
+            return False, None, "ontology_evidence_hash_mismatch"
+
+        pins: dict[str, str] = {}
+        for member_name in EVIDENCE_PACKAGE_MEMBERS:
+            m_file = pkg_dir / member_name
+            if not m_file.is_file() or is_reparse_or_symlink(m_file):
+                return False, None, "ontology_evidence_missing"
+            try:
+                pins[f"{package}/{member_name}"] = _sha256_bytes(m_file.read_bytes())
+            except OSError:
+                return False, None, "ontology_evidence_missing"
+        return True, pins, None
 
     note_m = NOTE_REF_RE.match(evidence_ref)
     if note_m:
-        target_name, anchor = note_m.group(1).strip(), note_m.group(2).strip()
-        # Find matching .md note
-        matches: list[Path] = []
-        for r_name in roots:
-            r_path = vault_root / r_name
-            if not r_path.exists():
-                continue
-            for root, _, files in os.walk(r_path):
-                for f in files:
-                    if f.endswith(".md"):
-                        p = Path(root) / f
-                        if p.stem.lower() == target_name.lower():
-                            matches.append(p)
-        if len(matches) != 1:
+        target, anchor = note_m.groups()
+        target = target.strip()
+        candidates: list[str] = []
+        if "/" in target:
+            candidate = target if target.lower().endswith(".md") else target + ".md"
+            cand_p = vault_root / candidate
+            if cand_p.is_file() and not is_reparse_or_symlink(cand_p):
+                candidates.append(candidate.replace("\\", "/"))
+        else:
+            for r_name in roots:
+                r_path = vault_root / r_name
+                if not r_path.exists() or is_reparse_or_symlink(r_path):
+                    continue
+                for root_dp, _, fnames in os.walk(r_path):
+                    if is_reparse_or_symlink(Path(root_dp)):
+                        continue
+                    for fn in fnames:
+                        if fn.endswith(".md"):
+                            cp = Path(root_dp) / fn
+                            if not is_reparse_or_symlink(cp) and cp.stem.lower() == target.lower():
+                                candidates.append(cp.relative_to(vault_root).as_posix())
+
+        if len(candidates) != 1:
             return False, None, "ontology_evidence_missing"
 
-        target_path = matches[0]
-        target_rel = target_path.relative_to(vault_root).as_posix()
+        resolved = candidates[0]
         # HIGH-1: Reject self-reference
-        if _portable_name_key(target_rel) == _portable_name_key(current_note_rel):
+        if _portable_name_key(resolved) == _portable_name_key(current_note_rel):
             return False, None, "ontology_evidence_missing"
         # HIGH-1: Reject instruction or Home-managed file
-        if _portable_name_key(target_rel) in exclusions:
+        if is_path_excluded(resolved, exclusions):
             return False, None, "ontology_evidence_missing"
 
-        # Check anchor heading in target file
-        text = target_path.read_text(encoding="utf-8", errors="replace")
-        norm_anchor = re.sub(r"[^a-z0-9_-]+", "", anchor.casefold())
-        found_heading = False
-        for line in text.splitlines():
-            line_str = line.strip()
-            if line_str.startswith("#"):
-                heading_text = line_str.lstrip("#").strip()
-                h_norm = re.sub(r"[^a-z0-9_-]+", "", heading_text.casefold())
-                if h_norm == norm_anchor or heading_text == anchor:
-                    found_heading = True
-                    break
-        if not found_heading:
+        target_file = vault_root / resolved
+        try:
+            target_content = target_file.read_bytes()
+        except OSError:
+            return False, None, "ontology_evidence_missing"
+
+        from .lint_engine import _normalize_heading
+        headings = _headings(target_content)
+        normalized_anchor = _normalize_heading(anchor)
+        if normalized_anchor not in headings:
             return False, None, "ontology_evidence_hash_mismatch"
 
-        h = _sha256_bytes(target_path.read_bytes())
-        return True, {"path": target_rel, "sha256": h}, None
+        h = _sha256_bytes(target_content)
+        return True, {resolved: h}, None
 
     return False, None, "ontology_evidence_missing"
 
@@ -478,23 +349,27 @@ def build_index(
     # Walk roots
     for root_rel in roots:
         root_dir = vault_root / root_rel
-        if not root_dir.exists():
+        if not root_dir.exists() or is_reparse_or_symlink(root_dir):
             continue
         for dirpath, dirnames, filenames in os.walk(root_dir):
-            rel_dir = Path(dirpath).relative_to(vault_root).as_posix()
-            # Exclude directories
-            if any(_portable_name_key(rel_dir).startswith(ex) for ex in exclusions):
+            dirpath_p = Path(dirpath)
+            if is_reparse_or_symlink(dirpath_p):
+                dirnames[:] = []
+                continue
+            rel_dir = dirpath_p.relative_to(vault_root).as_posix()
+            if is_path_excluded(rel_dir, exclusions):
                 dirnames[:] = []
                 continue
 
             for fname in sorted(filenames):
                 if not fname.endswith(".md"):
                     continue
-                file_path = Path(dirpath) / fname
+                file_path = dirpath_p / fname
+                if is_reparse_or_symlink(file_path):
+                    continue
                 rel_path = file_path.relative_to(vault_root).as_posix()
-                norm_rel = _portable_name_key(rel_path)
 
-                if norm_rel in exclusions:
+                if is_path_excluded(rel_path, exclusions):
                     continue
                 # NTFS 8.3 short-name reject
                 if any("~" in part and re.search(r"~\d+$", part) for part in file_path.parts):
@@ -508,13 +383,32 @@ def build_index(
                 file_hash = _sha256_bytes(raw_bytes)
                 scanned_notes.append((rel_path, file_hash))
 
-                data, fm_findings, body_bytes, nl, has_bom, is_unparseable = parse_frontmatter_strict(
-                    raw_bytes, rel_path
-                )
-                findings.extend(fm_findings)
-                if is_unparseable:
+                try:
+                    note = parse_note(raw_bytes, side="old", path=rel_path)
+                except OntologyRuleError as exc:
+                    findings.append({
+                        "code": "frontmatter_nested_unsupported",
+                        "path": rel_path,
+                        "detail": f"{rel_path}: {exc.message}",
+                    })
                     continue
 
+                if not note.has_frontmatter:
+                    continue
+
+                # Check for unparseable blocks per Spec 5.1
+                has_unparseable = any(v is UNPARSEABLE for v in note.values.values()) or any(
+                    block.block_scalar for block in note.blocks
+                )
+                if has_unparseable:
+                    findings.append({
+                        "code": "frontmatter_nested_unsupported",
+                        "path": rel_path,
+                        "detail": f"{rel_path}: frontmatter contains unparseable or unsupported nested blocks",
+                    })
+                    continue
+
+                data = dict(note.values)
                 entity_id = data.get("entity_id")
                 about_id = data.get("about")
 
@@ -527,9 +421,9 @@ def build_index(
                     continue
 
                 # Title extraction & secret scan
-                title = data.get("title")
-                if title:
-                    sec_title = detect_secret_like(str(title))
+                raw_title = title_value(note)
+                if raw_title:
+                    sec_title = detect_secret_like(str(raw_title))
                     if sec_title:
                         findings.append({
                             "code": "ontology_secret_like_value",
@@ -537,6 +431,8 @@ def build_index(
                             "detail": f"redacted secret-like value in title ({sec_title})",
                         })
                         title = file_path.stem
+                    else:
+                        title = raw_title
                 else:
                     title = file_path.stem
 
@@ -570,12 +466,8 @@ def build_index(
                         continue
 
                     # Collect aliases
-                    raw_aliases = data.get("aliases")
-                    if raw_aliases is None and "alias" in data:
-                        raw_aliases = data["alias"]
-                    if isinstance(raw_aliases, str):
-                        raw_aliases = [raw_aliases]
-                    elif not isinstance(raw_aliases, list):
+                    raw_aliases = note.list_value("aliases")
+                    if raw_aliases is UNPARSEABLE or not isinstance(raw_aliases, list):
                         raw_aliases = []
 
                     clean_aliases = []
@@ -602,10 +494,12 @@ def build_index(
                                 "detail": f"alias {norm_al!r} collides between {aliases[norm_al]}",
                             })
 
+                    # Populate entity_type per M8-HIGH-1
+                    entity_type_val = data.get("entity_type") or data.get("type")
                     entities[entity_id] = {
                         "path": rel_path,
                         "title": title,
-                        "type": data.get("type"),
+                        "type": entity_type_val,
                         "aliases": clean_aliases,
                     }
 
@@ -622,18 +516,19 @@ def build_index(
                 # Collect facts
                 active_entity = entity_id or about_id
                 if not active_entity:
-                    # Check if there are facts without entity
                     for k in data:
                         if k.startswith("fact."):
                             findings.append({
                                 "code": "ontology_fact_without_entity",
                                 "path": rel_path,
-                                "detail": f"fact {k!r} declared in note without entity_id or about",
+                                "detail": f"fact {_label(k)} declared in note without entity_id or about",
                             })
                     continue
 
-                certified_owner = set(data.get("certified_owner") or [])
-                certified_evidence = set(data.get("certified_evidence") or [])
+                certified_owner_list = note.list_value("certified_owner")
+                certified_owner = set(certified_owner_list) if isinstance(certified_owner_list, list) else set()
+                certified_evidence_list = note.list_value("certified_evidence")
+                certified_evidence = set(certified_evidence_list) if isinstance(certified_evidence_list, list) else set()
                 review_after = data.get("review_after")
                 certified_on = data.get("certified_on")
 
@@ -651,11 +546,11 @@ def build_index(
                         findings.append({
                             "code": "ontology_certified_without_value",
                             "path": rel_path,
-                            "detail": f"key {k!r} listed in certification but missing from frontmatter",
+                            "detail": f"key {_label(k)} listed in certification but missing from frontmatter",
                         })
 
                 for f_key in fact_keys:
-                    field = f_key[5:]
+                    field = f_key[len("fact.") :]
                     if not FIELD_NAME_RE.match(field):
                         findings.append({
                             "code": "ontology_invalid_field_name",
@@ -670,7 +565,7 @@ def build_index(
                         findings.append({
                             "code": "ontology_secret_like_value",
                             "path": rel_path,
-                            "detail": f"redacted secret-like value in {f_key} ({sec_f})",
+                            "detail": f"redacted secret-like value in {_label(f_key)} ({sec_f})",
                         })
                         continue
 
@@ -696,7 +591,7 @@ def build_index(
                             findings.append({
                                 "code": "ontology_evidence_missing",
                                 "path": rel_path,
-                                "detail": f"certified evidence key {f_key} missing evidence locator",
+                                "detail": f"certified evidence key {_label(f_key)} missing evidence locator",
                             })
                         else:
                             verified, precond, err = verify_evidence(
@@ -765,10 +660,6 @@ def build_index(
             }
             continue
 
-        # Sort candidates deterministically:
-        # 1. Primary first
-        # 2. Certification rank descending
-        # 3. Path order ascending (MED-4)
         cand_list.sort(
             key=lambda x: (
                 -1 if x["is_primary"] else 0,
@@ -799,7 +690,6 @@ def build_index(
                         "detail": f"value in {c['path']} superseded by certified primary value in {winner['path']}",
                     })
         else:
-            # Check for conflict among differing values
             values = {c["value"] for c in cand_list}
             if len(values) > 1:
                 is_conflict = True
@@ -825,7 +715,6 @@ def build_index(
     fp_stream = "".join(f"{p}:{h}\n" for p, h in scanned_notes).encode("utf-8")
     vault_fingerprint = _sha256_bytes(fp_stream)
 
-    # Sort outputs deterministically
     sorted_entities = {k: entities[k] for k in sorted(entities)}
     sorted_aliases = {k: sorted(aliases[k]) for k in sorted(aliases)}
     sorted_facts = {k: facts[k] for k in sorted(facts)}
@@ -857,9 +746,13 @@ def build_index(
     }
 
     if write_file:
-        meta_dir = vault_root / ".vault-meta/ontology"
+        meta_dir = vault_root / ".vault-meta" / "ontology"
+        if is_reparse_or_symlink(vault_root / ".vault-meta") or is_reparse_or_symlink(meta_dir):
+            raise OntologyRuleError("ONTOLOGY_PATH_INSECURE", "symlink or reparse point detected in .vault-meta")
         meta_dir.mkdir(parents=True, exist_ok=True)
         idx_path = meta_dir / "index.json"
+        if is_reparse_or_symlink(idx_path):
+            raise OntologyRuleError("ONTOLOGY_PATH_INSECURE", "index.json is a symlink or reparse point")
         idx_path.write_text(json.dumps(index_doc, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
     return index_doc, 0
@@ -867,8 +760,8 @@ def build_index(
 
 def check_index(vault_root: Path, *, as_of: str | None = None) -> tuple[dict[str, Any] | None, int]:
     """Check if index.json is fresh. Returns (index_doc, 0) or (None, 14)."""
-    idx_path = Path(vault_root) / ".vault-meta/ontology/index.json"
-    if not idx_path.is_file():
+    idx_path = Path(vault_root) / ".vault-meta" / "ontology" / "index.json"
+    if not idx_path.is_file() or is_reparse_or_symlink(idx_path):
         return None, 14
 
     try:
@@ -876,7 +769,6 @@ def check_index(vault_root: Path, *, as_of: str | None = None) -> tuple[dict[str
     except Exception:
         return None, 14
 
-    # Recompute in-memory
     mem_doc, _ = build_index(vault_root, as_of=as_of, write_file=False)
     if mem_doc["vault_fingerprint"] != saved_doc.get("vault_fingerprint"):
         return None, 14
@@ -950,84 +842,103 @@ def need_keys(
         for f in fields:
             target_keys.append(f"{entity}.{f}")
 
+    if not target_keys:
+        return {"error": "no keys requested", "ok": False}, 20
+
+    as_of = index_doc.get("as_of") or datetime.date.today().isoformat()
     facts = index_doc.get("facts", {})
-    key_reports: dict[str, Any] = {}
-    found_states: set[str] = set()
+    key_results: dict[str, Any] = {}
+    exit_codes_seen: set[int] = set()
 
-    for k in target_keys:
-        if k in facts:
-            f_info = facts[k]
-            st = f_info["state"]
-            found_states.add(st)
-            rep: dict[str, Any] = {
-                "state": st,
-                "path": f_info.get("path"),
-                "evidence": f_info.get("evidence"),
+    for k in sorted(target_keys):
+        if k not in facts:
+            key_results[k] = {
+                "state": "missing",
+                "value": None,
+                "path": None,
+                "evidence": None,
             }
-            if not no_values:
-                rep["value"] = f_info.get("value")
-            key_reports[k] = rep
-        else:
-            found_states.add("missing")
-            key_reports[k] = {"state": "missing"}
+            exit_codes_seen.add(11)
+            continue
 
-    # Severity precedence: 12 (conflict) > 11 (missing) > 13 (stale) > 10 (draft) > 0 (certified)
-    if "conflict" in found_states:
-        exit_code = 12
-    elif "missing" in found_states:
-        exit_code = 11
-    elif "stale" in found_states:
-        exit_code = 13
-    elif "draft" in found_states:
-        exit_code = 10
+        f = facts[k]
+        st = f["state"]
+        val = None if no_values else f["value"]
+        key_results[k] = {
+            "state": st,
+            "value": val,
+            "path": f["path"],
+            "evidence": f["evidence"],
+        }
+        if st in ("certified-owner", "certified-evidence"):
+            exit_codes_seen.add(0)
+        elif st == "draft":
+            exit_codes_seen.add(10)
+        elif st == "stale":
+            exit_codes_seen.add(13)
+        elif st == "conflict":
+            exit_codes_seen.add(12)
+
+    if 12 in exit_codes_seen:
+        code = 12
+    elif 11 in exit_codes_seen:
+        code = 11
+    elif 13 in exit_codes_seen:
+        code = 13
+    elif 10 in exit_codes_seen:
+        code = 10
     else:
-        exit_code = 0
+        code = 0
 
     return {
-        "ok": exit_code == 0,
-        "exit": exit_code,
-        "as_of": index_doc.get("as_of", as_of),
-        "keys": key_reports,
-    }, exit_code
+        "ok": (code == 0),
+        "exit": code,
+        "as_of": as_of,
+        "keys": key_results,
+    }, code
 
 
 def ask_question(
     vault_root: Path,
     question: str,
     *,
-    as_of: str | None = None,
     index_doc: dict[str, Any] | None = None,
+    as_of: str | None = None,
 ) -> tuple[dict[str, Any], int]:
-    """Suggest relevant ontology keys and states from a free-text question."""
+    """Conversational question helper: matches entities and suggested fact keys."""
     if index_doc is None:
         index_doc, _ = build_index(vault_root, as_of=as_of, write_file=False)
 
     entities = index_doc.get("entities", {})
     facts = index_doc.get("facts", {})
-    aliases = index_doc.get("aliases", {})
 
-    q_tokens = set(re.findall(r"[a-z0-9_-]+", question.casefold()))
-    matched_entities = set()
+    tokens = [t.lower() for t in re.findall(r"[A-Za-z0-9_-]+", question) if len(t) >= 2]
+    matched_entities: set[str] = set()
 
-    for eid in entities:
-        if eid in q_tokens:
+    for eid, edata in entities.items():
+        norm_eid = eid.lower()
+        if any(t in norm_eid for t in tokens):
             matched_entities.add(eid)
-
-    for al, e_list in aliases.items():
-        if al in question.casefold() or any(tok in al for tok in q_tokens):
-            matched_entities.update(e_list)
+            continue
+        title = (edata.get("title") or "").lower()
+        if any(t in title for t in tokens):
+            matched_entities.add(eid)
+            continue
+        for al in edata.get("aliases") or []:
+            if any(t in al.lower() for t in tokens):
+                matched_entities.add(eid)
+                break
 
     suggested_facts: dict[str, Any] = {}
-    for f_key, f_data in facts.items():
-        parts = f_key.split(".", 1)
-        eid = parts[0]
-        field = parts[1] if len(parts) > 1 else ""
-        if eid in matched_entities or field in q_tokens:
-            suggested_facts[f_key] = {
-                "state": f_data["state"],
-                "value": f_data.get("value"),
-                "path": f_data.get("path"),
-            }
+    for eid in sorted(matched_entities):
+        prefix = f"{eid}."
+        for fk, fv in facts.items():
+            if fk.startswith(prefix):
+                suggested_facts[fk] = {
+                    "state": fv["state"],
+                    "value": fv["value"],
+                    "path": fv["path"],
+                }
 
     return {
         "question": question,
@@ -1039,57 +950,99 @@ def ask_question(
 def propose_bundles(
     vault_root: Path,
     *,
-    operation_id: str,
+    operation_id: str = "ontology-proposals",
     generated_at: str,
     roots: list[str] | None = None,
     out_dir: Path | None = None,
-) -> tuple[list[dict[str, Any]], list[Path], int]:
-    """Generate proposal transaction bundles (<=150 writes each)."""
+    as_of: str | None = None,
+    batch_size: int = 150,
+) -> tuple[list[dict[str, Any]], list[Path], list[str], int]:
+    """Generate proposal transaction bundles (<=150 writes each).
+
+    Pre-validates every bundle via transaction.inspect_bundle and returns approval hashes.
+    """
     vault_root = Path(vault_root).resolve()
+    from .transaction import inspect_bundle
+
     profile, detected_roots, exclusions = get_ontology_roots(vault_root)
     target_roots = roots or detected_roots
 
     notes_to_propose: list[tuple[str, Path, str]] = []  # (rel_path, abs_path, entity_id)
     seen_ids: set[str] = set()
 
+    # Pre-scan existing entity_id values across all roots
     for r_str in target_roots:
         r_dir = vault_root / r_str
-        if not r_dir.exists():
+        if not r_dir.exists() or is_reparse_or_symlink(r_dir):
             continue
         for dirpath, _, filenames in os.walk(r_dir):
+            if is_reparse_or_symlink(Path(dirpath)):
+                continue
+            for fname in filenames:
+                if fname.endswith(".md"):
+                    p = Path(dirpath) / fname
+                    if is_reparse_or_symlink(p):
+                        continue
+                    rel = p.relative_to(vault_root).as_posix()
+                    if is_path_excluded(rel, exclusions):
+                        continue
+                    try:
+                        raw = p.read_bytes()
+                        note = parse_note(raw, side="old", path=rel)
+                        if note.has_frontmatter:
+                            eid = note.values.get("entity_id")
+                            if eid and isinstance(eid, str):
+                                seen_ids.add(eid)
+                    except Exception:
+                        pass
+
+    for r_str in target_roots:
+        r_dir = vault_root / r_str
+        if not r_dir.exists() or is_reparse_or_symlink(r_dir):
+            continue
+        for dirpath, _, filenames in os.walk(r_dir):
+            if is_reparse_or_symlink(Path(dirpath)):
+                continue
             for fname in sorted(filenames):
                 if not fname.endswith(".md"):
                     continue
                 p = Path(dirpath) / fname
+                if is_reparse_or_symlink(p):
+                    continue
                 rel = p.relative_to(vault_root).as_posix()
-                if _portable_name_key(rel) in exclusions:
+                if is_path_excluded(rel, exclusions):
                     continue
 
-                raw = p.read_bytes()
-                data, _, _, nl, has_bom, unparseable = parse_frontmatter_strict(raw, rel)
-                if unparseable:
+                try:
+                    raw = p.read_bytes()
+                    note = parse_note(raw, side="old", path=rel)
+                except Exception:
                     continue
-                if not data.get("entity_id") and not data.get("about"):
-                    stem_id = re.sub(r"[^a-z0-9-]+", "-", p.stem.casefold()).strip("-")
-                    if not stem_id or not stem_id[0].isalpha():
-                        stem_id = f"e-{stem_id}"
-                    stem_id = stem_id[:48]
-                    # Ensure unique
-                    base_id = stem_id
-                    ctr = 1
-                    while stem_id in seen_ids:
-                        stem_id = f"{base_id[:40]}-{ctr}"
-                        ctr += 1
-                    seen_ids.add(stem_id)
-                    notes_to_propose.append((rel, p, stem_id))
+
+                if note.has_frontmatter:
+                    if note.values.get("entity_id") or note.values.get("about"):
+                        continue
+                stem_id = re.sub(r"[^a-z0-9-]+", "-", p.stem.casefold()).strip("-")
+                if not stem_id or not stem_id[0].isalpha():
+                    stem_id = f"e-{stem_id}"
+                stem_id = stem_id[:48]
+                base_id = stem_id
+                ctr = 1
+                while stem_id in seen_ids:
+                    stem_id = f"{base_id[:40]}-{ctr}"
+                    ctr += 1
+                seen_ids.add(stem_id)
+                notes_to_propose.append((rel, p, stem_id))
 
     bundles: list[dict[str, Any]] = []
     bundle_paths: list[Path] = []
-    out_dir = out_dir or (vault_root / ".claude-empire/bundles")
+    approval_hashes: list[str] = []
+    out_dir = out_dir or (vault_root / ".vault-meta" / "ontology" / "bundles")
+    if is_reparse_or_symlink(out_dir):
+        raise OntologyRuleError("ONTOLOGY_PATH_INSECURE", "out_dir is a symlink or reparse point")
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    # Chunk into <= 150 writes per bundle
-    batch_size = 150
+    batch_size = max(1, min(150, batch_size))
     for i in range(0, len(notes_to_propose), batch_size):
         chunk = notes_to_propose[i : i + batch_size]
         writes = []
@@ -1100,19 +1053,47 @@ def propose_bundles(
             h = _sha256_bytes(raw)
             expected_hashes[rel] = h
 
-            res = split_frontmatter_strict(raw)
-            if res:
-                has_bom, nl, fm_lines, _, body_bytes = res
-                bom_prefix = "\ufeff" if has_bom else ""
-                new_fm = f"---\nentity_id: {eid}\naliases:\n  - {p.stem}\n"
-                for line in fm_lines:
-                    new_fm += line + "\n"
-                new_fm += "---\n"
-                new_content = bom_prefix + new_fm + body_bytes.decode("utf-8", errors="replace")
+            has_bom = raw.startswith(BOM)
+            bom_bytes = BOM if has_bom else b""
+            note = parse_note(raw, side="old", path=rel)
+            quoted_stem = json.dumps(p.stem, ensure_ascii=False)
+
+            if note.has_frontmatter:
+                nl_bytes = note.split.nl if note.split.nl is not None else b"\n"
+                nl_str = "\r\n" if nl_bytes == b"\r\n" else "\n"
+                # Reconstruct frontmatter blocks cleanly
+                # Check if aliases already present
+                has_aliases = any(block.key in ("aliases", "alias") for block in note.blocks if block.key)
+                new_blocks: list[str] = [f"entity_id: {eid}"]
+                if not has_aliases:
+                    new_blocks.append(f"aliases:{nl_str}  - {quoted_stem}")
+
+                for block in note.blocks:
+                    if block.key in ("aliases", "alias"):
+                        # Keep existing aliases, append quoted_stem if not present
+                        curr_aliases = note.list_value(block.key)
+                        if isinstance(curr_aliases, list) and p.stem not in curr_aliases:
+                            lines = list(block.lines)
+                            lines.append(f"  - {quoted_stem}")
+                            new_blocks.append(nl_str.join(lines))
+                        else:
+                            new_blocks.append(nl_str.join(block.lines))
+                    elif block.key is not None:
+                        new_blocks.append(nl_str.join(block.lines))
+                    elif block.lines:
+                        new_blocks.append(nl_str.join(block.lines))
+
+                fm_text = nl_str.join(new_blocks)
+                new_raw = bom_bytes + f"---{nl_str}{fm_text}{nl_str}---{nl_str}".encode("utf-8") + note.split.body
+                new_content = new_raw.decode("utf-8")
             else:
-                bom_prefix = "\ufeff" if raw.startswith(b"\xef\xbb\xbf") else ""
-                body = raw[3:].decode("utf-8", errors="replace") if bom_prefix else raw.decode("utf-8", errors="replace")
-                new_content = f"{bom_prefix}---\nentity_id: {eid}\naliases:\n  - {p.stem}\n---\n{body}"
+                # No frontmatter on note
+                nl_bytes = b"\r\n" if b"\r\n" in raw else b"\n"
+                nl_str = "\r\n" if nl_bytes == b"\r\n" else "\n"
+                body_raw = raw[len(BOM):] if has_bom else raw
+                new_fm = f"---{nl_str}entity_id: {eid}{nl_str}aliases:{nl_str}  - {quoted_stem}{nl_str}---{nl_str}"
+                new_raw = bom_bytes + new_fm.encode("utf-8") + body_raw
+                new_content = new_raw.decode("utf-8")
 
             writes.append({
                 "path": rel,
@@ -1120,25 +1101,28 @@ def propose_bundles(
                 "content": new_content,
             })
 
+        bundle_op_id = f"{operation_id}-{i // batch_size}" if len(notes_to_propose) > batch_size else operation_id
         bundle = {
             "schema": TRANSACTION_SCHEMA,
             "operation_type": OPERATION_TYPE,
-            "operation_id": f"{operation_id}-{i // batch_size}",
+            "operation_id": bundle_op_id,
             "generated_at": generated_at,
             "expected_hashes": expected_hashes,
             "read_preconditions": {},
             "writes": writes,
         }
-        b_json = json.dumps(bundle, indent=2, sort_keys=True) + "\n"
-        b_hash = _sha256_bytes(b_json.encode())
-        bundle["approved_plan_sha256"] = b_hash
+
+        # Pre-validate bundle and obtain approved_plan_sha256
+        plan = inspect_bundle(vault_root, bundle)
+        approval_sha256 = plan["approval_sha256"]
+        approval_hashes.append(approval_sha256)
 
         b_file = out_dir / f"bundle-propose-{i // batch_size}.json"
-        b_file.write_text(b_json, encoding="utf-8")
+        b_file.write_text(json.dumps(bundle, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         bundles.append(bundle)
         bundle_paths.append(b_file)
 
-    return bundles, bundle_paths, 0
+    return bundles, bundle_paths, approval_hashes, 0
 
 
 def certify_bundle(
@@ -1146,23 +1130,30 @@ def certify_bundle(
     *,
     keys: list[str],
     cert_class: str,
-    operation_id: str,
+    operation_id: str = "ontology-certify",
     generated_at: str,
     digest: str | None = None,
+    evidence: str | None = None,
+    note_paths: list[str] | None = None,
     out_dir: Path | None = None,
-) -> tuple[dict[str, Any], Path, int]:
+) -> tuple[dict[str, Any], Path, str, int]:
     """Generate a certification transaction bundle for keys.
 
     cert_class must be 'owner' or 'evidence'.
     """
     vault_root = Path(vault_root).resolve()
+    from .transaction import inspect_bundle
+
+    if cert_class not in ("owner", "evidence"):
+        raise OntologyRuleError("ONTOLOGY_CERTIFICATION_INVALID", f"invalid certification class {cert_class!r}")
+
     index_doc, _ = build_index(vault_root, write_file=False)
     facts = index_doc.get("facts", {})
 
     target_notes: dict[str, list[str]] = {}  # rel_path -> list of fact keys
     for k in keys:
         if k not in facts:
-            raise ValueError(f"unknown fact key {k!r}")
+            raise OntologyRuleError("ONTOLOGY_FACT_UNKNOWN", f"unknown fact key {k!r}")
         p = facts[k]["path"]
         if p not in target_notes:
             target_notes[p] = []
@@ -1171,80 +1162,93 @@ def certify_bundle(
     read_preconditions: dict[str, str] = {}
     if cert_class == "owner":
         if not digest:
-            raise ValueError("digest path required for owner certification")
-        digest_path = vault_root / digest
-        if not digest_path.is_file():
-            raise ValueError(f"digest file missing: {digest}")
-        read_preconditions[digest] = _sha256_bytes(digest_path.read_bytes())
+            raise OntologyRuleError("ONTOLOGY_CERTIFICATION_INVALID", "digest path required for owner certification")
+        digest_rel = digest.replace("\\", "/")
+        digest_path = vault_root / digest_rel
+        if not digest_path.is_file() or is_reparse_or_symlink(digest_path):
+            raise OntologyRuleError("ONTOLOGY_DIGEST_MISSING", f"digest file missing: {digest_rel}")
+        read_preconditions[digest_rel] = _sha256_bytes(digest_path.read_bytes())
     elif cert_class == "evidence":
         profile, roots, exclusions = get_ontology_roots(vault_root)
         for p, k_list in target_notes.items():
+            abs_p = vault_root / p
+            raw = abs_p.read_bytes()
+            curr_note = parse_note(raw, side="old", path=p)
+            existing_ev_facts = curr_note.list_value("certified_evidence")
+            all_ev_field_names: set[str] = set()
+            if isinstance(existing_ev_facts, list):
+                for item in existing_ev_facts:
+                    if item.startswith("fact."):
+                        all_ev_field_names.add(item[len("fact."):])
             for k in k_list:
-                f_data = facts[k]
-                ev_ref = f_data.get("evidence")
+                all_ev_field_names.add(k.split(".", 1)[1])
+
+            for field_name in all_ev_field_names:
+                ev_ref = curr_note.values.get(f"evidence.{field_name}")
+                if not ev_ref and any(k.endswith(f".{field_name}") for k in k_list):
+                    ev_ref = evidence
                 if not ev_ref:
-                    raise ValueError(f"key {k} has no evidence ref")
-                ver, precond, err = verify_evidence(vault_root, p, ev_ref, roots, exclusions)
-                if not ver or not precond:
-                    raise ValueError(f"evidence verification failed for {k}: {err}")
-                read_preconditions[precond["path"]] = precond["sha256"]
-    else:
-        raise ValueError(f"invalid certification class {cert_class!r}")
+                    for fk, fv in facts.items():
+                        if fk.endswith(f".{field_name}") and fv.get("path") == p:
+                            ev_ref = fv.get("evidence")
+                            break
+                if not ev_ref:
+                    raise OntologyRuleError("ONTOLOGY_EVIDENCE_MISSING", f"evidence locator missing for field {field_name}")
+                ver, preconds, err = verify_evidence(vault_root, p, ev_ref, roots, exclusions)
+                if not ver or not preconds:
+                    raise OntologyRuleError(err or "ONTOLOGY_EVIDENCE_UNVERIFIED", f"evidence verification failed for {field_name}")
+                read_preconditions.update(preconds)
 
     writes = []
     expected_hashes = {}
-    today_str = datetime.date.today().isoformat()
+    today_str = generated_at[:10] if len(generated_at) >= 10 else datetime.date.today().isoformat()
 
     for rel, k_list in target_notes.items():
         abs_p = vault_root / rel
         raw = abs_p.read_bytes()
         expected_hashes[rel] = _sha256_bytes(raw)
 
-        res = split_frontmatter_strict(raw)
-        if not res:
-            raise ValueError(f"note {rel} lacks valid frontmatter")
-        has_bom, nl, fm_lines, _, body_bytes = res
-        bom_prefix = "\ufeff" if has_bom else ""
+        note = parse_note(raw, side="old", path=rel)
+        if not note.has_frontmatter:
+            raise OntologyRuleError("ONTOLOGY_FRONTMATTER_MISSING", f"note {rel} lacks valid frontmatter")
 
-        # Update frontmatter lines
-        data, _, _, _, _, _ = parse_frontmatter_strict(raw, rel)
+        has_bom = raw.startswith(BOM)
+        bom_bytes = BOM if has_bom else b""
+        nl_bytes = note.split.nl if note.split.nl is not None else b"\n"
+        nl_str = "\r\n" if nl_bytes == b"\r\n" else "\n"
+
         target_field_names = [f"fact.{k.split('.', 1)[1]}" for k in k_list]
 
+        curr_owner = list(note.list_value("certified_owner") if isinstance(note.list_value("certified_owner"), list) else [])
+        curr_evidence = list(note.list_value("certified_evidence") if isinstance(note.list_value("certified_evidence"), list) else [])
+
         if cert_class == "owner":
-            curr = list(data.get("certified_owner") or [])
             for tf in target_field_names:
-                if tf not in curr:
-                    curr.append(tf)
-            data["certified_owner"] = curr
+                if tf not in curr_owner:
+                    curr_owner.append(tf)
         else:
-            curr = list(data.get("certified_evidence") or [])
             for tf in target_field_names:
-                if tf not in curr:
-                    curr.append(tf)
-            data["certified_evidence"] = curr
-        data["certified_on"] = today_str
+                if tf not in curr_evidence:
+                    curr_evidence.append(tf)
 
-        # Reconstruct frontmatter
-        new_fm_lines = []
-        for line in fm_lines:
-            if line.startswith("certified_owner:") or line.startswith("certified_evidence:") or line.startswith("certified_on:"):
+        # Reconstruct frontmatter blocks preserving non-ontology blocks cleanly
+        new_blocks: list[str] = []
+        for block in note.blocks:
+            if block.key in ("certified_owner", "certified_evidence", "certified_on"):
                 continue
-            if line.startswith("  - fact."):
-                continue
-            new_fm_lines.append(line)
+            new_blocks.append(nl_str.join(block.lines))
 
-        if "certified_owner" in data:
-            new_fm_lines.append("certified_owner:")
-            for item in data["certified_owner"]:
-                new_fm_lines.append(f"  - {item}")
-        if "certified_evidence" in data:
-            new_fm_lines.append("certified_evidence:")
-            for item in data["certified_evidence"]:
-                new_fm_lines.append(f"  - {item}")
-        new_fm_lines.append(f"certified_on: {today_str}")
+        if curr_owner:
+            owner_lines = ["certified_owner:"] + [f"  - {item}" for item in curr_owner]
+            new_blocks.append(nl_str.join(owner_lines))
+        if curr_evidence:
+            ev_lines = ["certified_evidence:"] + [f"  - {item}" for item in curr_evidence]
+            new_blocks.append(nl_str.join(ev_lines))
+        new_blocks.append(f"certified_on: {today_str}")
 
-        new_fm = "---\n" + "\n".join(new_fm_lines) + "\n---\n"
-        new_content = bom_prefix + new_fm + body_bytes.decode("utf-8", errors="replace")
+        fm_text = nl_str.join(new_blocks)
+        new_raw = bom_bytes + f"---{nl_str}{fm_text}{nl_str}---{nl_str}".encode("utf-8") + note.split.body
+        new_content = new_raw.decode("utf-8")
 
         writes.append({
             "path": rel,
@@ -1257,30 +1261,40 @@ def certify_bundle(
         "operation_type": OPERATION_TYPE,
         "operation_id": operation_id,
         "generated_at": generated_at,
-        "certification": {"class": cert_class},
         "expected_hashes": expected_hashes,
         "read_preconditions": read_preconditions,
         "writes": writes,
     }
+    # Only include certification block when owner class per Spec 5.5 and M8-BLOCKER-2
     if cert_class == "owner" and digest:
-        bundle["certification"]["digest"] = digest
+        bundle["certification"] = {"class": "owner", "digest": digest.replace("\\", "/")}
 
-    out_dir = out_dir or (vault_root / ".claude-empire/bundles")
+    # Pre-validate bundle via inspect_bundle
+    plan = inspect_bundle(vault_root, bundle)
+    approval_sha256 = plan["approval_sha256"]
+
+    out_dir = out_dir or (vault_root / ".vault-meta" / "ontology" / "bundles")
+    if is_reparse_or_symlink(out_dir):
+        raise OntologyRuleError("ONTOLOGY_PATH_INSECURE", "out_dir is a symlink or reparse point")
     out_dir.mkdir(parents=True, exist_ok=True)
     b_file = out_dir / f"bundle-certify-{operation_id}.json"
-    b_json = json.dumps(bundle, indent=2, sort_keys=True) + "\n"
-    bundle["approved_plan_sha256"] = _sha256_bytes(b_json.encode())
-    b_file.write_text(b_json, encoding="utf-8")
+    b_file.write_text(json.dumps(bundle, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
-    return bundle, b_file, 0
+    return bundle, b_file, approval_sha256, 0
 
 
-
-def run_benchmark(vault_root: Path, *, as_of: str | None = None) -> dict[str, Any]:
+def run_benchmark(
+    vault_root: Path,
+    *,
+    tasks_path: Path | None = None,
+    attempts: int = 3,
+    as_of: str | None = None,
+) -> dict[str, Any]:
     """Run deterministic benchmark evaluation against active vault index.
 
-    Evaluates resolution speed, wrong-record elimination, and gating accuracy.
+    Evaluates index telemetry and optionally executes an external task suite.
     """
+    vault_root = Path(vault_root).resolve()
     t0 = time.perf_counter()
     index_doc, check_code = check_index(vault_root, as_of=as_of)
     if index_doc is None:
@@ -1309,7 +1323,7 @@ def run_benchmark(vault_root: Path, *, as_of: str | None = None) -> dict[str, An
 
     median_lat = sorted(latencies)[len(latencies) // 2] if latencies else 0.0
 
-    return {
+    report: dict[str, Any] = {
         "status": "complete",
         "entities_indexed": total_entities,
         "aliases_indexed": total_aliases,
@@ -1319,8 +1333,52 @@ def run_benchmark(vault_root: Path, *, as_of: str | None = None) -> dict[str, An
         "facts_conflict": conflict_facts,
         "facts_stale": stale_facts,
         "median_query_latency_ms": round(median_lat, 3),
-        "wrong_record_rate": 0.0,
-        "hallucinated_fact_rate": 0.0,
-        "gating_accuracy_percent": 100.0,
         "elapsed_seconds": round(time.perf_counter() - t0, 3),
     }
+
+    # Evaluate task suite if provided
+    if tasks_path:
+        tasks_p = Path(tasks_path).resolve()
+        if not tasks_p.is_file():
+            raise OntologyRuleError("ONTOLOGY_TASK_FILE_MISSING", f"task file not found: {tasks_path}")
+        task_data = json.loads(tasks_p.read_text(encoding="utf-8"))
+        tasks_list = task_data if isinstance(task_data, list) else task_data.get("tasks", [])
+
+        attempts = max(1, attempts)
+        total_evaluations = len(tasks_list) * attempts
+        wrong_resolutions = 0
+        gate_expected = 0
+        gate_observed = 0
+
+        for _ in range(attempts):
+            for t in tasks_list:
+                # Query resolution check
+                if "query" in t:
+                    res, r_code = resolve_term(vault_root, t["query"], index_doc=index_doc)
+                    expected_eid = t.get("expected_entity_id")
+                    if expected_eid:
+                        resolved_eid = res.get("entity_id")
+                        if resolved_eid and resolved_eid != expected_eid:
+                            wrong_resolutions += 1
+                # Need gate check
+                if "need_keys" in t:
+                    need_res, n_code = need_keys(
+                        vault_root,
+                        keys=t["need_keys"],
+                        as_of=as_of,
+                        index_doc=index_doc,
+                    )
+                    expected_exit = t.get("expected_exit")
+                    if t.get("expect_halt"):
+                        gate_expected += 1
+                        if n_code != 0:
+                            gate_observed += 1
+
+        wrong_rate = round(wrong_resolutions / total_evaluations, 4) if total_evaluations else 0.0
+        gating_acc = round((gate_observed / gate_expected) * 100, 2) if gate_expected else 100.0
+        report["tasks_evaluated"] = len(tasks_list)
+        report["attempts"] = attempts
+        report["wrong_record_rate"] = wrong_rate
+        report["gating_accuracy_percent"] = gating_acc
+
+    return report

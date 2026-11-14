@@ -672,7 +672,7 @@ class WindowsOntologyTests(OntologyTestCase):
         long_dir.mkdir()
         (long_dir / "note.md").write_bytes(BASE)
         buffer = ctypes.create_unicode_buffer(1024)
-        length = ctypes.windll.kernel32.GetShortPathNameW(str(long_dir), buffer, 1024)
+        length = ctypes.WinDLL("kernel32", use_last_error=True).GetShortPathNameW(str(long_dir), buffer, 1024)
         short_name = Path(buffer.value).name if length else ""
         if not short_name or short_name == long_dir.name:
             self.skipTest("8.3 short names are disabled on this volume")

@@ -360,90 +360,171 @@ def command_release_gates(args: argparse.Namespace) -> int:
 
 
 def command_ontology_index(args: argparse.Namespace) -> int:
-    selection = _selection(args)
-    from . import ontology as ont
-    if args.check:
-        index_doc, check_code = ont.check_index(selection.root, as_of=args.as_of)
-        if check_code == 0:
-            _emit({"status": "fresh", "schema": ont.INDEX_SCHEMA, "as_of": index_doc.get("as_of") if index_doc else None})
-            return 0
-        _emit({"status": "stale", "exit_code": check_code})
-        return check_code
-    idx, code = ont.build_index(selection.root, as_of=args.as_of, write_file=not args.dry_run)
-    _emit(idx)
-    return code
+    try:
+        selection = _selection(args)
+        from . import ontology as ont
+        if args.check:
+            index_doc, check_code = ont.check_index(selection.root, as_of=args.as_of)
+            if check_code == 0:
+                _emit({"status": "fresh", "schema": ont.INDEX_SCHEMA, "as_of": index_doc.get("as_of") if index_doc else None})
+                return 0
+            _emit({"status": "stale", "exit_code": check_code})
+            return check_code
+        idx, code = ont.build_index(selection.root, as_of=args.as_of, write_file=not args.dry_run)
+        _emit(idx)
+        return code
+    except Exception as err:
+        from . import ontology as ont
+        if isinstance(err, (ont.OntologyRuleError, ValueError, OSError)):
+            code_val = getattr(err, "code", "ONTOLOGY_ERROR")
+            _emit({"ok": False, "error": str(err), "code": code_val})
+            return 20
+        raise
 
 
 def command_ontology_resolve(args: argparse.Namespace) -> int:
-    selection = _selection(args)
-    from . import ontology as ont
-    rep, code = ont.resolve_term(selection.root, args.term)
-    _emit(rep)
-    return code
+    try:
+        selection = _selection(args)
+        from . import ontology as ont
+        as_of = getattr(args, "as_of", None)
+        rep, code = ont.resolve_term(selection.root, args.term, as_of=as_of)
+        _emit(rep)
+        return code
+    except Exception as err:
+        from . import ontology as ont
+        if isinstance(err, (ont.OntologyRuleError, ValueError, OSError)):
+            code_val = getattr(err, "code", "ONTOLOGY_ERROR")
+            _emit({"ok": False, "error": str(err), "code": code_val})
+            return 20
+        raise
 
 
 def command_ontology_need(args: argparse.Namespace) -> int:
-    selection = _selection(args)
-    from . import ontology as ont
-    keys = [k.strip() for k in args.keys.split(",")] if args.keys else []
-    fields = [f.strip() for f in args.fields.split(",")] if args.fields else None
-    rep, code = ont.need_keys(
-        selection.root,
-        keys=keys,
-        entity=args.entity,
-        fields=fields,
-        no_values=args.no_values,
-        as_of=args.as_of,
-    )
-    _emit(rep)
-    return code
+    try:
+        selection = _selection(args)
+        from . import ontology as ont
+        keys = [k.strip() for k in args.keys.split(",")] if args.keys else []
+        fields = [f.strip() for f in args.fields.split(",")] if args.fields else None
+        rep, code = ont.need_keys(
+            selection.root,
+            keys=keys,
+            entity=args.entity,
+            fields=fields,
+            no_values=args.no_values,
+            as_of=args.as_of,
+        )
+        _emit(rep)
+        return code
+    except Exception as err:
+        from . import ontology as ont
+        if isinstance(err, (ont.OntologyRuleError, ValueError, OSError)):
+            code_val = getattr(err, "code", "ONTOLOGY_ERROR")
+            _emit({"ok": False, "error": str(err), "code": code_val})
+            return 20
+        raise
 
 
 def command_ontology_ask(args: argparse.Namespace) -> int:
-    selection = _selection(args)
-    from . import ontology as ont
-    rep, code = ont.ask_question(selection.root, args.question)
-    _emit(rep)
-    return code
+    try:
+        selection = _selection(args)
+        from . import ontology as ont
+        as_of = getattr(args, "as_of", None)
+        rep, code = ont.ask_question(selection.root, args.question, as_of=as_of)
+        _emit(rep)
+        return code
+    except Exception as err:
+        from . import ontology as ont
+        if isinstance(err, (ont.OntologyRuleError, ValueError, OSError)):
+            code_val = getattr(err, "code", "ONTOLOGY_ERROR")
+            _emit({"ok": False, "error": str(err), "code": code_val})
+            return 20
+        raise
 
 
 def command_ontology_propose(args: argparse.Namespace) -> int:
-    selection = _selection(args)
-    from . import ontology as ont
-    bundles, paths, code = ont.propose_bundles(
-        selection.root,
-        operation_id=args.operation_id,
-        as_of=args.as_of,
-        batch_size=args.batch_size,
-    )
-    _emit({"status": "complete", "proposed_bundles": paths, "count": len(bundles)})
-    return code
+    try:
+        selection = _selection(args)
+        from . import ontology as ont
+        out_dir = Path(args.out_dir) if getattr(args, "out_dir", None) else None
+        batch_size = getattr(args, "batch_size", 150) or 150
+        bundles, paths, approvals, code = ont.propose_bundles(
+            selection.root,
+            operation_id=args.operation_id,
+            generated_at=args.generated_at,
+            out_dir=out_dir,
+            as_of=args.as_of,
+            batch_size=batch_size,
+        )
+        _emit({
+            "status": "complete",
+            "proposed_bundles": [str(p) for p in paths],
+            "approvals": approvals,
+            "count": len(bundles),
+        })
+        return code
+    except Exception as err:
+        from . import ontology as ont
+        if isinstance(err, (ont.OntologyRuleError, ValueError, OSError)):
+            code_val = getattr(err, "code", "ONTOLOGY_ERROR")
+            _emit({"ok": False, "error": str(err), "code": code_val})
+            return 20
+        raise
 
 
 def command_ontology_certify(args: argparse.Namespace) -> int:
-    selection = _selection(args)
-    from . import ontology as ont
-    keys = [k.strip() for k in args.keys.split(",")] if args.keys else []
-    bundle, bundle_path, code = ont.certify_bundle(
-        selection.root,
-        keys=keys,
-        cert_class=args.cert_class,
-        operation_id=args.operation_id,
-        generated_at=args.generated_at,
-        digest=args.digest,
-        evidence=args.evidence,
-        approved_plan_sha256=args.approved_plan_sha256,
-    )
-    _emit({"status": "complete", "bundle": bundle, "path": bundle_path})
-    return code
+    try:
+        selection = _selection(args)
+        from . import ontology as ont
+        keys = [k.strip() for k in args.keys.split(",")] if args.keys else []
+        out_dir = Path(args.out_dir) if getattr(args, "out_dir", None) else None
+        note_paths = [p.strip() for p in args.note_paths.split(",")] if getattr(args, "note_paths", None) else None
+        bundle, bundle_path, approval_sha256, code = ont.certify_bundle(
+            selection.root,
+            keys=keys,
+            cert_class=args.cert_class,
+            operation_id=args.operation_id,
+            generated_at=args.generated_at,
+            digest=args.digest,
+            evidence=args.evidence,
+            note_paths=note_paths,
+            out_dir=out_dir,
+        )
+        _emit({
+            "status": "complete",
+            "bundle": bundle,
+            "path": str(bundle_path),
+            "approval_sha256": approval_sha256,
+        })
+        return code
+    except Exception as err:
+        from . import ontology as ont
+        if isinstance(err, (ont.OntologyRuleError, ValueError, OSError)):
+            code_val = getattr(err, "code", "ONTOLOGY_ERROR")
+            _emit({"ok": False, "error": str(err), "code": code_val})
+            return 20
+        raise
 
 
 def command_ontology_bench(args: argparse.Namespace) -> int:
-    selection = _selection(args)
-    from . import ontology as ont
-    res = ont.run_benchmark(selection.root, as_of=args.as_of)
-    _emit(res)
-    return 0
+    try:
+        selection = _selection(args)
+        from . import ontology as ont
+        tasks_p = Path(args.tasks) if getattr(args, "tasks", None) else None
+        attempts = getattr(args, "attempts", 3) or 3
+        res = ont.run_benchmark(selection.root, tasks_path=tasks_p, attempts=attempts, as_of=args.as_of)
+        if getattr(args, "out", None):
+            out_file = Path(args.out)
+            out_file.parent.mkdir(parents=True, exist_ok=True)
+            out_file.write_text(json.dumps(res, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        _emit(res)
+        return 0
+    except Exception as err:
+        from . import ontology as ont
+        if isinstance(err, (ont.OntologyRuleError, ValueError, OSError)):
+            code_val = getattr(err, "code", "ONTOLOGY_ERROR")
+            _emit({"ok": False, "error": str(err), "code": code_val})
+            return 20
+        raise
 
 
 def _capture_inputs(
@@ -1558,24 +1639,31 @@ def build_parser() -> argparse.ArgumentParser:
 
     ont_propose = ontology_commands.add_parser("propose", help="Propose entity_id and alias transaction bundles")
     _add_vault_argument(ont_propose)
+    ont_propose.add_argument("--generated-at", required=True, help="ISO timestamp for bundle generation")
     ont_propose.add_argument("--operation-id", default="ontology-proposals", help="Operation ID")
     ont_propose.add_argument("--as-of", help="Audit date in YYYY-MM-DD format")
     ont_propose.add_argument("--batch-size", type=int, default=150, help="Max writes per bundle (<=150)")
+    ont_propose.add_argument("--out-dir", help="Directory where bundles are written")
     ont_propose.set_defaults(handler=command_ontology_propose)
 
     ont_certify = ontology_commands.add_parser("certify", help="Prepare a certified owner or evidence bundle")
     _add_vault_argument(ont_certify)
     ont_certify.add_argument("--keys", required=True, help="Comma-separated fact keys to certify")
-    ont_certify.add_argument("--class", dest="cert_class", choices=["owner", "evidence"], default="owner", help="Certification class")
+    ont_certify.add_argument("--class", dest="cert_class", choices=["owner", "evidence"], required=True, help="Certification class")
+    ont_certify.add_argument("--generated-at", required=True, help="ISO timestamp for bundle generation")
     ont_certify.add_argument("--digest", help="Path to reviewed digest note for owner certification")
     ont_certify.add_argument("--evidence", help="Evidence locator for evidence certification")
+    ont_certify.add_argument("--note-paths", help="Comma-separated note paths to restrict certification")
     ont_certify.add_argument("--operation-id", default="ontology-certify", help="Operation ID")
-    ont_certify.add_argument("--generated-at", help="ISO timestamp for bundle generation")
+    ont_certify.add_argument("--out-dir", help="Directory where bundles are written")
     _add_approval_argument(ont_certify)
     ont_certify.set_defaults(handler=command_ontology_certify)
 
     ont_bench = ontology_commands.add_parser("bench", help="Run deterministic benchmark against active vault")
     _add_vault_argument(ont_bench)
+    ont_bench.add_argument("--tasks", help="Path to benchmark tasks JSON file")
+    ont_bench.add_argument("--attempts", type=int, default=3, help="Benchmark run attempts")
+    ont_bench.add_argument("--out", help="Benchmark output JSON file")
     ont_bench.add_argument("--as-of", help="Audit date in YYYY-MM-DD format")
     ont_bench.set_defaults(handler=command_ontology_bench)
 

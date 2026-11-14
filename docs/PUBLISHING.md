@@ -32,5 +32,5 @@ python scripts/claude-empire.py release build --require-denylist --denylist PATH
 
 `release disclosure` also scans commit messages in `<last-tag>..HEAD` (override
 with `--range`). Public CI has no private list and runs the generic layer only.
-Encoded payloads such as base64 are not decoded.
+Printable UTF-8 base64 runs and common text escapes are decoded; compressed streams such as PDF Flate data are not inflated.
 

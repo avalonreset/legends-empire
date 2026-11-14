@@ -105,7 +105,7 @@ Version `0.4.0` introduces the **Ontology Engine** ([docs/ontology.md](docs/onto
 - **Deterministic Prerequisite Gating (`ontology need`)**: Automated workflows check fact freshness and certification before executing actions, halting safely on draft, missing, conflicting, or stale facts.
 - **Exact Differential Replacement (EDR)**: Mutating transaction bundles (`operation_type: "ontology"`) may only update declared ontology frontmatter keys, preserving non-ontology blocks, BOM, newlines, and body bytes byte-for-byte.
 - **Cryptographic & Owner Certification**: Facts can be certified by explicit owner review digests or pinned evidence files (`raw:sha256:`, `bank:`).
-- **Sub-Millisecond Query Resolution**: The ontology index guarantees zero wrong-record writes, eliminates hallucinated business facts, and resolves aliases in sub-millisecond queries.
+- **Sub-Millisecond Alias & Fact Resolution**: Resolves canonical entity IDs and aliases in sub-millisecond index lookups and halts automated workflows when required facts are missing, uncertified, stale, or conflicting.
 
 ## Agent setup (via `cto-legends`)
 
