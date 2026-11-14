@@ -45,7 +45,8 @@ from .paths import (
     assert_not_plugin_tree,
     resolve_vault_root,
 )
-from .release import audit_artifact, build_public_artifact
+from . import disclosure as release_disclosure
+from .release import audit_artifact, audit_disclosure, build_public_artifact
 from .research_evidence import EvidenceError, verify_package, plan_intake
 from .transaction import (
     MutationLock,
@@ -308,7 +309,27 @@ def _release_epoch(supplied: int | None) -> int:
         raise VaultOperationError("Git HEAD has no valid commit timestamp") from exc
 
 
+def _configure_disclosure(args: argparse.Namespace) -> None:
+    release_disclosure.configure(
+        getattr(args, "denylist", None),
+        require=True if getattr(args, "require_denylist", False) else None,
+    )
+
+
+def command_release_disclosure(args: argparse.Namespace) -> int:
+    _configure_disclosure(args)
+    report = audit_disclosure(
+        PLUGIN_ROOT,
+        text_files=args.text_file,
+        revision_range=args.range,
+        include_commits=not args.no_commits,
+    )
+    _emit(report)
+    return 0 if report["ok"] else 1
+
+
 def command_release_build(args: argparse.Namespace) -> int:
+    _configure_disclosure(args)
     report = build_public_artifact(
         PLUGIN_ROOT,
         Path(args.output),
@@ -319,6 +340,7 @@ def command_release_build(args: argparse.Namespace) -> int:
 
 
 def command_release_audit(args: argparse.Namespace) -> int:
+    _configure_disclosure(args)
     report = audit_artifact(Path(args.artifact))
     _emit(report)
     return 0 if report["ok"] else 1
@@ -1130,6 +1152,24 @@ def build_parser() -> argparse.ArgumentParser:
     )
     release_audit.add_argument("artifact")
     release_audit.set_defaults(handler=command_release_audit)
+    release_disclosure_parser = release_commands.add_parser(
+        "disclosure",
+        help="Scan release notes and commit messages for personal data and private terms",
+    )
+    release_disclosure_parser.add_argument("--text-file", action="append", default=[])
+    release_disclosure_parser.add_argument("--range", help="Git revision range (default: <last-tag>..HEAD)")
+    release_disclosure_parser.add_argument("--no-commits", action="store_true")
+    release_disclosure_parser.set_defaults(handler=command_release_disclosure)
+    for release_parser in (release_build, release_audit, release_disclosure_parser):
+        release_parser.add_argument(
+            "--denylist",
+            help=f"private term list kept outside the repository (default: ${release_disclosure.DENYLIST_ENV})",
+        )
+        release_parser.add_argument(
+            "--require-denylist",
+            action="store_true",
+            help="fail closed when no private denylist is selected",
+        )
     release_gates = release_commands.add_parser(
         "gates", help="Plan or execute declared release gates without publishing"
     )

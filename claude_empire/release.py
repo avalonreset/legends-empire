@@ -26,6 +26,7 @@ from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Any, Iterable, Mapping, Sequence
 
+from . import disclosure
 from .json_utils import parse_finite_json_float
 
 SCHEMA_VERSION = 1
@@ -333,6 +334,7 @@ def _scan_content(
                     "binary content requires an explicitly reviewed SHA-256",
                 )
             )
+        errors.extend(disclosure.scan_binary(path, data, disclosure.active_denylist()))
         return errors
 
     text = data.decode("utf-8")
@@ -402,7 +404,18 @@ def _scan_content(
             )
         )
         break
+    errors.extend(disclosure.scan_text(path, text, disclosure.active_denylist()))
     return errors
+
+
+def _member_name_findings(name: str) -> list[Error]:
+    """Disclosure findings for an archive member name, labelled by hash only."""
+
+    label = "archive-member:" + _sha256(name.encode("utf-8"))[:12]
+    return [
+        _error(item["code"], label, "archive member name: " + item["message"])
+        for item in disclosure.scan_text(label, name, disclosure.active_denylist())
+    ]
 
 
 def _validate_limits(value: Any, *, path: str) -> tuple[dict[str, int], list[Error]]:
@@ -1991,6 +2004,9 @@ def audit_artifact(path: str | os.PathLike[str]) -> dict[str, Any]:
     artifact = Path(path)
     label = artifact.name or "artifact"
     errors: list[Error] = []
+    _, denylist_errors = disclosure.resolve()
+    if denylist_errors:
+        return _failure("artifact_audit", denylist_errors, artifact=label)
     try:
         metadata = artifact.lstat()
     except OSError:
@@ -2264,6 +2280,7 @@ def audit_artifact(path: str | os.PathLike[str]) -> dict[str, Any]:
     errors.extend(_validate_public_marketplace(payload, overlays))
     for name, data in payload.items():
         errors.extend(_hard_path_errors(name))
+        errors.extend(_member_name_findings(name))
         errors.extend(
             _scan_content(
                 name,
@@ -2462,6 +2479,9 @@ def build_public_artifact(
     config, config_errors = _load_config(root)
     if config_errors or config is None:
         return _failure("artifact_build", config_errors, artifact=output_label)
+    _, denylist_errors = disclosure.resolve()
+    if denylist_errors:
+        return _failure("artifact_build", denylist_errors, artifact=output_label)
     first_snapshot, git_errors = _git_snapshot(root)
     if git_errors or first_snapshot is None:
         return _failure("artifact_build", git_errors, artifact=output_label)
@@ -2589,3 +2609,55 @@ def build_public_artifact(
 
 
 __all__ = ["audit_artifact", "build_public_artifact"]
+
+
+def audit_disclosure(
+    repo_root: str | os.PathLike[str],
+    *,
+    text_files: Sequence[str | os.PathLike[str]] = (),
+    revision_range: str | None = None,
+    include_commits: bool = True,
+) -> dict[str, Any]:
+    """Scan release notes and commit messages with the disclosure layers.
+
+    ``revision_range`` defaults to ``<last-tag>..HEAD``. Text files are read as
+    UTF-8 and every finding is reported by label only, never by content.
+    """
+
+    root = Path(repo_root)
+    denylist, errors = disclosure.resolve()
+    if errors:
+        return _failure("disclosure_audit", errors)
+    items: list[tuple[str, str]] = []
+    for entry in text_files:
+        candidate = Path(entry)
+        label = candidate.name or "text"
+        try:
+            data = candidate.read_bytes()
+        except OSError:
+            errors.append(_error("missing_text", label, "release text file is unreadable"))
+            continue
+        try:
+            text = data.decode("utf-8")
+        except UnicodeDecodeError:
+            errors.append(_error("invalid_text", label, "release text file must be UTF-8"))
+            continue
+        items.append((label, text))
+        errors.extend(
+            _scan_content(label, data, approved_private_urls=frozenset(), reviewed_binaries={})
+        )
+    if include_commits:
+        commits, commit_errors = disclosure.commit_messages(root, revision_range, _run_git)
+        errors.extend(commit_errors)
+        for label, message in commits:
+            items.append((label, message))
+            errors.extend(
+                _scan_content(
+                    label,
+                    message.encode("utf-8"),
+                    approved_private_urls=frozenset(),
+                    reviewed_binaries={},
+                )
+            )
+    ordered = _sorted_errors(errors)
+    return disclosure.summarize(ordered, denylist, len(items))

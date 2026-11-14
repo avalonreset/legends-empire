@@ -13,6 +13,8 @@ from urllib.parse import unquote
 sys.dont_write_bytecode = True
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from claude_empire import disclosure  # noqa: E402
 TOOL_VERSION = "0.3.5"
 SKIP = {".git", ".venv", "dist", "build", "__pycache__", ".integration", "out"}
 REQUIRED = [
@@ -108,6 +110,8 @@ def image_metadata_issues(path: Path) -> list[str]:
 
 def check(root: Path = ROOT) -> list[str]:
     errors: list[str] = []
+    denylist, denylist_errors = disclosure.resolve()
+    errors.extend(f"Disclosure gate: {item['message']}" for item in denylist_errors)
     for name in REQUIRED:
         if not (root / name).is_file():
             errors.append(f"Missing required file: {name}")
@@ -173,6 +177,8 @@ def check(root: Path = ROOT) -> list[str]:
         if path.suffix not in TEXT_SUFFIXES and path.name not in {"LICENSE", "NOTICE", "VERSION"}:
             continue
         text = path.read_text(encoding="utf-8-sig")
+        for finding in disclosure.scan_text(str(rel), text, denylist):
+            errors.append(f"Disclosure ({finding['code']}): {rel}: {finding['message']}")
         if path.name != "check_release.py":
             for pattern in FORBIDDEN:
                 if re.search(pattern, text):

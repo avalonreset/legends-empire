@@ -19,7 +19,7 @@ class ReleaseGateTests(unittest.TestCase):
         report = evaluate_release_gates(ROOT)
         self.assertTrue(report["ok"], report)
         self.assertFalse(report["ready"])
-        self.assertEqual(10, len(report["gates"]))
+        self.assertEqual(11, len(report["gates"]))
         states = {item["status"] for item in report["gates"]}
         self.assertEqual({"planned", "manual-review"}, states)
         self.assertIn("owner-promotion-approval", report["pending"])
@@ -32,7 +32,7 @@ class ReleaseGateTests(unittest.TestCase):
         )
         self.assertTrue(report["ok"], report)
         self.assertFalse(report["ready"], report)
-        self.assertEqual(10, len(report["gates"]))
+        self.assertEqual(11, len(report["gates"]))
         selected = next(
             item for item in report["gates"] if item["id"] == "deterministic-sample"
         )

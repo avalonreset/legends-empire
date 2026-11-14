@@ -173,6 +173,17 @@
    }
   },
   {
+   "id": "disclosure-safety",
+   "required": true,
+   "verification": {
+    "type": "command",
+    "command": [
+     "{python}",
+     "tests/test_release_disclosure.py"
+    ]
+   }
+  },
+  {
    "id": "capability-verification",
    "required": true,
    "verification": {
