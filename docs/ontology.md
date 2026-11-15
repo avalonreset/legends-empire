@@ -8,12 +8,12 @@ The Ontology Engine provides an answerable vault index over structured markdown 
 
 The ontology workflow consists of read-only queries and two-phase transaction bundles:
 
-1. **`ontology index [--check]`**: Scans the vault, checks frontmatter consistency, resolves conflicts, and writes the derived index (`.vault-meta/ontology/index.json`). With `--check`, verifies whether the stored index matches the vault state.
-2. **`ontology resolve <term>`**: Resolves an entity ID, alias, or title to its primary vault note.
+1. **`ontology index [--check]`**: Scans the vault, checks frontmatter consistency, resolves conflicts, and writes the derived index (`.vault-meta/ontology/index.json`). With `--check`, verifies whether the stored index matches the vault state, `as_of` date, and configured roots.
+2. **`ontology resolve <term>`** (or `--term <term>`): Resolves an entity ID (case-insensitive), alias, or title to its primary vault note.
 3. **`ontology need --keys <key1,key2>`**: Validates fact existence, freshness, and certification before executing automated actions.
-4. **`ontology ask "<question>"`**: Suggests relevant entities, facts, and verification states for conversational queries.
-5. **`ontology propose`**: Emits reversible transaction bundle(s) proposing `entity_id` and `aliases` for untagged notes.
-6. **`ontology certify --keys ... --class owner|evidence`**: Prepares a transaction bundle adding facts to owner or evidence certification.
+4. **`ontology ask "<question>"`** (or `--question "<question>"`): Suggests relevant entities, facts, and verification states for conversational queries.
+5. **`ontology propose [--scope <prefix>]`**: Emits reversible transaction bundle(s) proposing `entity_id`, `entity_type`, and `aliases` for untagged canonical entity notes, and reports any per-note `skipped` or `skipped_aliases` entries without aborting the run.
+6. **`ontology certify --keys ... --class owner|evidence [--secrets-root <dir>]`**: Prepares a transaction bundle adding facts to owner or evidence certification (verifying any `secret-ref:` pointers against `--secrets-root` by filename and variable name only).
 
 Applying mutating bundles is always gated through the transaction engine:
 ```bash

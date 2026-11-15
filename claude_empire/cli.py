@@ -127,6 +127,20 @@ def _add_approval_argument(parser: argparse.ArgumentParser) -> None:
     )
 
 
+def _add_bundle_argument(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("bundle", type=Path, nargs="?")
+    parser.add_argument("--bundle", dest="bundle_opt", type=Path)
+
+
+def _bundle_arg(args: argparse.Namespace) -> Path:
+    if bool(getattr(args, "bundle", None)) == bool(getattr(args, "bundle_opt", None)):
+        raise TransactionValidationError(
+            "BUNDLE_ARGUMENT_INVALID",
+            "specify the transaction bundle once: positional or --bundle",
+        )
+    return args.bundle_opt or args.bundle
+
+
 def _selection(
     args: argparse.Namespace, *, allow_uninitialized: bool = False
 ) -> VaultSelection:
@@ -174,6 +188,7 @@ def os_access_writable(path: Path) -> bool:
 
 def command_transaction_apply(args: argparse.Namespace) -> int:
     selection = _selection(args)
+    bundle_path = _bundle_arg(args)
     if not args.approved_plan_sha256:
         raise TransactionValidationError(
             "PLAN_APPROVAL_REQUIRED",
@@ -181,7 +196,7 @@ def command_transaction_apply(args: argparse.Namespace) -> int:
         )
     result = apply_bundle(
         selection.root,
-        args.bundle,
+        bundle_path,
         timeout=args.timeout,
         stale_after=args.stale_after,
         approved_plan_sha256=args.approved_plan_sha256,
@@ -211,7 +226,8 @@ def command_transaction_recover(args: argparse.Namespace) -> int:
 
 def command_transaction_inspect(args: argparse.Namespace) -> int:
     selection = _selection(args)
-    _emit(inspect_bundle(selection.root, args.bundle))
+    bundle_path = _bundle_arg(args)
+    _emit(inspect_bundle(selection.root, bundle_path))
     return 0
 
 
@@ -386,8 +402,16 @@ def command_ontology_resolve(args: argparse.Namespace) -> int:
     try:
         selection = _selection(args)
         from . import ontology as ont
+        term = getattr(args, "term_opt", None) or getattr(args, "term", None)
+        if not term or (getattr(args, "term_opt", None) and getattr(args, "term", None)):
+            _emit({
+                "ok": False,
+                "error": "specify term once (positional or --term)",
+                "code": "ONTOLOGY_TERM_REQUIRED",
+            })
+            return 20
         as_of = getattr(args, "as_of", None)
-        rep, code = ont.resolve_term(selection.root, args.term, as_of=as_of)
+        rep, code = ont.resolve_term(selection.root, term, as_of=as_of)
         _emit(rep)
         return code
     except Exception as err:
@@ -428,8 +452,16 @@ def command_ontology_ask(args: argparse.Namespace) -> int:
     try:
         selection = _selection(args)
         from . import ontology as ont
+        question = getattr(args, "question_opt", None) or getattr(args, "question", None)
+        if not question or (getattr(args, "question_opt", None) and getattr(args, "question", None)):
+            _emit({
+                "ok": False,
+                "error": "specify question once (positional or --question)",
+                "code": "ONTOLOGY_QUESTION_REQUIRED",
+            })
+            return 20
         as_of = getattr(args, "as_of", None)
-        rep, code = ont.ask_question(selection.root, args.question, as_of=as_of)
+        rep, code = ont.ask_question(selection.root, question, as_of=as_of)
         _emit(rep)
         return code
     except Exception as err:
@@ -447,19 +479,25 @@ def command_ontology_propose(args: argparse.Namespace) -> int:
         from . import ontology as ont
         out_dir = Path(args.out_dir) if getattr(args, "out_dir", None) else None
         batch_size = getattr(args, "batch_size", 150) or 150
+        scope_roots = getattr(args, "scope", None) or None
+        details: dict[str, Any] = {}
         bundles, paths, approvals, code = ont.propose_bundles(
             selection.root,
             operation_id=args.operation_id,
             generated_at=args.generated_at,
+            roots=scope_roots,
             out_dir=out_dir,
-            as_of=args.as_of,
+            as_of=getattr(args, "as_of", None),
             batch_size=batch_size,
+            details=details,
         )
         _emit({
-            "status": "complete",
+            "status": "complete" if bundles else "noop",
             "proposed_bundles": [str(p) for p in paths],
             "approvals": approvals,
             "count": len(bundles),
+            "skipped": details.get("skipped", []),
+            "skipped_aliases": details.get("skipped_aliases", []),
         })
         return code
     except Exception as err:
@@ -478,6 +516,15 @@ def command_ontology_certify(args: argparse.Namespace) -> int:
         keys = [k.strip() for k in args.keys.split(",")] if args.keys else []
         out_dir = Path(args.out_dir) if getattr(args, "out_dir", None) else None
         note_paths = [p.strip() for p in args.note_paths.split(",")] if getattr(args, "note_paths", None) else None
+        secrets_root: Path | None = None
+        if getattr(args, "secrets_root", None):
+            secrets_root = Path(args.secrets_root)
+        elif os.environ.get("EMPIRE_SECRETS_ROOT"):
+            secrets_root = Path(os.environ["EMPIRE_SECRETS_ROOT"])
+        else:
+            default_sec = Path.home() / ".empire" / "secrets"
+            if default_sec.is_dir():
+                secrets_root = default_sec
         bundle, bundle_path, approval_sha256, code = ont.certify_bundle(
             selection.root,
             keys=keys,
@@ -488,6 +535,7 @@ def command_ontology_certify(args: argparse.Namespace) -> int:
             evidence=args.evidence,
             note_paths=note_paths,
             out_dir=out_dir,
+            secrets_root=secrets_root,
         )
         _emit({
             "status": "complete",
@@ -1227,7 +1275,7 @@ def build_parser() -> argparse.ArgumentParser:
         "apply", help="Apply a versioned transaction bundle"
     )
     _add_vault_argument(apply_command)
-    apply_command.add_argument("bundle", type=Path)
+    _add_bundle_argument(apply_command)
     apply_command.add_argument("--timeout", type=float, default=10.0)
     apply_command.add_argument("--stale-after", type=float, default=3600.0)
     _add_approval_argument(apply_command)
@@ -1255,7 +1303,7 @@ def build_parser() -> argparse.ArgumentParser:
         "inspect", help="Validate a bundle without writing"
     )
     _add_vault_argument(inspect)
-    inspect.add_argument("bundle", type=Path)
+    _add_bundle_argument(inspect)
     inspect.set_defaults(handler=command_transaction_inspect)
 
     hook = subcommands.add_parser("hook", help="Host lifecycle adapter")
@@ -1620,7 +1668,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     ont_resolve = ontology_commands.add_parser("resolve", help="Resolve entity ID or alias to primary note")
     _add_vault_argument(ont_resolve)
-    ont_resolve.add_argument("term", help="Entity ID, alias, or query term")
+    ont_resolve.add_argument("term", nargs="?", help="Entity ID, alias, or query term")
+    ont_resolve.add_argument("--term", dest="term_opt", help="Entity ID, alias, or query term")
+    ont_resolve.add_argument("--as-of", help="Audit date in YYYY-MM-DD format")
     ont_resolve.set_defaults(handler=command_ontology_resolve)
 
     ont_need = ontology_commands.add_parser("need", help="Validate fact existence, freshness, and certification")
@@ -1634,13 +1684,16 @@ def build_parser() -> argparse.ArgumentParser:
 
     ont_ask = ontology_commands.add_parser("ask", help="Suggest entities and facts for conversational questions")
     _add_vault_argument(ont_ask)
-    ont_ask.add_argument("question", help="Natural language query")
+    ont_ask.add_argument("question", nargs="?", help="Natural language query")
+    ont_ask.add_argument("--question", dest="question_opt", help="Natural language query")
+    ont_ask.add_argument("--as-of", help="Audit date in YYYY-MM-DD format")
     ont_ask.set_defaults(handler=command_ontology_ask)
 
     ont_propose = ontology_commands.add_parser("propose", help="Propose entity_id and alias transaction bundles")
     _add_vault_argument(ont_propose)
     ont_propose.add_argument("--generated-at", required=True, help="ISO timestamp for bundle generation")
     ont_propose.add_argument("--operation-id", default="ontology-proposals", help="Operation ID")
+    ont_propose.add_argument("--scope", action="append", default=[], metavar="PREFIX", help="Restrict proposal scan to path prefix inside configured ontology roots (repeatable)")
     ont_propose.add_argument("--as-of", help="Audit date in YYYY-MM-DD format")
     ont_propose.add_argument("--batch-size", type=int, default=150, help="Max writes per bundle (<=150)")
     ont_propose.add_argument("--out-dir", help="Directory where bundles are written")
@@ -1654,9 +1707,9 @@ def build_parser() -> argparse.ArgumentParser:
     ont_certify.add_argument("--digest", help="Path to reviewed digest note for owner certification")
     ont_certify.add_argument("--evidence", help="Evidence locator for evidence certification")
     ont_certify.add_argument("--note-paths", help="Comma-separated note paths to restrict certification")
+    ont_certify.add_argument("--secrets-root", help="Directory containing .env files for secret-ref verification")
     ont_certify.add_argument("--operation-id", default="ontology-certify", help="Operation ID")
     ont_certify.add_argument("--out-dir", help="Directory where bundles are written")
-    _add_approval_argument(ont_certify)
     ont_certify.set_defaults(handler=command_ontology_certify)
 
     ont_bench = ontology_commands.add_parser("bench", help="Run deterministic benchmark against active vault")
@@ -1729,3 +1782,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     except OSError as exc:
         print(f"ERR OS: {exc}", file=sys.stderr)
         return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

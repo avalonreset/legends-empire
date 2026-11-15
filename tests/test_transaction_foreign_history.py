@@ -298,6 +298,55 @@ class ForeignRolledBackHistoryTests(unittest.TestCase):
         self.write_journal(journal)
         self.assert_refused_unchanged("UNSUPPORTED_JOURNAL_PLATFORM")
 
+    def test_terminal_legacy_large_and_profile1_journals_accepted_while_incomplete_refused(self):
+        # 1. Terminal (>150 writes) rolled-back journal is accepted during recovery
+        create_template = copy.deepcopy(self.journal["writes"][1])
+        large_writes = [copy.deepcopy(self.journal["writes"][0])]
+        for i in range(1, 160):
+            w = copy.deepcopy(create_template)
+            w["path"] = f"wiki/Bulk{i:03d}.md"
+            w["backup"] = f"{i:04d}.original"
+            large_writes.append(w)
+
+        large_journal = copy.deepcopy(self.journal)
+        large_journal["writes"] = large_writes
+        self.write_journal(large_journal)
+        self.assertEqual([], tx.recover_incomplete(self.root))
+
+        # 2. Terminal home-install journal with legacy selection_profile==1 LICENSE.md/PRIVACY.md is accepted
+        prof1_journal = copy.deepcopy(self.journal)
+        prof1_journal["operation_type"] = "home-install"
+        w0 = copy.deepcopy(self.journal["writes"][0])
+        w0["path"] = "PRIVACY.md"
+        prof1_write = copy.deepcopy(create_template)
+        prof1_write["path"] = "LICENSE.md"
+        prof1_write["backup"] = "0001.original"
+        prof1_journal["writes"] = [w0, prof1_write]
+        self.write_journal(prof1_journal)
+        self.assertEqual([], tx.recover_incomplete(self.root))
+
+        # 3. Incomplete (>150 writes or LICENSE.md) journal is refused with CORRUPT_JOURNAL
+        if os.name == "nt":
+            sddl = "O:SYG:SYD:P(A;;FA;;;SY)"
+            for j in (large_journal, prof1_journal):
+                j["native_security"] = "windows-sddl-v1"
+                for w in j["writes"]:
+                    w["original_security"] = sddl if w.get("original_sha256") else None
+                    w["new_security"] = sddl
+        else:
+            for j in (large_journal, prof1_journal):
+                j.pop("native_security", None)
+                for w in j["writes"]:
+                    w.pop("original_security", None)
+                    w.pop("new_security", None)
+
+        large_journal["state"] = "applying"
+        self.write_journal(large_journal)
+        self.assert_refused_unchanged("CORRUPT_JOURNAL")
+        prof1_journal["state"] = "applying"
+        self.write_journal(prof1_journal)
+        self.assert_refused_unchanged("CORRUPT_JOURNAL")
+
 
 if __name__ == "__main__":
     unittest.main()

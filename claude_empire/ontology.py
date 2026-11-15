@@ -28,14 +28,18 @@ try:
         WORKSPACE_CONFIG,
         EVIDENCE_PACKAGE_DIR,
         EVIDENCE_PACKAGE_MEMBERS,
+        _first_newline,
+        check_note_invariants,
         fact_secret_like_class,
         is_ontology_key,
+        owner_certification_reasons,
         portable_key,
         resolve_scope,
         secret_like_class,
         split_frontmatter_strict as og_split_frontmatter_strict,
         parse_note,
         title_value,
+        validate_new_values,
         _label,
         _headings,
         UNPARSEABLE,
@@ -53,14 +57,18 @@ except ImportError:
         WORKSPACE_CONFIG,
         EVIDENCE_PACKAGE_DIR,
         EVIDENCE_PACKAGE_MEMBERS,
+        _first_newline,
+        check_note_invariants,
         fact_secret_like_class,
         is_ontology_key,
+        owner_certification_reasons,
         portable_key,
         resolve_scope,
         secret_like_class,
         split_frontmatter_strict as og_split_frontmatter_strict,
         parse_note,
         title_value,
+        validate_new_values,
         _label,
         _headings,
         UNPARSEABLE,
@@ -96,6 +104,120 @@ ONTOLOGY_ALLOWLIST = {
     "certified_on",
     "review_after",
 }
+
+_PROPOSE_RULES: tuple[tuple[tuple[str | None, ...], str, str], ...] = (
+    (("Projects", "Active", None, "context.md"), "proj", "project"),
+    (("Workspaces", "Brands & Sites", None, "brand.md"), "brand", "brand"),
+    (("Workspaces", "Clients", "Companies", None), "biz", "company"),
+    (("Workspaces", "Clients", "People", None), "person", "person"),
+    (("Workspaces", "Businesses", None), "biz", "company"),
+    (("wiki", "entities", None), "", "entity"),
+)
+_GENERIC_STEMS = frozenset(
+    {
+        "context",
+        "index",
+        "readme",
+        "hot",
+        "log",
+        "overview",
+        "study",
+        "scorecards",
+        "brand",
+        "notes",
+    }
+)
+_ASK_STOPWORDS = frozenset(
+    {
+        "the",
+        "and",
+        "for",
+        "what",
+        "who",
+        "how",
+        "where",
+        "when",
+        "why",
+        "with",
+        "from",
+        "that",
+        "this",
+        "are",
+        "was",
+        "were",
+        "have",
+        "has",
+        "had",
+        "not",
+        "but",
+        "can",
+        "will",
+        "status",
+        "thing",
+        "about",
+        "does",
+        "into",
+        "your",
+        "our",
+        "their",
+    }
+)
+
+
+def _plain_scalar(note: Note, key: str) -> str | None:
+    folded = key.casefold()
+    for block in note.blocks:
+        if block.key and block.key.casefold() == folded and len(block.lines) == 1 and not block.block_scalar:
+            val = block.lines[0].split(":", 1)[1].strip()
+            if len(val) >= 2 and val[0] == val[-1] and val[0] in "\"'":
+                val = val[1:-1].strip()
+            return val or None
+    return None
+
+
+def _propose_candidate(rel: str, profile: str) -> tuple[str, str | None, str] | None:
+    parts = [p for p in rel.replace("\\", "/").split("/") if p]
+    for pattern, prefix, etype in _PROPOSE_RULES:
+        if len(parts) != len(pattern):
+            continue
+        name: str | None = None
+        for got, want in zip(parts, pattern):
+            if want is None:
+                name = got[:-3] if got.lower().endswith(".md") else got
+            elif portable_key(got) != portable_key(want):
+                break
+        else:
+            if name:
+                return prefix, etype, name
+    if profile == "standalone" and len(parts) == 2 and portable_key(parts[0]) == "wiki":
+        stem = parts[1][:-3] if parts[1].lower().endswith(".md") else parts[1]
+        if portable_key(stem) not in _GENERIC_STEMS:
+            return "", None, stem
+    return None
+
+
+def _slug_id(prefix: str, name: str) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "-", unicodedata.normalize("NFKD", name).casefold()).strip("-")
+    if not slug:
+        slug = "entity"
+    eid = f"{prefix}-{slug}" if prefix else slug
+    if not eid[0].isalpha():
+        eid = f"e-{eid}"
+    if len(eid) > 48:
+        cut = eid[:48]
+        if "-" in cut:
+            cut = cut.rsplit("-", 1)[0]
+        eid = cut.strip("-") or eid[:48].strip("-")
+    return eid
+
+
+def _is_generic_title(title: str) -> bool:
+    t_norm = normalize_alias(title)
+    if not t_norm or t_norm in _GENERIC_STEMS:
+        return True
+    if "context" in t_norm or "`" in title:
+        return True
+    return False
 
 
 def _sha256_bytes(data: bytes) -> str:
@@ -159,9 +281,9 @@ def is_path_excluded(rel_path: str, exclusions: set[str]) -> bool:
         ex_clean = ex.rstrip("/")
         if folded == ex_clean or folded.startswith(ex_clean + "/"):
             return True
-    parts = folded.split("/")
+    parts = [p for p in folded.split("/") if p]
     # Exclude internal / non-note folders at any depth
-    for part in parts[:-1]:
+    for part in parts:
         if part in ("node_modules", ".git", ".claude-empire", ".obsidian", ".vault-meta") or part in EXCLUDED_ANY_LEVEL:
             return True
     return False
@@ -386,10 +508,19 @@ def build_index(
                 try:
                     note = parse_note(raw_bytes, side="old", path=rel_path)
                 except OntologyRuleError as exc:
+                    f_code = (
+                        "frontmatter_mixed_newlines"
+                        if exc.code == "ONTOLOGY_LINE_ENDING"
+                        else "frontmatter_nested_unsupported"
+                    )
+                    detail = exc.message
+                    if detail.startswith(f"{rel_path}: "):
+                        detail = detail[len(rel_path) + 2 :]
+                    detail = re.sub(r"^(?:old|new)\s+", "", detail)
                     findings.append({
-                        "code": "frontmatter_nested_unsupported",
+                        "code": f_code,
                         "path": rel_path,
-                        "detail": f"{rel_path}: {exc.message}",
+                        "detail": detail,
                     })
                     continue
 
@@ -404,7 +535,7 @@ def build_index(
                     findings.append({
                         "code": "frontmatter_nested_unsupported",
                         "path": rel_path,
-                        "detail": f"{rel_path}: frontmatter contains unparseable or unsupported nested blocks",
+                        "detail": "frontmatter contains unparseable or unsupported nested blocks",
                     })
                     continue
 
@@ -421,6 +552,11 @@ def build_index(
                     continue
 
                 # Title extraction & secret scan
+                default_stem = (
+                    file_path.parent.name
+                    if file_path.stem.casefold() in _GENERIC_STEMS and file_path.parent != vault_root
+                    else file_path.stem
+                )
                 raw_title = title_value(note)
                 if raw_title:
                     sec_title = detect_secret_like(str(raw_title))
@@ -430,11 +566,13 @@ def build_index(
                             "path": rel_path,
                             "detail": f"redacted secret-like value in title ({sec_title})",
                         })
-                        title = file_path.stem
+                        title = default_stem
+                    elif not data.get("title") and default_stem != file_path.stem and _is_generic_title(str(raw_title)):
+                        title = default_stem
                     else:
                         title = raw_title
                 else:
-                    title = file_path.stem
+                    title = default_stem
 
                 # Fact source secret scan
                 fact_source = data.get("fact_source")
@@ -494,8 +632,17 @@ def build_index(
                                 "detail": f"alias {norm_al!r} collides between {aliases[norm_al]}",
                             })
 
-                    # Populate entity_type per M8-HIGH-1
-                    entity_type_val = data.get("entity_type") or data.get("type")
+                    # Populate entity_type per M8-HIGH-1 & Opus #3
+                    entity_type_val = (
+                        data.get("entity_type")
+                        or _plain_scalar(note, "entity_type")
+                        or _plain_scalar(note, "type")
+                    )
+                    if isinstance(entity_type_val, str):
+                        if detect_secret_like(entity_type_val):
+                            entity_type_val = None
+                        elif entity_type_val == "project-context" and not data.get("entity_type"):
+                            entity_type_val = "project"
                     entities[entity_id] = {
                         "path": rel_path,
                         "title": title,
@@ -769,8 +916,14 @@ def check_index(vault_root: Path, *, as_of: str | None = None) -> tuple[dict[str
     except Exception:
         return None, 14
 
-    mem_doc, _ = build_index(vault_root, as_of=as_of, write_file=False)
-    if mem_doc["vault_fingerprint"] != saved_doc.get("vault_fingerprint"):
+    if as_of is not None and saved_doc.get("as_of") != as_of:
+        return None, 14
+
+    mem_doc, _ = build_index(vault_root, as_of=as_of or saved_doc.get("as_of"), write_file=False)
+    if (
+        mem_doc["vault_fingerprint"] != saved_doc.get("vault_fingerprint")
+        or mem_doc.get("config_sha256") != saved_doc.get("config_sha256")
+    ):
         return None, 14
 
     return saved_doc, 0
@@ -793,9 +946,12 @@ def resolve_term(
     entities = index_doc.get("entities", {})
     aliases = index_doc.get("aliases", {})
 
-    # 1. Exact entity_id match
+    # 1. Exact or case-insensitive entity_id match
     if term in entities:
         return {"entity_id": term, "entity": entities[term]}, 0
+    folded_term = term.strip().casefold()
+    if folded_term in entities:
+        return {"entity_id": folded_term, "entity": entities[folded_term]}, 0
 
     # 2. Normalized alias match
     norm_term = normalize_alias(term)
@@ -845,7 +1001,7 @@ def need_keys(
     if not target_keys:
         return {"error": "no keys requested", "ok": False}, 20
 
-    as_of = index_doc.get("as_of") or datetime.date.today().isoformat()
+    effective_as_of = as_of or index_doc.get("as_of") or datetime.date.today().isoformat()
     facts = index_doc.get("facts", {})
     key_results: dict[str, Any] = {}
     exit_codes_seen: set[int] = set()
@@ -863,6 +1019,14 @@ def need_keys(
 
         f = facts[k]
         st = f["state"]
+        review_after = f.get("review_after")
+        if (
+            as_of is not None
+            and st in ("certified-owner", "certified-evidence")
+            and isinstance(review_after, str)
+            and review_after < effective_as_of
+        ):
+            st = "stale"
         val = None if no_values else f["value"]
         key_results[k] = {
             "state": st,
@@ -893,7 +1057,7 @@ def need_keys(
     return {
         "ok": (code == 0),
         "exit": code,
-        "as_of": as_of,
+        "as_of": effective_as_of,
         "keys": key_results,
     }, code
 
@@ -912,22 +1076,37 @@ def ask_question(
     entities = index_doc.get("entities", {})
     facts = index_doc.get("facts", {})
 
-    tokens = [t.lower() for t in re.findall(r"[A-Za-z0-9_-]+", question) if len(t) >= 2]
+    tokens = [
+        t
+        for t in re.findall(r"[a-z0-9]+", question.casefold())
+        if len(t) >= 3 and t not in _ASK_STOPWORDS
+    ]
+    norm_q = normalize_alias(question)
     matched_entities: set[str] = set()
 
     for eid, edata in entities.items():
-        norm_eid = eid.lower()
-        if any(t in norm_eid for t in tokens):
-            matched_entities.add(eid)
-            continue
-        title = (edata.get("title") or "").lower()
-        if any(t in title for t in tokens):
+        text_parts = [eid, edata.get("title") or "", *(edata.get("aliases") or [])]
+        entity_words = set(re.findall(r"[a-z0-9]+", " ".join(text_parts).casefold()))
+        if any(t in entity_words for t in tokens):
             matched_entities.add(eid)
             continue
         for al in edata.get("aliases") or []:
-            if any(t in al.lower() for t in tokens):
+            norm_al = normalize_alias(al)
+            if len(norm_al) >= 3 and norm_al in norm_q:
                 matched_entities.add(eid)
                 break
+
+    if tokens:
+        for fk, fv in facts.items():
+            if "." not in fk:
+                continue
+            eid, field_name = fk.split(".", 1)
+            if eid not in entities or eid in matched_entities:
+                continue
+            val_str = str(fv.get("value") or "")
+            fact_words = set(re.findall(r"[a-z0-9]+", f"{field_name} {val_str}".casefold()))
+            if any(t in fact_words for t in tokens):
+                matched_entities.add(eid)
 
     suggested_facts: dict[str, Any] = {}
     for eid in sorted(matched_entities):
@@ -956,53 +1135,89 @@ def propose_bundles(
     out_dir: Path | None = None,
     as_of: str | None = None,
     batch_size: int = 150,
+    details: dict[str, Any] | None = None,
 ) -> tuple[list[dict[str, Any]], list[Path], list[str], int]:
     """Generate proposal transaction bundles (<=150 writes each).
 
     Pre-validates every bundle via transaction.inspect_bundle and returns approval hashes.
     """
     vault_root = Path(vault_root).resolve()
-    from .transaction import inspect_bundle
+    from .transaction import _safe_native_security, inspect_bundle, read_vault_regular
 
     profile, detected_roots, exclusions = get_ontology_roots(vault_root)
-    target_roots = roots or detected_roots
+    if roots:
+        target_roots: list[str] = []
+        for r in roots:
+            r_clean = r.replace("\\", "/").strip("/")
+            if not r_clean or ".." in r_clean.split("/"):
+                raise OntologyRuleError("ONTOLOGY_CONFIG_INVALID", f"invalid scope path: {r!r}")
+            r_fold = _portable_name_key(r_clean)
+            if not any(
+                r_fold == _portable_name_key(dr.rstrip("/"))
+                or r_fold.startswith(_portable_name_key(dr.rstrip("/")) + "/")
+                for dr in detected_roots
+            ):
+                raise OntologyRuleError(
+                    "ONTOLOGY_SCOPE_OUTSIDE_ROOTS",
+                    f"scope {r_clean!r} is outside configured ontology roots {detected_roots}",
+                )
+            target_roots.append(r_clean)
+    else:
+        target_roots = list(detected_roots)
 
-    notes_to_propose: list[tuple[str, Path, str]] = []  # (rel_path, abs_path, entity_id)
+    def _propose_alias_key(alias: str) -> str:
+        norm = normalize_alias(alias)
+        return re.sub(r"[-_\s]+", " ", norm).strip()
+
+    def _ensure_safe_out_dir(base_dir: Path | None) -> Path:
+        if base_dir is None:
+            meta_dir = vault_root / ".vault-meta"
+            ont_dir = meta_dir / "ontology"
+            target = ont_dir / "bundles"
+            for anc in (meta_dir, ont_dir, target):
+                if is_reparse_or_symlink(anc):
+                    raise OntologyRuleError("ONTOLOGY_PATH_INSECURE", "out_dir or parent is a symlink or reparse point")
+            target.mkdir(parents=True, exist_ok=True)
+            if is_reparse_or_symlink(target):
+                raise OntologyRuleError("ONTOLOGY_PATH_INSECURE", "out_dir is a symlink or reparse point")
+            return target
+        curr = Path(base_dir)
+        for anc in (curr, *curr.parents):
+            if is_reparse_or_symlink(anc):
+                raise OntologyRuleError("ONTOLOGY_PATH_INSECURE", "out_dir or parent is a symlink or reparse point")
+            if anc == vault_root:
+                break
+        curr.mkdir(parents=True, exist_ok=True)
+        if is_reparse_or_symlink(curr):
+            raise OntologyRuleError("ONTOLOGY_PATH_INSECURE", "out_dir is a symlink or reparse point")
+        return curr
+
     seen_ids: set[str] = set()
+    seen_aliases: dict[str, str] = {}
+    seen_alias_keys: dict[str, str] = {}
+    skipped: list[dict[str, Any]] = []
+    skipped_aliases: list[dict[str, Any]] = []
 
-    # Pre-scan existing entity_id values across all roots
-    for r_str in target_roots:
+    # Pre-scan existing entity_id and aliases across all detected roots
+    for r_str in detected_roots:
         r_dir = vault_root / r_str
         if not r_dir.exists() or is_reparse_or_symlink(r_dir):
             continue
-        for dirpath, _, filenames in os.walk(r_dir):
-            if is_reparse_or_symlink(Path(dirpath)):
+        for dirpath, dirnames, filenames in os.walk(r_dir):
+            dirpath_p = Path(dirpath)
+            if is_reparse_or_symlink(dirpath_p):
+                dirnames[:] = []
                 continue
-            for fname in filenames:
-                if fname.endswith(".md"):
-                    p = Path(dirpath) / fname
-                    if is_reparse_or_symlink(p):
-                        continue
-                    rel = p.relative_to(vault_root).as_posix()
-                    if is_path_excluded(rel, exclusions):
-                        continue
-                    try:
-                        raw = p.read_bytes()
-                        note = parse_note(raw, side="old", path=rel)
-                        if note.has_frontmatter:
-                            eid = note.values.get("entity_id")
-                            if eid and isinstance(eid, str):
-                                seen_ids.add(eid)
-                    except Exception:
-                        pass
-
-    for r_str in target_roots:
-        r_dir = vault_root / r_str
-        if not r_dir.exists() or is_reparse_or_symlink(r_dir):
-            continue
-        for dirpath, _, filenames in os.walk(r_dir):
-            if is_reparse_or_symlink(Path(dirpath)):
+            rel_dir = dirpath_p.relative_to(vault_root).as_posix()
+            if rel_dir != "." and is_path_excluded(rel_dir, exclusions):
+                dirnames[:] = []
                 continue
+            dirnames[:] = [
+                d
+                for d in sorted(dirnames)
+                if d not in ("node_modules", ".git", ".claude-empire", ".obsidian", ".vault-meta")
+                and d.casefold() not in EXCLUDED_ANY_LEVEL
+            ]
             for fname in sorted(filenames):
                 if not fname.endswith(".md"):
                     continue
@@ -1012,96 +1227,308 @@ def propose_bundles(
                 rel = p.relative_to(vault_root).as_posix()
                 if is_path_excluded(rel, exclusions):
                     continue
-
                 try:
                     raw = p.read_bytes()
                     note = parse_note(raw, side="old", path=rel)
+                    if note.has_frontmatter:
+                        eid = note.values.get("entity_id")
+                        if eid and isinstance(eid, str):
+                            seen_ids.add(eid)
+                            raw_als = note.list_value("aliases")
+                            if isinstance(raw_als, list):
+                                for al in raw_als:
+                                    norm_al = normalize_alias(str(al))
+                                    if norm_al and norm_al not in seen_aliases:
+                                        seen_aliases[norm_al] = eid
+                                    key_al = _propose_alias_key(str(al))
+                                    if key_al and key_al not in seen_alias_keys:
+                                        seen_alias_keys[key_al] = eid
                 except Exception:
+                    pass
+
+    proposed_writes_all: list[tuple[str, str, dict[str, Any]]] = []  # (rel, expected_sha256, write_entry)
+    visited_rels: set[str] = set()
+
+    for r_str in target_roots:
+        r_dir = vault_root / r_str
+        if not r_dir.exists() or is_reparse_or_symlink(r_dir):
+            continue
+        for dirpath, dirnames, filenames in os.walk(r_dir):
+            dirpath_p = Path(dirpath)
+            if is_reparse_or_symlink(dirpath_p):
+                dirnames[:] = []
+                continue
+            rel_dir = dirpath_p.relative_to(vault_root).as_posix()
+            if rel_dir != "." and is_path_excluded(rel_dir, exclusions):
+                dirnames[:] = []
+                continue
+            dirnames.sort()
+            for fname in sorted(filenames):
+                if not fname.endswith(".md"):
                     continue
+                p = dirpath_p / fname
+                if is_reparse_or_symlink(p):
+                    continue
+                rel = p.relative_to(vault_root).as_posix()
+                if rel in visited_rels or is_path_excluded(rel, exclusions):
+                    continue
+                visited_rels.add(rel)
+
+                cand = _propose_candidate(rel, profile)
+                if cand is None:
+                    continue
+                prefix, etype, cand_name = cand
+
+                try:
+                    _safe_native_security(vault_root, rel)
+                    raw = read_vault_regular(vault_root, rel, missing_ok=False)
+                    if raw is None:
+                        continue
+                except Exception as exc:
+                    skipped.append({
+                        "path": rel,
+                        "reason": "native_owner_mismatch",
+                        "detail": str(exc),
+                    })
+                    continue
+
+                try:
+                    raw.decode("utf-8")
+                except UnicodeDecodeError:
+                    skipped.append({
+                        "path": rel,
+                        "reason": "body_not_utf8",
+                    })
+                    continue
+
+                try:
+                    note = parse_note(raw, side="old", path=rel)
+                except OntologyRuleError as exc:
+                    skipped.append({
+                        "path": rel,
+                        "reason": "frontmatter_unparseable",
+                        "detail": exc.code,
+                    })
+                    continue
+
+                has_bom = raw.startswith(BOM)
+                bom_bytes = BOM if has_bom else b""
+                body_raw = raw[len(BOM) :] if has_bom else raw
 
                 if note.has_frontmatter:
                     if note.values.get("entity_id") or note.values.get("about"):
                         continue
-                stem_id = re.sub(r"[^a-z0-9-]+", "-", p.stem.casefold()).strip("-")
-                if not stem_id or not stem_id[0].isalpha():
-                    stem_id = f"e-{stem_id}"
-                stem_id = stem_id[:48]
-                base_id = stem_id
-                ctr = 1
-                while stem_id in seen_ids:
-                    stem_id = f"{base_id[:40]}-{ctr}"
-                    ctr += 1
-                seen_ids.add(stem_id)
-                notes_to_propose.append((rel, p, stem_id))
+                    if any(v is UNPARSEABLE for v in note.values.values()) or any(
+                        b.block_scalar for b in note.blocks
+                    ):
+                        skipped.append({
+                            "path": rel,
+                            "reason": "frontmatter_unparseable",
+                        })
+                        continue
+                    alias_blocks = [
+                        b for b in note.blocks if b.key and b.key.casefold() in ("aliases", "alias")
+                    ]
+                    if any(b.key.casefold() == "alias" or len(b.lines) == 1 for b in alias_blocks):
+                        skipped.append({
+                            "path": rel,
+                            "reason": "aliases_not_block_list",
+                        })
+                        continue
+                else:
+                    if body_raw in (b"---", b"---\n", b"---\r\n") or body_raw.startswith((b"---\n", b"---\r\n")):
+                        skipped.append({
+                            "path": rel,
+                            "reason": "frontmatter_unterminated",
+                        })
+                        continue
+                    alias_blocks = []
+
+                eid = _slug_id(prefix, cand_name)
+                if not ENTITY_ID_RE.match(eid) or eid in seen_ids:
+                    skipped.append({
+                        "path": rel,
+                        "reason": "id_collision",
+                        "entity_id": eid,
+                    })
+                    continue
+
+                existing_aliases: list[str] = []
+                if note.has_frontmatter and alias_blocks:
+                    raw_als = note.list_value("aliases")
+                    if isinstance(raw_als, list):
+                        existing_aliases = [str(x).strip() for x in raw_als if str(x).strip()]
+
+                existing_bad = False
+                for ex_al in existing_aliases:
+                    if (
+                        detect_secret_like(ex_al)
+                        or normalize_alias(ex_al) in seen_aliases
+                        or _propose_alias_key(ex_al) in seen_alias_keys
+                    ):
+                        existing_bad = True
+                        break
+                if existing_bad:
+                    skipped.append({
+                        "path": rel,
+                        "reason": "alias_collision",
+                    })
+                    continue
+
+                cand_aliases: list[str] = [cand_name]
+                if prefix:
+                    if "-" in cand_name:
+                        cand_aliases.append(cand_name.replace("-", " "))
+                    t_val = title_value(note)
+                    if t_val and not _is_generic_title(str(t_val)) and len(str(t_val)) <= 60:
+                        cand_aliases.append(str(t_val))
+
+                aliases_to_add: list[str] = []
+                local_norms = {normalize_alias(x) for x in existing_aliases}
+                local_keys = {_propose_alias_key(x) for x in existing_aliases if _propose_alias_key(x)}
+                had_alias_collision = False
+                for cand_al in cand_aliases:
+                    cand_al_clean = cand_al.strip()
+                    if not cand_al_clean:
+                        continue
+                    norm_al = normalize_alias(cand_al_clean)
+                    if not norm_al or norm_al in local_norms:
+                        continue
+                    sec_cls = detect_secret_like(cand_al_clean)
+                    if sec_cls:
+                        skipped_aliases.append({
+                            "path": rel,
+                            "alias": "<redacted>",
+                            "reason": f"secret_like:{sec_cls}",
+                        })
+                        continue
+                    key_al = _propose_alias_key(cand_al_clean)
+                    if norm_al in seen_aliases or (key_al and key_al in seen_alias_keys):
+                        had_alias_collision = True
+                        skipped_aliases.append({
+                            "path": rel,
+                            "alias": cand_al_clean,
+                            "reason": "alias_collision",
+                        })
+                        continue
+                    aliases_to_add.append(cand_al_clean)
+                    local_norms.add(norm_al)
+                    if key_al:
+                        local_keys.add(key_al)
+
+                if not existing_aliases and not aliases_to_add:
+                    if prefix and had_alias_collision:
+                        skipped_aliases.append({
+                            "path": rel,
+                            "entity_id": eid,
+                            "reason": "id_only",
+                        })
+                    else:
+                        skipped.append({
+                            "path": rel,
+                            "reason": "alias_collision",
+                        })
+                        continue
+
+                quoted_to_add = [json.dumps(al, ensure_ascii=False) for al in aliases_to_add]
+
+                if note.has_frontmatter:
+                    nl_bytes = note.split.nl if note.split.nl is not None else b"\n"
+                    nl_str = "\r\n" if nl_bytes == b"\r\n" else "\n"
+                    has_etype = _plain_scalar(note, "entity_type") is not None
+                    new_blocks: list[str] = [f"entity_id: {eid}"]
+                    if etype and not has_etype:
+                        new_blocks.append(f"entity_type: {etype}")
+                    if not alias_blocks and quoted_to_add:
+                        alias_lines = ["aliases:"] + [f"  - {q}" for q in quoted_to_add]
+                        new_blocks.append(nl_str.join(alias_lines))
+
+                    for block in note.blocks:
+                        if block.key and block.key.casefold() in ("aliases", "alias"):
+                            lines = list(block.lines)
+                            for q in quoted_to_add:
+                                lines.append(f"  - {q}")
+                            new_blocks.append(nl_str.join(lines))
+                        elif block.key is not None or block.lines:
+                            new_blocks.append(nl_str.join(block.lines))
+
+                    fm_text = nl_str.join(new_blocks)
+                    new_raw = (
+                        bom_bytes
+                        + f"---{nl_str}{fm_text}{nl_str}---{nl_str}".encode("utf-8")
+                        + note.split.body
+                    )
+                else:
+                    nl_bytes = _first_newline(body_raw)
+                    nl_str = "\r\n" if nl_bytes == b"\r\n" else "\n"
+                    fm_lines = [f"entity_id: {eid}"]
+                    if etype:
+                        fm_lines.append(f"entity_type: {etype}")
+                    if quoted_to_add:
+                        fm_lines.append("aliases:")
+                        for q in quoted_to_add:
+                            fm_lines.append(f"  - {q}")
+                    fm_text = nl_str.join(fm_lines)
+                    new_raw = (
+                        bom_bytes
+                        + f"---{nl_str}{fm_text}{nl_str}---{nl_str}".encode("utf-8")
+                        + body_raw
+                    )
+
+                try:
+                    new_parsed = parse_note(new_raw, side="new", path=rel)
+                    check_note_invariants(note, new_parsed)
+                    validate_new_values(new_parsed)
+                    if owner_certification_reasons(note, new_parsed):
+                        raise OntologyRuleError("ONTOLOGY_OWNER_CERTIFICATION", "owner certification touched")
+                    new_content = new_raw.decode("utf-8")
+                except (OntologyRuleError, UnicodeDecodeError) as exc:
+                    skipped.append({
+                        "path": rel,
+                        "reason": "invariant_violation",
+                        "detail": getattr(exc, "code", "ONTOLOGY_UTF8_INVALID"),
+                    })
+                    continue
+
+                seen_ids.add(eid)
+                for norm_al in local_norms:
+                    seen_aliases[norm_al] = eid
+                for key_al in local_keys:
+                    seen_alias_keys[key_al] = eid
+                proposed_writes_all.append(
+                    (
+                        rel,
+                        _sha256_bytes(raw),
+                        {
+                            "path": rel,
+                            "mode": "replace",
+                            "content": new_content,
+                        },
+                    )
+                )
 
     bundles: list[dict[str, Any]] = []
     bundle_paths: list[Path] = []
     approval_hashes: list[str] = []
-    out_dir = out_dir or (vault_root / ".vault-meta" / "ontology" / "bundles")
-    if is_reparse_or_symlink(out_dir):
-        raise OntologyRuleError("ONTOLOGY_PATH_INSECURE", "out_dir is a symlink or reparse point")
-    out_dir.mkdir(parents=True, exist_ok=True)
+    out_dir = _ensure_safe_out_dir(out_dir)
+    for old_b in out_dir.glob("bundle-propose-*.json"):
+        if not is_reparse_or_symlink(old_b):
+            try:
+                old_b.unlink()
+            except OSError:
+                pass
 
     batch_size = max(1, min(150, batch_size))
-    for i in range(0, len(notes_to_propose), batch_size):
-        chunk = notes_to_propose[i : i + batch_size]
-        writes = []
-        expected_hashes: dict[str, str | None] = {}
+    for i in range(0, len(proposed_writes_all), batch_size):
+        chunk = proposed_writes_all[i : i + batch_size]
+        writes = [w for _, _, w in chunk]
+        expected_hashes: dict[str, str | None] = {rel: h for rel, h, _ in chunk}
 
-        for rel, p, eid in chunk:
-            raw = p.read_bytes()
-            h = _sha256_bytes(raw)
-            expected_hashes[rel] = h
-
-            has_bom = raw.startswith(BOM)
-            bom_bytes = BOM if has_bom else b""
-            note = parse_note(raw, side="old", path=rel)
-            quoted_stem = json.dumps(p.stem, ensure_ascii=False)
-
-            if note.has_frontmatter:
-                nl_bytes = note.split.nl if note.split.nl is not None else b"\n"
-                nl_str = "\r\n" if nl_bytes == b"\r\n" else "\n"
-                # Reconstruct frontmatter blocks cleanly
-                # Check if aliases already present
-                has_aliases = any(block.key in ("aliases", "alias") for block in note.blocks if block.key)
-                new_blocks: list[str] = [f"entity_id: {eid}"]
-                if not has_aliases:
-                    new_blocks.append(f"aliases:{nl_str}  - {quoted_stem}")
-
-                for block in note.blocks:
-                    if block.key in ("aliases", "alias"):
-                        # Keep existing aliases, append quoted_stem if not present
-                        curr_aliases = note.list_value(block.key)
-                        if isinstance(curr_aliases, list) and p.stem not in curr_aliases:
-                            lines = list(block.lines)
-                            lines.append(f"  - {quoted_stem}")
-                            new_blocks.append(nl_str.join(lines))
-                        else:
-                            new_blocks.append(nl_str.join(block.lines))
-                    elif block.key is not None:
-                        new_blocks.append(nl_str.join(block.lines))
-                    elif block.lines:
-                        new_blocks.append(nl_str.join(block.lines))
-
-                fm_text = nl_str.join(new_blocks)
-                new_raw = bom_bytes + f"---{nl_str}{fm_text}{nl_str}---{nl_str}".encode("utf-8") + note.split.body
-                new_content = new_raw.decode("utf-8")
-            else:
-                # No frontmatter on note
-                nl_bytes = b"\r\n" if b"\r\n" in raw else b"\n"
-                nl_str = "\r\n" if nl_bytes == b"\r\n" else "\n"
-                body_raw = raw[len(BOM):] if has_bom else raw
-                new_fm = f"---{nl_str}entity_id: {eid}{nl_str}aliases:{nl_str}  - {quoted_stem}{nl_str}---{nl_str}"
-                new_raw = bom_bytes + new_fm.encode("utf-8") + body_raw
-                new_content = new_raw.decode("utf-8")
-
-            writes.append({
-                "path": rel,
-                "mode": "replace",
-                "content": new_content,
-            })
-
-        bundle_op_id = f"{operation_id}-{i // batch_size}" if len(notes_to_propose) > batch_size else operation_id
+        bundle_op_id = (
+            f"{operation_id}-{i // batch_size}"
+            if len(proposed_writes_all) > batch_size
+            else operation_id
+        )
         bundle = {
             "schema": TRANSACTION_SCHEMA,
             "operation_type": OPERATION_TYPE,
@@ -1122,7 +1549,46 @@ def propose_bundles(
         bundles.append(bundle)
         bundle_paths.append(b_file)
 
+    if details is not None:
+        details["skipped"] = skipped
+        details["skipped_aliases"] = skipped_aliases
+
     return bundles, bundle_paths, approval_hashes, 0
+
+
+def _verify_secret_ref_exists(secrets_root: Path, ref_val: str, fact_key: str) -> None:
+    """Verify that secret-ref:<file>.env#<VAR> exists in secrets_root without reading secret values."""
+    if not SECRET_REF_RE.fullmatch(ref_val):
+        raise OntologyRuleError(
+            "ONTOLOGY_SECRET_REF_INVALID",
+            f"invalid secret-ref syntax for {fact_key}",
+        )
+    if not secrets_root.is_dir() or is_reparse_or_symlink(secrets_root):
+        raise OntologyRuleError(
+            "ONTOLOGY_SECRET_REF_UNRESOLVED",
+            f"secrets root unavailable for {fact_key}",
+        )
+    rest = ref_val[len("secret-ref:") :]
+    env_name, var_name = rest.split("#", 1)
+    env_path = secrets_root / env_name
+    if not env_path.is_file() or is_reparse_or_symlink(env_path):
+        raise OntologyRuleError(
+            "ONTOLOGY_SECRET_REF_UNRESOLVED",
+            f"secret-ref file {env_name!r} for {fact_key} not found in secrets root",
+        )
+    var_re = re.compile(rf"^\s*(?:export\s+)?{re.escape(var_name)}\s*=")
+    try:
+        raw_lines = env_path.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError as exc:
+        raise OntologyRuleError(
+            "ONTOLOGY_SECRET_REF_UNRESOLVED",
+            f"cannot read secret-ref file {env_name!r} for {fact_key}: {exc}",
+        ) from exc
+    if not any(var_re.match(line) for line in raw_lines):
+        raise OntologyRuleError(
+            "ONTOLOGY_SECRET_REF_UNRESOLVED",
+            f"secret-ref variable {var_name!r} in {env_name!r} for {fact_key} not defined",
+        )
 
 
 def certify_bundle(
@@ -1136,6 +1602,7 @@ def certify_bundle(
     evidence: str | None = None,
     note_paths: list[str] | None = None,
     out_dir: Path | None = None,
+    secrets_root: Path | None = None,
 ) -> tuple[dict[str, Any], Path, str, int]:
     """Generate a certification transaction bundle for keys.
 
@@ -1154,6 +1621,14 @@ def certify_bundle(
     for k in keys:
         if k not in facts:
             raise OntologyRuleError("ONTOLOGY_FACT_UNKNOWN", f"unknown fact key {k!r}")
+        f_val = facts[k].get("value")
+        if isinstance(f_val, str) and f_val.startswith("secret-ref:"):
+            if secrets_root is None:
+                raise OntologyRuleError(
+                    "ONTOLOGY_SECRET_REF_UNVERIFIED",
+                    f"cannot certify secret-ref for {k!r} without a verified secrets_root",
+                )
+            _verify_secret_ref_exists(Path(secrets_root), f_val, k)
         p = facts[k]["path"]
         if p not in target_notes:
             target_notes[p] = []
@@ -1273,10 +1748,23 @@ def certify_bundle(
     plan = inspect_bundle(vault_root, bundle)
     approval_sha256 = plan["approval_sha256"]
 
-    out_dir = out_dir or (vault_root / ".vault-meta" / "ontology" / "bundles")
+    if out_dir is None:
+        meta_dir = vault_root / ".vault-meta"
+        ont_dir = meta_dir / "ontology"
+        target_out = ont_dir / "bundles"
+        for anc in (meta_dir, ont_dir, target_out):
+            if is_reparse_or_symlink(anc):
+                raise OntologyRuleError("ONTOLOGY_PATH_INSECURE", "out_dir or parent is a symlink or reparse point")
+        out_dir = target_out
+    else:
+        for anc in (Path(out_dir), *Path(out_dir).parents):
+            if is_reparse_or_symlink(anc):
+                raise OntologyRuleError("ONTOLOGY_PATH_INSECURE", "out_dir or parent is a symlink or reparse point")
+            if anc == vault_root:
+                break
+    out_dir.mkdir(parents=True, exist_ok=True)
     if is_reparse_or_symlink(out_dir):
         raise OntologyRuleError("ONTOLOGY_PATH_INSECURE", "out_dir is a symlink or reparse point")
-    out_dir.mkdir(parents=True, exist_ok=True)
     b_file = out_dir / f"bundle-certify-{operation_id}.json"
     b_file.write_text(json.dumps(bundle, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 

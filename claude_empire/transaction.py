@@ -4196,7 +4196,12 @@ def _validated_recovery_writes(
         raise TransactionRecoveryError(
             "CORRUPT_JOURNAL", "journal has invalid writes or operation type"
         )
-    if len(writes) > MAX_TRANSACTION_WRITES:
+    max_writes = (
+        max(MAX_TRANSACTION_WRITES, 1024)
+        if (foreign_terminal and MAX_TRANSACTION_WRITES >= 150)
+        else MAX_TRANSACTION_WRITES
+    )
+    if len(writes) > max_writes:
         raise TransactionRecoveryError(
             "CORRUPT_JOURNAL", "journal exceeds the supported write-count limit"
         )
@@ -4282,9 +4287,15 @@ def _validated_recovery_writes(
                 f"journal write {index} conflicts with a portable vault path alias",
             ) from exc
         try:
-            _validate_operation_write_scope(
-                str(operation_type), relative, write_mode=mode
-            )
+            if not (
+                foreign_terminal
+                and str(operation_type) in {"home-install", "home-upgrade"}
+                and relative in {"LICENSE.md", "PRIVACY.md"}
+                and mode in {"create", "replace"}
+            ):
+                _validate_operation_write_scope(
+                    str(operation_type), relative, write_mode=mode
+                )
         except TransactionError as exc:
             raise TransactionRecoveryError(
                 "CORRUPT_JOURNAL", f"journal write {index} has an unsafe path: {exc}"

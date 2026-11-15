@@ -183,6 +183,9 @@ _SENSITIVE_QUERY_RE = re.compile(
 )
 _TOKEN_RE = re.compile(r"[A-Za-z0-9+/=_-]{32,}")
 _HEX_RUN_RE = re.compile(r"[0-9a-fA-F]{32,}")
+_WORD_SEG_RE = re.compile(
+    r"[A-Z]?[a-z]+|[A-Z]{2,8}[a-z]*|\d{1,8}|(?:[A-Z][a-z]{2,}|[A-Z]{2,6}){2,3}"
+)
 
 
 def _entropy_class(text: str) -> str | None:
@@ -190,6 +193,9 @@ def _entropy_class(text: str) -> str | None:
         token = match.group(0)
         if _HEX_RUN_RE.search(token):
             return "hex-run"
+        segs = re.split(r"[-_/]", token)
+        if len(segs) >= 2 and all(_WORD_SEG_RE.fullmatch(s) for s in segs if s):
+            continue
         classes = sum(
             (
                 any(ch.isupper() for ch in token),
@@ -597,6 +603,8 @@ def parse_ontology_block(block: Block, *, path: str) -> str | list[str]:
             )
         if raw.startswith("["):
             return parse_inline_list(raw, path=path, key=key)
+        if folded == "alias":
+            return [parse_scalar(raw, path=path, key=key)]
         raise OntologyRuleError(
             "ONTOLOGY_UNSUPPORTED_YAML", f"{path}: {_label(key)} must be a list"
         )

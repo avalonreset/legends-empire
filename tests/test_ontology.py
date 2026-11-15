@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 import tempfile
 import unittest
+import unittest.mock
 
 ROOT = Path(__file__).resolve().parents[1]
 import sys
@@ -501,6 +502,304 @@ class OntologyTests(unittest.TestCase):
                 "2026-11-14T12:00:00Z",
             ])
             self.assertEqual(code, 20)
+
+    def test_v040_council_regressions(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            vault = Path(td)
+            # Configured shared-root style roots
+            (vault / ".claude-empire.json").write_text(
+                json.dumps({
+                    "ontology": {
+                        "roots": [
+                            "wiki/",
+                            "Projects/Active/",
+                            "Workspaces/Clients/Companies/",
+                            "Workspaces/Clients/People/",
+                            "Workspaces/Brands & Sites/",
+                        ]
+                    }
+                }),
+                encoding="utf-8",
+            )
+            (vault / "Projects" / "Active").mkdir(parents=True)
+            (vault / "Workspaces" / "Clients" / "Companies").mkdir(parents=True)
+            (vault / "Workspaces" / "Clients" / "People").mkdir(parents=True)
+            (vault / "Workspaces" / "Brands & Sites").mkdir(parents=True)
+            (vault / "wiki").mkdir(parents=True)
+
+            # R1: hyphenated 32+ char project name & path must not trigger high-entropy-token
+            self.assertIsNone(ont.detect_secret_like("Northwind-Business-Intelligence-Service"))
+            self.assertIsNone(
+                ont.detect_secret_like(
+                    "path:Projects/Active/Northwind Kitchen/deliverables/Northwind-Kitchen-Unabridged-Operating-Plan-Printable.pdf",
+                    is_fact_value=True,
+                )
+            )
+            self.assertEqual(
+                ont.detect_secret_like("ghp_" + "1234567890abcdef1234567890abcdef1234"),
+                "github-token",
+            )
+            self.assertEqual(
+                ont.detect_secret_like("aB3dEf9GhIjKlMnOpQrStUvWxYz012345678"),
+                "high-entropy-token",
+            )
+
+            # #1: propose_bundles rule table, hyphen-boundary truncation, skip non-block-list aliases
+            p1 = vault / "Projects" / "Active" / "Northwind-Business-Intelligence-Service"
+            p1.mkdir(parents=True)
+            (p1 / "context.md").write_text(
+                "---\ntype: project-context\n---\n# Context — Projects/Active/Northwind-Business-Intelligence-Service\n",
+                encoding="utf-8",
+            )
+            # pm-project card in same folder must NOT be proposed as second entity
+            (p1 / "Northwind-Business-Intelligence-Service.md").write_text(
+                "---\ntype: pm-project\n---\n# Card\n", encoding="utf-8"
+            )
+            # Note with flow-list aliases -> recorded in skipped as aliases_not_block_list
+            p2 = vault / "Projects" / "Active" / "Flow-List-Project"
+            p2.mkdir(parents=True)
+            (p2 / "context.md").write_text(
+                "---\naliases: [Flowy, \"Flow Two\"]\n---\n# Flow\n", encoding="utf-8"
+            )
+            # Non-UTF-8 note -> skipped as body_not_utf8
+            p3 = vault / "Projects" / "Active" / "Binary-Project"
+            p3.mkdir(parents=True)
+            (p3 / "context.md").write_bytes(b"# Invalid UTF-8 \xff\xfe\n")
+            # Unterminated frontmatter note -> skipped as frontmatter_unterminated
+            p4 = vault / "Projects" / "Active" / "Unterminated-Project"
+            p4.mkdir(parents=True)
+            (p4 / "context.md").write_text("---\ntitle: Unterminated\n# Body\n", encoding="utf-8")
+            # Note with secret-like title -> skipped as invariant_violation, alias redacted
+            p5 = vault / "Projects" / "Active" / "Secret-Title-Project"
+            p5.mkdir(parents=True)
+            secret_tok = "ghp_" + "1234567890abcdef1234567890abcdef1234"
+            (p5 / "context.md").write_text(
+                f"---\ntitle: {secret_tok}\n---\n# Secret\n",
+                encoding="utf-8",
+            )
+            # Note without frontmatter whose first newline is LF followed later by CRLF
+            p6 = vault / "Projects" / "Active" / "Mixed-Body-Project"
+            p6.mkdir(parents=True)
+            (p6 / "context.md").write_bytes(b"# Mixed Body\nFirst line LF.\r\nSecond line CRLF.\n")
+
+            # Company note with non-allowlisted type: company and scalar alias:
+            comp = vault / "Workspaces" / "Clients" / "Companies" / "Acme.md"
+            comp.write_text(
+                "---\nentity_id: biz-acme\ntype: \"company\"\nalias: Acme Corp\nfact.tax_state: TX\ncertified_owner:\n  - fact.tax_state\ncertified_on: 2026-11-14\nreview_after: 2027-02-14\n---\n# Acme\n",
+                encoding="utf-8",
+            )
+
+            details: dict = {}
+            bundles, paths, approvals, code = ont.propose_bundles(
+                vault,
+                generated_at="2026-11-15T12:00:00Z",
+                roots=["Projects/Active"],
+                details=details,
+            )
+            self.assertEqual(code, 0)
+            self.assertEqual(len(bundles), 1)
+            writes = bundles[0]["writes"]
+            self.assertEqual(len(writes), 2)
+            write_paths = [w["path"] for w in writes]
+            self.assertIn(
+                "Projects/Active/Northwind-Business-Intelligence-Service/context.md",
+                write_paths,
+            )
+            self.assertIn("Projects/Active/Mixed-Body-Project/context.md", write_paths)
+            w0 = [w for w in writes if "Northwind" in w["path"]][0]
+            self.assertIn("entity_id: proj-northwind-business-intelligence-service", w0["content"])
+            self.assertIn("entity_type: project", w0["content"])
+            self.assertIn('"Northwind-Business-Intelligence-Service"', w0["content"])
+            skip_reasons = {s["path"]: s["reason"] for s in details["skipped"]}
+            self.assertEqual(
+                skip_reasons.get("Projects/Active/Flow-List-Project/context.md"),
+                "aliases_not_block_list",
+            )
+            self.assertEqual(
+                skip_reasons.get("Projects/Active/Binary-Project/context.md"),
+                "body_not_utf8",
+            )
+            self.assertEqual(
+                skip_reasons.get("Projects/Active/Unterminated-Project/context.md"),
+                "frontmatter_unterminated",
+            )
+            self.assertEqual(
+                skip_reasons.get("Projects/Active/Secret-Title-Project/context.md"),
+                "invariant_violation",
+            )
+            for sa in details["skipped_aliases"]:
+                self.assertNotIn(secret_tok, json.dumps(sa))
+                if sa["path"] == "Projects/Active/Secret-Title-Project/context.md":
+                    self.assertEqual(sa["alias"], "<redacted>")
+
+            # #2: CLI transaction inspect/apply with --bundle flag
+            self.assertEqual(
+                cli.main(["transaction", "inspect", "--vault", str(vault), "--bundle", str(paths[0])]),
+                0,
+            )
+            self.assertEqual(
+                cli.main([
+                    "transaction",
+                    "apply",
+                    "--vault",
+                    str(vault),
+                    "--bundle",
+                    str(paths[0]),
+                    "--approved-plan-sha256",
+                    approvals[0],
+                ]),
+                0,
+            )
+
+            # Client triplet company note & look-alike brand alias -> id_only proposal
+            triplet_co = vault / "Workspaces" / "Clients" / "Companies" / "Mixed-Body-Project.md"
+            triplet_co.write_text("# Mixed-Body-Project\n", encoding="utf-8")
+            brand_dir = vault / "Workspaces" / "Brands & Sites" / "acme-corp"
+            brand_dir.mkdir(parents=True)
+            (brand_dir / "brand.md").write_text("# acme-corp\n", encoding="utf-8")
+            triplet_details: dict = {}
+            t_bundles, _, _, t_code = ont.propose_bundles(
+                vault,
+                generated_at="2026-11-15T12:00:00Z",
+                roots=["Workspaces/Clients/Companies", "Workspaces/Brands & Sites"],
+                details=triplet_details,
+            )
+            self.assertEqual(t_code, 0)
+            self.assertEqual(len(t_bundles), 1)
+            t_writes = {w["path"]: w["content"] for w in t_bundles[0]["writes"]}
+            self.assertIn("Workspaces/Clients/Companies/Mixed-Body-Project.md", t_writes)
+            self.assertIn("entity_id: biz-mixed-body-project", t_writes["Workspaces/Clients/Companies/Mixed-Body-Project.md"])
+            self.assertNotIn("aliases:", t_writes["Workspaces/Clients/Companies/Mixed-Body-Project.md"])
+            self.assertIn("Workspaces/Brands & Sites/acme-corp/brand.md", t_writes)
+            self.assertIn("entity_id: brand-acme-corp", t_writes["Workspaces/Brands & Sites/acme-corp/brand.md"])
+            self.assertNotIn("aliases:", t_writes["Workspaces/Brands & Sites/acme-corp/brand.md"])
+            id_only_entries = [
+                sa for sa in triplet_details["skipped_aliases"] if sa.get("reason") == "id_only"
+            ]
+            self.assertEqual(len(id_only_entries), 2)
+
+            # #3, R3, R4, R6, R7: index, resolve (case-insensitive + --term), check --as-of, need_keys --as-of
+            idx, idx_code = ont.build_index(vault, as_of="2026-11-15", write_file=True)
+            self.assertEqual(idx_code, 0)
+            self.assertEqual(idx["entities"]["biz-acme"]["type"], "company")
+            self.assertIn("Acme Corp", idx["entities"]["biz-acme"]["aliases"])
+            self.assertEqual(
+                idx["entities"]["proj-northwind-business-intelligence-service"]["type"],
+                "project",
+            )
+
+            # R4: check_index with different as_of returns 14
+            _, chk_same = ont.check_index(vault, as_of="2026-11-15")
+            self.assertEqual(chk_same, 0)
+            _, chk_diff = ont.check_index(vault, as_of="2027-06-01")
+            self.assertEqual(chk_diff, 14)
+
+            # R3 & #2: resolve case-insensitive entity_id and --term flag
+            res_doc, res_code = ont.resolve_term(vault, "BIZ-ACME", index_doc=idx)
+            self.assertEqual(res_code, 0)
+            self.assertEqual(res_doc["entity_id"], "biz-acme")
+            self.assertEqual(
+                cli.main([
+                    "ontology",
+                    "resolve",
+                    "--vault",
+                    str(vault),
+                    "--term",
+                    "Northwind-Business-Intelligence-Service",
+                    "--as-of",
+                    "2026-11-15",
+                ]),
+                0,
+            )
+
+            # R7: need_keys honors explicit as_of even when index_doc is supplied
+            need_fresh, nf_code = ont.need_keys(
+                vault, keys=["biz-acme.tax_state"], as_of="2026-12-01", index_doc=idx
+            )
+            self.assertEqual(nf_code, 0)
+            need_stale, ns_code = ont.need_keys(
+                vault, keys=["biz-acme.tax_state"], as_of="2027-06-01", index_doc=idx
+            )
+            self.assertEqual(ns_code, 13)
+            self.assertEqual(need_stale["keys"]["biz-acme.tax_state"]["state"], "stale")
+
+            # R2: ask_question stopwords and whole-token matching
+            ask_doc, ask_code = ont.ask_question(
+                vault, "What is the status of the thing in TX?", index_doc=idx
+            )
+            self.assertEqual(ask_code, 0)
+            self.assertNotIn("proj-northwind-business-intelligence-service", ask_doc["matched_entities"])
+
+            # D2-3 & Opus #3: certify --secrets-root checks file and variable existence and fails closed when secrets_root=None
+            sec_dir = vault / "secrets_test"
+            sec_dir.mkdir()
+            (sec_dir / "valid.env").write_text("API_KEY=dummy\n", encoding="utf-8")
+            comp.write_text(
+                "---\nentity_id: biz-acme\nfact.good_ref: secret-ref:valid.env#API_KEY\nfact.bad_ref: secret-ref:missing.env#API_KEY\n---\n# Acme\n",
+                encoding="utf-8",
+            )
+            digest = vault / "wiki" / "d.md"
+            digest.write_text("# Digest\n", encoding="utf-8")
+            with self.assertRaises(ont.OntologyRuleError) as ctx_unverified:
+                ont.certify_bundle(
+                    vault,
+                    keys=["biz-acme.good_ref"],
+                    cert_class="owner",
+                    generated_at="2026-11-15T12:00:00Z",
+                    digest="wiki/d.md",
+                    secrets_root=None,
+                )
+            self.assertEqual(ctx_unverified.exception.code, "ONTOLOGY_SECRET_REF_UNVERIFIED")
+            with self.assertRaises(ont.OntologyRuleError):
+                ont.certify_bundle(
+                    vault,
+                    keys=["biz-acme.bad_ref"],
+                    cert_class="owner",
+                    generated_at="2026-11-15T12:00:00Z",
+                    digest="wiki/d.md",
+                    secrets_root=sec_dir,
+                )
+            _, _, _, cert_ok = ont.certify_bundle(
+                vault,
+                keys=["biz-acme.good_ref"],
+                cert_class="owner",
+                generated_at="2026-11-15T12:00:00Z",
+                digest="wiki/d.md",
+                secrets_root=sec_dir,
+            )
+            self.assertEqual(cert_ok, 0)
+
+            # #4: native_owner_mismatch skip in propose_bundles does not abort batch
+            p_owner_ok = vault / "Projects" / "Active" / "Owner-Ok-Project"
+            p_owner_ok.mkdir(parents=True)
+            (p_owner_ok / "context.md").write_text("# Owner Ok\n", encoding="utf-8")
+            p_owner_bad = vault / "Projects" / "Active" / "Owner-Mismatch-Project"
+            p_owner_bad.mkdir(parents=True)
+            (p_owner_bad / "context.md").write_text("# Owner Bad\n", encoding="utf-8")
+            orig_sec = tx._safe_native_security
+
+            def _mock_sec(v_root: Path, rel_p: str, *args: object, **kwargs: object) -> None:
+                if "Owner-Mismatch-Project" in rel_p:
+                    raise tx.TransactionValidationError("UNSUPPORTED_SECURITY_STATE: owner mismatch")
+                return orig_sec(v_root, rel_p, *args, **kwargs)
+
+            owner_details: dict = {}
+            with unittest.mock.patch.object(tx, "_safe_native_security", side_effect=_mock_sec):
+                o_bundles, _, _, o_code = ont.propose_bundles(
+                    vault,
+                    generated_at="2026-11-15T12:00:00Z",
+                    roots=["Projects/Active"],
+                    details=owner_details,
+                )
+            self.assertEqual(o_code, 0)
+            self.assertEqual(len(o_bundles), 1)
+            o_paths = [w["path"] for w in o_bundles[0]["writes"]]
+            self.assertEqual(o_paths, ["Projects/Active/Owner-Ok-Project/context.md"])
+            o_skip = {s["path"]: s["reason"] for s in owner_details["skipped"]}
+            self.assertEqual(
+                o_skip.get("Projects/Active/Owner-Mismatch-Project/context.md"),
+                "native_owner_mismatch",
+            )
 
 
 if __name__ == "__main__":

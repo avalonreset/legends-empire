@@ -113,11 +113,16 @@ def _open_sessions(root: Path, owned: dict) -> list[dict]:
         relative = path.relative_to(root).as_posix()
         if relative in owned:
             continue
-        text = adapter.read(root, relative).decode("utf-8")
+        try:
+            text = adapter.read(root, relative).decode("utf-8")
+        except UnicodeDecodeError:
+            conflicts.append({"path": relative, "reason": "open-or-unrecognized-session",
+                              "next": "Finish or preserve a governed handoff and close with native Home tools before upgrading."})
+            continue
         front = text.split("---", 2)
         def field(name):
-            match = re.search(rf"(?m)^{name}:\s*['\"]?([a-z-]+)['\"]?\s*$", front[1]) if len(front) == 3 else None
-            return match.group(1) if match else None
+            match = re.search(rf"(?im)^{name}:\s*['\"]?([a-z-]+)['\"]?\s*$", front[1]) if len(front) == 3 else None
+            return match.group(1).lower() if match else None
         if field("type") != "session" or field("status") != "closed":
             conflicts.append({"path": relative, "reason": "open-or-unrecognized-session",
                               "next": "Finish or preserve a governed handoff and close with native Home tools before upgrading."})
@@ -126,8 +131,13 @@ def _open_sessions(root: Path, owned: dict) -> list[dict]:
 
 def _session_hashes(root: Path) -> dict:
     folder = root / "AI Team/Sessions/records"
+    if not folder.exists():
+        return {}
+    paths = sorted(folder.rglob("*.md"))
+    if len(paths) > 10000:
+        adapter.fail("session inventory exceeds the upgrade guard limit")
     return {p.relative_to(root).as_posix(): sha256_bytes(adapter.read(root, p.relative_to(root).as_posix()))
-            for p in sorted(folder.rglob("*.md"))} if folder.exists() else {}
+            for p in paths}
 
 
 def upgrade_plan(root: Path, source: str | Path, operation_id: str, generated_at: str,
