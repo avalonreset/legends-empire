@@ -7,6 +7,44 @@ implementation record for older releases.
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-11-16
+
+Internal release. Health pass over 0.4.0 plus multi-vendor entry checks.
+
+### Added
+
+- Added `steward entry-audit` to audit multi-vendor entry harnesses (`CLAUDE.md`, `GEMINI.md`, `AGENTS.md`, and configured `~/...` shims): `@path` import chains (depth cap 8, cycle-safe, 64-file cap, 256 KiB per-file cap, contained per origin, UNC/device/`.env`/junction targets rejected), core reachability, cross-harness SHA-256 parity, encoding and C0 control bytes, and `forbidden_paths`.
+- Added byte budget checks (`budget.surface_bytes_exceeded`, `budget.entry_chain_exceeded`, `entry.shim_oversize`), `fresh_until` frontmatter expiry (`freshness.expired_fresh_until`), a 14-day default freshness window for `role: hot`, and dated-state leak detection in `role: core` notes (`freshness.state_leak_in_core`).
+- Added deterministic law checks (`law.expired_directive`, `law.duplicate_block`, and validated-regex `law.value_conflict`) across entry-chain files and opt-in `law_paths`.
+- Added `steward digest` (`legends.vault-steward.digest/v1` plus a digest.md of 1024 bytes or less) with atomic writes and non-ratcheting high-severity regression detection, plus `templates/legends-temporal/steward-digest.jobs.json` and `examples/steward-overlay.multivendor.json`.
+- Added a compact `snapshot.json` (`legends.vault-steward.snapshot/v1`) on `steward scan --out`, raised the `--baseline` JSON cap to 64 MiB, and added `--as-of YYYY-MM-DD` to `scan`, `entry-audit`, and `digest`.
+- Added `stat_fingerprint` and an exclusions-aware `config_sha256` to `.vault-meta/ontology/index.json`; `ontology resolve`, `need`, `ask`, and `bench` now reuse a fresh index without re-reading note bodies.
+
+### Changed
+
+- `default.json` `skip_dir_names` now includes `backups`, `_runtime`, `_third-party`, `.backup`, and `.cache`; dead findings config keys were removed.
+- `note.unreadable` is `high` on entrypoints, surfaces, and targets of 10 or more unresolved links, and reports the UTF-8 decode byte offset.
+- Ontology index findings (`ontology_duplicate_entity_id`, `ontology_certified_without_value`, `frontmatter_nested_unsupported`) are now surfaced by `legends_vault_steward` observe, with a bounded, contained index read.
+- The `knowledge/stewardship` pack is `0.2.2`: shelves carry required frontmatter, use PATH-independent `python -m cto_legends --home <home> handoff ...` guidance, document native Windows NTFS transaction support, and pass `lint --strict` (`duplicate_basenames` exempts `index` alongside `_index`).
+- Docs, recipes, and starter ontology templates use PATH- and CWD-independent router invocations, document mandatory `--generated-at` and the derived `.vault-meta/ontology/bundles/` cache, align limits (150 writes per batch, 148 knowledge pack files, Home v0.7.2), and route contribution and security links to `avalonreset/legends-empire` while preserving upstream attribution.
+- `release gates --execute --gate <id>` exit status is scoped to the selected gate; the retired `templates` subcommand is hidden from `scripts/wiki-mode.py --help`; `scripts/read-hot-cache.sh` recognizes `.claude-empire.json` and `CLAUDE_EMPIRE_HOT_CACHE_MAX_BYTES`.
+- `claude_empire/__main__.py` and `legends_vault_steward/__main__.py` set `sys.dont_write_bytecode`, and `legends_vault_steward` is covered by installed-tree boundary verification.
+
+### Fixed
+
+- Vault lint (`_walk_files`) applies `--exclude` before `lstat()`/`stat()` and records per-entry `OSError` as `lint.unreadable_path` in `read_errors` instead of aborting (for example on `WinError 1920`).
+- NTFS junctions can no longer escape the vault in `claude_empire/lint_engine.py` or `scripts/allocate-address.sh`.
+- stdout and stderr are reconfigured to UTF-8 with replacement across `claude_empire`, `legends_vault_steward`, and `scripts/*.py`; a `UnicodeEncodeError` in the steward CLI exits `10`, not `11`.
+- `ontology certify --class owner` verifies and pins `.raw/`, `bank:`, and `note:` preconditions on notes with existing `certified_evidence`, reads `--digest` through confined `read_vault_regular`, and enforces `--note-paths` scope.
+- Flat `ontology.roots` normalization and standalone Home `profile.json` (`legends.home-ready-profile/v1`) root resolution moved into `ontology_grammar.resolve_scope()`.
+- `ontology bench` evaluates `expected_exit`, boolean `expect_halt`, and unresolved queries; `ontology propose` no-op runs keep prior proposal bundles.
+- `hook_adapter.stop_status()` builds journal paths from the transactions directory on native Windows, so incomplete or corrupt journals are reported instead of silently skipped.
+- All 15 Windows-native Python test suite failures and the Git Bash `test_wiki_lock.sh` failure are fixed (explicit Git Bash resolution, `WinError 1314` symlink sub-check guards with junction fallbacks, restored `windows_fs.os_proxy.scandir` in `test_ledgers.py`); 15 previously skipped Windows tests now run.
+
+### Erratum (0.4.0)
+
+- The 0.4.0 notes overstated `legends_vault_steward` ontology integration. In 0.4.0, observe() only inspected pre-built `.vault-meta/ontology/index.json` facts for conflict and stale states and did not surface the index findings listed above. 0.4.1 adds that.
+
 ## [0.4.0] - 2026-11-14
 
 ### Added
