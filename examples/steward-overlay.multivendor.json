@@ -1,0 +1,72 @@
+{
+  "comment": "Generic multi-vendor entry-audit, byte-budget, and law-check overlay example.",
+  "surfaces": [
+    {
+      "id": "hot",
+      "path": "wiki/hot.md",
+      "role": "hot",
+      "max_words": 500,
+      "max_bytes": 4096,
+      "max_age_days": 14
+    },
+    {
+      "id": "core",
+      "path": "AGENTS.md",
+      "role": "core",
+      "max_bytes": 16384,
+      "max_dated_lines": 5
+    }
+  ],
+  "entry_harnesses": [
+    {
+      "id": "claude",
+      "entry": [
+        "CLAUDE.md",
+        "~/.claude/CLAUDE.md"
+      ],
+      "core": "AGENTS.md",
+      "max_chain_bytes": 32768,
+      "shim": {
+        "path": "CLAUDE.md",
+        "max_bytes": 1024
+      }
+    },
+    {
+      "id": "gemini",
+      "entry": [
+        "GEMINI.md",
+        "~/.gemini/GEMINI.md"
+      ],
+      "core": "AGENTS.md",
+      "max_chain_bytes": 32768,
+      "shim": {
+        "path": "GEMINI.md",
+        "max_bytes": 1024
+      }
+    },
+    {
+      "id": "codex-antigravity",
+      "entry": [
+        "AGENTS.md"
+      ],
+      "core": "AGENTS.md",
+      "max_chain_bytes": 32768
+    }
+  ],
+  "forbidden_paths": [
+    "~/.claude/projects/memory",
+    ".claude/memory"
+  ],
+  "law_paths": [
+    "AGENTS.md",
+    "CLAUDE.md",
+    "GEMINI.md",
+    "docs/policy/*.md"
+  ],
+  "conflict_keys": [
+    {
+      "id": "context_compaction_threshold",
+      "pattern": "(?i)compaction[^\\n]{0,40}?(\\b\\d{2,3}K\\b)"
+    }
+  ]
+}
