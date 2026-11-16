@@ -41,7 +41,7 @@ Internal release. Health pass over 0.4.0 plus multi-vendor entry checks.
 - `ontology bench` evaluates `expected_exit`, boolean `expect_halt`, and unresolved queries; `ontology propose` no-op runs keep prior proposal bundles.
 - `hook_adapter.stop_status()` builds journal paths from the transactions directory on native Windows, so incomplete or corrupt journals are reported instead of silently skipped.
 - All 15 Windows-native Python test suite failures and the Git Bash `test_wiki_lock.sh` failure are fixed (explicit Git Bash resolution, `WinError 1314` symlink sub-check guards with junction fallbacks, restored `windows_fs.os_proxy.scandir` in `test_ledgers.py`); 15 previously skipped Windows tests now run.
-- `legends_vault_steward` path validation rejects mixed-slash UNC prefixes, `\??\` device paths, NTFS alternate data stream colons, trailing dots or spaces, and `CONIN$`/`CONOUT$` before containment checks.
+- `legends_vault_steward` path validation rejects mixed-slash UNC prefixes, NT `??` device path prefixes, NTFS alternate data stream colons, trailing dots or spaces, and `CONIN$`/`CONOUT$` before containment checks.
 - `steward digest` keeps `high` severity on entry-chain `law.*` findings: duplicate `law.*` entries from the observe pass are dropped and deduplication key collisions keep the higher severity.
 - `ontology need` without `--as-of` evaluates `review_after` against today on a cached `index.json`; `.vault-meta/ontology` and hook transaction directories refuse junctions and reparse points.
 - `docs/AGENT-RECIPE.md` and `docs/ontology.md` list only CLI flags that exist.
