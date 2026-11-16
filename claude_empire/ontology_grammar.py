@@ -62,6 +62,8 @@ SHARED_ROOT_PROFILE_ROOTS = (
     "Workspaces/Brands & Sites/",
 )
 HOME_STATE_PATH = "wiki/integrations/aimh-home/shared-root/installation.json"
+HOME_PROFILE_PATH = "wiki/integrations/aimh-home/shared-root/profile.json"
+HOME_PROFILE_SCHEMA = "legends.home-ready-profile/v1"
 WORKSPACE_CONFIG = ".claude-empire.json"
 EXCLUDED_TOP_LEVEL = frozenset(
     {".raw", ".vault-meta", ".obsidian", ".git", ".claude", ".agents", ".codex", ".gemini"}
@@ -1011,7 +1013,15 @@ def resolve_scope(read: Callable[[str], bytes | None]) -> Scope:
             ) from exc
         if not isinstance(config, dict):
             raise OntologyRuleError("ONTOLOGY_CONFIG_INVALID", f"{WORKSPACE_CONFIG} must be an object")
+        flat_roots = config.get("ontology.roots")
         ontology = config.get("ontology")
+        if flat_roots is not None:
+            if ontology is not None and (not isinstance(ontology, dict) or "roots" in ontology):
+                raise OntologyRuleError(
+                    "ONTOLOGY_CONFIG_INVALID",
+                    f"{WORKSPACE_CONFIG} cannot specify conflicting ontology and ontology.roots",
+                )
+            ontology = {**(ontology or {}), "roots": flat_roots}
         if ontology is not None:
             if not isinstance(ontology, dict):
                 raise OntologyRuleError(
@@ -1066,6 +1076,21 @@ def resolve_scope(read: Callable[[str], bytes | None]) -> Scope:
                 if isinstance(pin.get("files"), dict):
                     home_managed.update(portable_key(str(path)) for path in pin["files"])
         if roots is None and pinned_install and state.get("status") == "installed":
+            roots = SHARED_ROOT_PROFILE_ROOTS
+            profile = "shared-root"
+    elif roots is None:
+        raw_profile = read(HOME_PROFILE_PATH)
+        if raw_profile is not None:
+            try:
+                prof_doc = _strict_json_loads(raw_profile.decode("utf-8"))
+            except (UnicodeDecodeError, ValueError) as exc:
+                raise OntologyRuleError(
+                    "ONTOLOGY_CONFIG_INVALID", "the Home profile record is not valid JSON"
+                ) from exc
+            if not isinstance(prof_doc, dict) or prof_doc.get("schema") != HOME_PROFILE_SCHEMA:
+                raise OntologyRuleError(
+                    "ONTOLOGY_CONFIG_INVALID", "the Home profile record has an invalid schema"
+                )
             roots = SHARED_ROOT_PROFILE_ROOTS
             profile = "shared-root"
     if roots is None:

@@ -29,6 +29,7 @@ try:
         EVIDENCE_PACKAGE_DIR,
         EVIDENCE_PACKAGE_MEMBERS,
         _first_newline,
+        _normalize_relative,
         check_note_invariants,
         fact_secret_like_class,
         is_ontology_key,
@@ -58,6 +59,7 @@ except ImportError:
         EVIDENCE_PACKAGE_DIR,
         EVIDENCE_PACKAGE_MEMBERS,
         _first_newline,
+        _normalize_relative,
         check_note_invariants,
         fact_secret_like_class,
         is_ontology_key,
@@ -300,16 +302,7 @@ def get_ontology_roots(vault_root: Path) -> tuple[str, list[str], set[str]]:
 
     def _read_file(rel: str) -> bytes | None:
         try:
-            data = read_vault_regular(vault_root, rel, missing_ok=True)
-            if data is not None and rel == WORKSPACE_CONFIG:
-                try:
-                    cfg = json.loads(data.decode("utf-8"))
-                    if "ontology.roots" in cfg and "ontology" not in cfg:
-                        cfg["ontology"] = {"roots": cfg["ontology.roots"]}
-                        return json.dumps(cfg).encode("utf-8")
-                except Exception:
-                    pass
-            return data
+            return read_vault_regular(vault_root, rel, missing_ok=True)
         except OSError:
             return None
 
@@ -877,7 +870,8 @@ def build_index(
         "as_of": as_of,
         "profile": profile,
         "roots": roots,
-        "config_sha256": _sha256_bytes(json.dumps(roots, sort_keys=True).encode()),
+        "config_sha256": _compute_config_sha256(roots, exclusions),
+        "stat_fingerprint": _compute_stat_fingerprint(vault_root, roots, exclusions),
         "vault_fingerprint": vault_fingerprint,
         "entities": sorted_entities,
         "aliases": sorted_aliases,
@@ -905,28 +899,108 @@ def build_index(
     return index_doc, 0
 
 
-def check_index(vault_root: Path, *, as_of: str | None = None) -> tuple[dict[str, Any] | None, int]:
-    """Check if index.json is fresh. Returns (index_doc, 0) or (None, 14)."""
-    idx_path = Path(vault_root) / ".vault-meta" / "ontology" / "index.json"
-    if not idx_path.is_file() or is_reparse_or_symlink(idx_path):
-        return None, 14
+def _compute_config_sha256(roots: list[str], exclusions: set[str]) -> str:
+    payload = {"roots": list(roots), "exclusions": sorted(exclusions)}
+    return _sha256_bytes(json.dumps(payload, sort_keys=True).encode("utf-8"))
 
+
+def _compute_stat_fingerprint(
+    vault_root: Path, roots: list[str], exclusions: set[str]
+) -> str:
+    import stat as _stat
+
+    entries: dict[str, tuple[int, int]] = {}
+
+    def _entry_is_reparse(st: os.stat_result) -> bool:
+        if _stat.S_ISLNK(st.st_mode):
+            return True
+        if sys.platform == "win32" and (getattr(st, "st_file_attributes", 0) & 0x400):
+            return True
+        return False
+
+    def _scan_dir(cur_dir: Path, rel_prefix: str, *, is_evidence: bool) -> None:
+        try:
+            with os.scandir(cur_dir) as it:
+                items = list(it)
+        except OSError:
+            return
+        for entry in items:
+            try:
+                st = entry.stat(follow_symlinks=False)
+            except OSError:
+                continue
+            if _entry_is_reparse(st):
+                continue
+            rel = f"{rel_prefix}/{entry.name}" if rel_prefix else entry.name
+            if _stat.S_ISDIR(st.st_mode):
+                if not is_evidence and is_path_excluded(rel, exclusions):
+                    continue
+                _scan_dir(Path(entry.path), rel, is_evidence=is_evidence)
+            elif _stat.S_ISREG(st.st_mode):
+                if not is_evidence:
+                    if not entry.name.endswith(".md"):
+                        continue
+                    if is_path_excluded(rel, exclusions):
+                        continue
+                    if any("~" in part and re.search(r"~\d+$", part) for part in Path(entry.path).parts):
+                        continue
+                entries[rel] = (st.st_size, st.st_mtime_ns)
+
+    for root_rel in roots:
+        clean_rel = root_rel.replace("\\", "/").strip("/")
+        root_dir = vault_root / clean_rel if clean_rel else vault_root
+        if not root_dir.exists() or is_reparse_or_symlink(root_dir):
+            continue
+        if clean_rel and is_path_excluded(clean_rel, exclusions):
+            continue
+        _scan_dir(root_dir, clean_rel, is_evidence=False)
+
+    for ev_rel in (".raw", EVIDENCE_PACKAGE_DIR):
+        ev_dir = vault_root / ev_rel
+        if not ev_dir.exists() or is_reparse_or_symlink(ev_dir):
+            continue
+        _scan_dir(ev_dir, ev_rel, is_evidence=True)
+
+    ordered = sorted(entries.items(), key=lambda item: (_portable_name_key(item[0]), item[0]))
+    stream = "".join(f"{p}:{sz}:{mt}\n" for p, (sz, mt) in ordered).encode("utf-8")
+    return _sha256_bytes(stream)
+
+
+def _load_fresh_index(vault_root: Path, *, as_of: str | None = None) -> dict[str, Any] | None:
+    vault_root = Path(vault_root).resolve()
+    idx_path = vault_root / ".vault-meta" / "ontology" / "index.json"
+    if not idx_path.is_file() or is_reparse_or_symlink(idx_path):
+        return None
     try:
         saved_doc = json.loads(idx_path.read_text(encoding="utf-8"))
     except Exception:
-        return None, 14
-
+        return None
+    if not isinstance(saved_doc, dict) or saved_doc.get("schema") != INDEX_SCHEMA:
+        return None
     if as_of is not None and saved_doc.get("as_of") != as_of:
-        return None, 14
+        return None
+    profile, roots, exclusions = get_ontology_roots(vault_root)
+    if saved_doc.get("config_sha256") != _compute_config_sha256(roots, exclusions):
+        return None
+    if saved_doc.get("stat_fingerprint") != _compute_stat_fingerprint(vault_root, roots, exclusions):
+        return None
+    return saved_doc
 
-    mem_doc, _ = build_index(vault_root, as_of=as_of or saved_doc.get("as_of"), write_file=False)
-    if (
-        mem_doc["vault_fingerprint"] != saved_doc.get("vault_fingerprint")
-        or mem_doc.get("config_sha256") != saved_doc.get("config_sha256")
-    ):
-        return None, 14
 
-    return saved_doc, 0
+def check_index(vault_root: Path, *, as_of: str | None = None) -> tuple[dict[str, Any] | None, int]:
+    """Check if index.json is fresh. Returns (index_doc, 0) or (None, 14)."""
+    fresh = _load_fresh_index(vault_root, as_of=as_of)
+    if fresh is None:
+        return None, 14
+    return fresh, 0
+
+
+def load_or_build_index(vault_root: Path, *, as_of: str | None = None) -> tuple[dict[str, Any], int]:
+    """Load index.json when present and current; otherwise build in memory."""
+    fresh = _load_fresh_index(vault_root, as_of=as_of)
+    if fresh is not None:
+        return fresh, 0
+    return build_index(vault_root, as_of=as_of, write_file=False)
 
 
 def resolve_term(
@@ -941,7 +1015,7 @@ def resolve_term(
     Exit codes: 0 (single match), 3 (ambiguous), 4 (not found).
     """
     if index_doc is None:
-        index_doc, _ = build_index(vault_root, as_of=as_of, write_file=False)
+        index_doc, _ = load_or_build_index(vault_root, as_of=as_of)
 
     entities = index_doc.get("entities", {})
     aliases = index_doc.get("aliases", {})
@@ -989,7 +1063,7 @@ def need_keys(
 ) -> tuple[dict[str, Any], int]:
     """Query fact states for keys with exit code precedence: 12 > 11 > 13 > 10 > 0."""
     if index_doc is None:
-        index_doc, _ = build_index(vault_root, as_of=as_of, write_file=False)
+        index_doc, _ = load_or_build_index(vault_root, as_of=as_of)
 
     target_keys: list[str] = []
     if keys:
@@ -1071,7 +1145,7 @@ def ask_question(
 ) -> tuple[dict[str, Any], int]:
     """Conversational question helper: matches entities and suggested fact keys."""
     if index_doc is None:
-        index_doc, _ = build_index(vault_root, as_of=as_of, write_file=False)
+        index_doc, _ = load_or_build_index(vault_root, as_of=as_of)
 
     entities = index_doc.get("entities", {})
     facts = index_doc.get("facts", {})
@@ -1510,44 +1584,45 @@ def propose_bundles(
     bundles: list[dict[str, Any]] = []
     bundle_paths: list[Path] = []
     approval_hashes: list[str] = []
-    out_dir = _ensure_safe_out_dir(out_dir)
-    for old_b in out_dir.glob("bundle-propose-*.json"):
-        if not is_reparse_or_symlink(old_b):
-            try:
-                old_b.unlink()
-            except OSError:
-                pass
+    if proposed_writes_all:
+        out_dir = _ensure_safe_out_dir(out_dir)
+        for old_b in out_dir.glob("bundle-propose-*.json"):
+            if not is_reparse_or_symlink(old_b):
+                try:
+                    old_b.unlink()
+                except OSError:
+                    pass
 
-    batch_size = max(1, min(150, batch_size))
-    for i in range(0, len(proposed_writes_all), batch_size):
-        chunk = proposed_writes_all[i : i + batch_size]
-        writes = [w for _, _, w in chunk]
-        expected_hashes: dict[str, str | None] = {rel: h for rel, h, _ in chunk}
+        batch_size = max(1, min(150, batch_size))
+        for i in range(0, len(proposed_writes_all), batch_size):
+            chunk = proposed_writes_all[i : i + batch_size]
+            writes = [w for _, _, w in chunk]
+            expected_hashes: dict[str, str | None] = {rel: h for rel, h, _ in chunk}
 
-        bundle_op_id = (
-            f"{operation_id}-{i // batch_size}"
-            if len(proposed_writes_all) > batch_size
-            else operation_id
-        )
-        bundle = {
-            "schema": TRANSACTION_SCHEMA,
-            "operation_type": OPERATION_TYPE,
-            "operation_id": bundle_op_id,
-            "generated_at": generated_at,
-            "expected_hashes": expected_hashes,
-            "read_preconditions": {},
-            "writes": writes,
-        }
+            bundle_op_id = (
+                f"{operation_id}-{i // batch_size}"
+                if len(proposed_writes_all) > batch_size
+                else operation_id
+            )
+            bundle = {
+                "schema": TRANSACTION_SCHEMA,
+                "operation_type": OPERATION_TYPE,
+                "operation_id": bundle_op_id,
+                "generated_at": generated_at,
+                "expected_hashes": expected_hashes,
+                "read_preconditions": {},
+                "writes": writes,
+            }
 
-        # Pre-validate bundle and obtain approved_plan_sha256
-        plan = inspect_bundle(vault_root, bundle)
-        approval_sha256 = plan["approval_sha256"]
-        approval_hashes.append(approval_sha256)
+            # Pre-validate bundle and obtain approved_plan_sha256
+            plan = inspect_bundle(vault_root, bundle)
+            approval_sha256 = plan["approval_sha256"]
+            approval_hashes.append(approval_sha256)
 
-        b_file = out_dir / f"bundle-propose-{i // batch_size}.json"
-        b_file.write_text(json.dumps(bundle, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-        bundles.append(bundle)
-        bundle_paths.append(b_file)
+            b_file = out_dir / f"bundle-propose-{i // batch_size}.json"
+            b_file.write_text(json.dumps(bundle, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            bundles.append(bundle)
+            bundle_paths.append(b_file)
 
     if details is not None:
         details["skipped"] = skipped
@@ -1609,10 +1684,19 @@ def certify_bundle(
     cert_class must be 'owner' or 'evidence'.
     """
     vault_root = Path(vault_root).resolve()
-    from .transaction import inspect_bundle
+    from .transaction import TransactionError, inspect_bundle, read_vault_regular
 
     if cert_class not in ("owner", "evidence"):
         raise OntologyRuleError("ONTOLOGY_CERTIFICATION_INVALID", f"invalid certification class {cert_class!r}")
+
+    allowed_notes: set[str] | None = None
+    if note_paths is not None:
+        if not note_paths:
+            raise OntologyRuleError("ONTOLOGY_TARGET_SCOPE", "note_paths must be non-empty when specified")
+        allowed_notes = {
+            portable_key(_normalize_relative(np.replace("\\", "/"), label="note_paths entry"))
+            for np in note_paths
+        }
 
     index_doc, _ = build_index(vault_root, write_file=False)
     facts = index_doc.get("facts", {})
@@ -1630,57 +1714,70 @@ def certify_bundle(
                 )
             _verify_secret_ref_exists(Path(secrets_root), f_val, k)
         p = facts[k]["path"]
+        if allowed_notes is not None and portable_key(p) not in allowed_notes:
+            raise OntologyRuleError(
+                "ONTOLOGY_TARGET_SCOPE",
+                f"fact {k!r} note {p!r} is outside requested --note-paths",
+            )
         if p not in target_notes:
             target_notes[p] = []
         target_notes[p].append(k)
 
     read_preconditions: dict[str, str] = {}
+    digest_rel: str | None = None
     if cert_class == "owner":
         if not digest:
             raise OntologyRuleError("ONTOLOGY_CERTIFICATION_INVALID", "digest path required for owner certification")
-        digest_rel = digest.replace("\\", "/")
-        digest_path = vault_root / digest_rel
-        if not digest_path.is_file() or is_reparse_or_symlink(digest_path):
+        try:
+            digest_rel = _normalize_relative(digest.replace("\\", "/"), label="certification digest")
+        except OntologyRuleError as exc:
+            raise OntologyRuleError("ONTOLOGY_CERTIFICATION_INVALID", exc.message) from exc
+        try:
+            digest_bytes = read_vault_regular(vault_root, digest_rel, missing_ok=True)
+        except (TransactionError, OSError, ValueError) as exc:
+            raise OntologyRuleError("ONTOLOGY_CERTIFICATION_INVALID", f"invalid digest path: {digest_rel}") from exc
+        if digest_bytes is None:
             raise OntologyRuleError("ONTOLOGY_DIGEST_MISSING", f"digest file missing: {digest_rel}")
-        read_preconditions[digest_rel] = _sha256_bytes(digest_path.read_bytes())
-    elif cert_class == "evidence":
-        profile, roots, exclusions = get_ontology_roots(vault_root)
-        for p, k_list in target_notes.items():
-            abs_p = vault_root / p
-            raw = abs_p.read_bytes()
-            curr_note = parse_note(raw, side="old", path=p)
-            existing_ev_facts = curr_note.list_value("certified_evidence")
-            all_ev_field_names: set[str] = set()
-            if isinstance(existing_ev_facts, list):
-                for item in existing_ev_facts:
-                    if item.startswith("fact."):
-                        all_ev_field_names.add(item[len("fact."):])
+        read_preconditions[digest_rel] = _sha256_bytes(digest_bytes)
+
+    profile, roots, exclusions = get_ontology_roots(vault_root)
+    for p, k_list in target_notes.items():
+        raw = read_vault_regular(vault_root, p, missing_ok=False)
+        assert raw is not None
+        curr_note = parse_note(raw, side="old", path=p)
+        existing_ev_facts = curr_note.list_value("certified_evidence")
+        all_ev_field_names: set[str] = set()
+        if isinstance(existing_ev_facts, list):
+            for item in existing_ev_facts:
+                if isinstance(item, str) and item.startswith("fact."):
+                    all_ev_field_names.add(item[len("fact.") :])
+        if cert_class == "evidence":
             for k in k_list:
                 all_ev_field_names.add(k.split(".", 1)[1])
 
-            for field_name in all_ev_field_names:
-                ev_ref = curr_note.values.get(f"evidence.{field_name}")
-                if not ev_ref and any(k.endswith(f".{field_name}") for k in k_list):
-                    ev_ref = evidence
-                if not ev_ref:
-                    for fk, fv in facts.items():
-                        if fk.endswith(f".{field_name}") and fv.get("path") == p:
-                            ev_ref = fv.get("evidence")
-                            break
-                if not ev_ref:
-                    raise OntologyRuleError("ONTOLOGY_EVIDENCE_MISSING", f"evidence locator missing for field {field_name}")
-                ver, preconds, err = verify_evidence(vault_root, p, ev_ref, roots, exclusions)
-                if not ver or not preconds:
-                    raise OntologyRuleError(err or "ONTOLOGY_EVIDENCE_UNVERIFIED", f"evidence verification failed for {field_name}")
-                read_preconditions.update(preconds)
+        for field_name in sorted(all_ev_field_names):
+            ev_ref = curr_note.values.get(f"evidence.{field_name}")
+            if not ev_ref and cert_class == "evidence" and any(k.endswith(f".{field_name}") for k in k_list):
+                ev_ref = evidence
+            if not ev_ref:
+                for fk, fv in facts.items():
+                    if fk.endswith(f".{field_name}") and fv.get("path") == p:
+                        ev_ref = fv.get("evidence")
+                        break
+            if not ev_ref:
+                raise OntologyRuleError("ONTOLOGY_EVIDENCE_MISSING", f"evidence locator missing for field {field_name}")
+            ver, preconds, err = verify_evidence(vault_root, p, ev_ref, roots, exclusions)
+            if not ver or not preconds:
+                raise OntologyRuleError(err or "ONTOLOGY_EVIDENCE_UNVERIFIED", f"evidence verification failed for {field_name}")
+            read_preconditions.update(preconds)
 
     writes = []
     expected_hashes = {}
     today_str = generated_at[:10] if len(generated_at) >= 10 else datetime.date.today().isoformat()
 
     for rel, k_list in target_notes.items():
-        abs_p = vault_root / rel
-        raw = abs_p.read_bytes()
+        raw = read_vault_regular(vault_root, rel, missing_ok=False)
+        assert raw is not None
         expected_hashes[rel] = _sha256_bytes(raw)
 
         note = parse_note(raw, side="old", path=rel)
@@ -1731,6 +1828,13 @@ def certify_bundle(
             "content": new_content,
         })
 
+    target_keys_folded = {portable_key(k) for k in expected_hashes}
+    read_preconditions = {
+        k: v
+        for k, v in read_preconditions.items()
+        if portable_key(k) not in target_keys_folded
+    }
+
     bundle: dict[str, Any] = {
         "schema": TRANSACTION_SCHEMA,
         "operation_type": OPERATION_TYPE,
@@ -1741,8 +1845,8 @@ def certify_bundle(
         "writes": writes,
     }
     # Only include certification block when owner class per Spec 5.5 and M8-BLOCKER-2
-    if cert_class == "owner" and digest:
-        bundle["certification"] = {"class": "owner", "digest": digest.replace("\\", "/")}
+    if cert_class == "owner" and digest_rel:
+        bundle["certification"] = {"class": "owner", "digest": digest_rel}
 
     # Pre-validate bundle via inspect_bundle
     plan = inspect_bundle(vault_root, bundle)
@@ -1784,9 +1888,7 @@ def run_benchmark(
     """
     vault_root = Path(vault_root).resolve()
     t0 = time.perf_counter()
-    index_doc, check_code = check_index(vault_root, as_of=as_of)
-    if index_doc is None:
-        index_doc, _ = build_index(vault_root, as_of=as_of, write_file=False)
+    index_doc, _ = load_or_build_index(vault_root, as_of=as_of)
 
     entities = index_doc.get("entities", {})
     aliases = index_doc.get("aliases", {})
@@ -1843,10 +1945,10 @@ def run_benchmark(
                 # Query resolution check
                 if "query" in t:
                     res, r_code = resolve_term(vault_root, t["query"], index_doc=index_doc)
-                    expected_eid = t.get("expected_entity_id")
-                    if expected_eid:
+                    if "expected_entity_id" in t and t["expected_entity_id"] is not None:
+                        expected_eid = t["expected_entity_id"]
                         resolved_eid = res.get("entity_id")
-                        if resolved_eid and resolved_eid != expected_eid:
+                        if resolved_eid != expected_eid:
                             wrong_resolutions += 1
                 # Need gate check
                 if "need_keys" in t:
@@ -1857,9 +1959,14 @@ def run_benchmark(
                         index_doc=index_doc,
                     )
                     expected_exit = t.get("expected_exit")
-                    if t.get("expect_halt"):
+                    expect_halt = t.get("expect_halt")
+                    has_exit = expected_exit is not None
+                    has_halt = isinstance(expect_halt, bool)
+                    if has_exit or has_halt:
                         gate_expected += 1
-                        if n_code != 0:
+                        exit_ok = (n_code == expected_exit) if has_exit else True
+                        halt_ok = ((n_code != 0) == expect_halt) if has_halt else True
+                        if exit_ok and halt_ok:
                             gate_observed += 1
 
         wrong_rate = round(wrong_resolutions / total_evaluations, 4) if total_evaluations else 0.0
