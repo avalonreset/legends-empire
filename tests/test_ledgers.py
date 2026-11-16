@@ -131,8 +131,8 @@ def test_migration_preserves_unresolved_legacy_batch_as_manual_source() -> None:
             (raw_root.stat().st_dev, raw_root.stat().st_ino),
             (payload.parent.stat().st_dev, payload.parent.stat().st_ino),
         }
-        real_listdir = os.listdir
-        real_scandir = os.scandir
+        real_listdir = transaction_module.os.listdir
+        real_scandir = transaction_module.os.scandir
 
         def is_raw_payload_directory(value: object) -> bool:
             try:
@@ -275,7 +275,7 @@ def test_migration_plan_changes_if_batch_locator_appears_before_apply() -> None:
 
         source_path = vault / locator
         source_path.parent.mkdir(parents=True)
-        source_path.write_text("now present\n", encoding="utf-8")
+        source_path.write_bytes(b"now present\n")
         try:
             apply_bundle(
                 vault,
@@ -354,9 +354,19 @@ def test_migration_original_plan_rejects_unsafe_locator_state_changes() -> None:
             elif node_kind == "symlink":
                 outside = base / "outside.txt"
                 outside.write_text("outside\n", encoding="utf-8")
-                target.symlink_to(outside)
+                try:
+                    target.symlink_to(outside)
+                except OSError as exc:
+                    if getattr(exc, "winerror", None) == 1314:
+                        continue
+                    raise
             elif node_kind == "broken_symlink":
-                target.symlink_to(base / "missing.txt")
+                try:
+                    target.symlink_to(base / "missing.txt")
+                except OSError as exc:
+                    if getattr(exc, "winerror", None) == 1314:
+                        continue
+                    raise
             else:
                 unix_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
                 unix_socket.bind(str(target))
@@ -545,9 +555,19 @@ def test_migration_missing_fallback_never_masks_unsafe_existing_nodes() -> None:
             elif node_kind == "symlink":
                 outside = base / "outside.txt"
                 outside.write_text("outside\n", encoding="utf-8")
-                target.symlink_to(outside)
+                try:
+                    target.symlink_to(outside)
+                except OSError as exc:
+                    if getattr(exc, "winerror", None) == 1314:
+                        continue
+                    raise
             elif node_kind == "broken_symlink":
-                target.symlink_to(base / "missing.txt")
+                try:
+                    target.symlink_to(base / "missing.txt")
+                except OSError as exc:
+                    if getattr(exc, "winerror", None) == 1314:
+                        continue
+                    raise
             else:
                 unix_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
                 unix_socket.bind(str(target))
@@ -621,7 +641,13 @@ def test_migration_never_reads_a_symlinked_legacy_manifest() -> None:
             ),
             encoding="utf-8",
         )
-        (vault / ".raw/.manifest.json").symlink_to(outside)
+        try:
+            (vault / ".raw/.manifest.json").symlink_to(outside)
+        except OSError as exc:
+            if getattr(exc, "winerror", None) == 1314:
+                print("[SKIP] test_migration_never_reads_a_symlinked_legacy_manifest: OS refused file symlink (WinError 1314)")
+                return
+            raise
         try:
             migration_bundle(
                 vault,

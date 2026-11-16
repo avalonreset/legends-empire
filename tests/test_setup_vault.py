@@ -10,6 +10,7 @@ import os
 import shutil
 import stat
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -22,12 +23,39 @@ _OPERATION_COUNTER = itertools.count(1)
 _GENERATED_AT = "2026-07-11T12:00:00Z"
 
 
+def _git_bash() -> str:
+    if os.name == "nt":
+        for candidate in (
+            Path(r"C:\Program Files\Git\bin\bash.exe"),
+            Path(r"C:\Program Files\Git\usr\bin\bash.exe"),
+            Path(r"C:\Program Files (x86)\Git\bin\bash.exe"),
+        ):
+            if candidate.is_file():
+                return str(candidate)
+        for directory in os.environ.get("PATH", "").split(os.pathsep):
+            if not directory:
+                continue
+            lowered = directory.lower()
+            if "system32" in lowered or "windowsapps" in lowered:
+                continue
+            candidate = Path(directory) / "bash.exe"
+            if candidate.is_file():
+                return str(candidate)
+        raise unittest.SkipTest("Git Bash is required on Windows")
+    return shutil.which("bash") or "/bin/bash"
+
+
 def _run(*arguments: str, cwd: Path | None = None, env: dict[str, str] | None = None):
-    merged = os.environ.copy()
+    merged = {k: v for k, v in os.environ.items() if k.lower() != "path"}
+    merged["PATH"] = f"{Path(sys.executable).parent}{os.pathsep}{os.environ.get('PATH', '')}"
     if env:
-        merged.update(env)
+        for k, v in env.items():
+            if k.lower() == "path":
+                merged["PATH"] = f"{Path(sys.executable).parent}{os.pathsep}{v}"
+            else:
+                merged[k] = v
     return subprocess.run(
-        ["bash", str(SCRIPT), *arguments],
+        [_git_bash(), SCRIPT.as_posix(), *arguments],
         cwd=cwd or ROOT,
         env=merged,
         capture_output=True,
@@ -253,6 +281,7 @@ class SetupVaultTests(unittest.TestCase):
             curl.write_text(
                 '#!/usr/bin/env bash\nprintf called > "$CURL_MARKER"\nexit 99\n',
                 encoding="utf-8",
+                newline="\n",
             )
             curl.chmod(curl.stat().st_mode | stat.S_IXUSR)
             env = {

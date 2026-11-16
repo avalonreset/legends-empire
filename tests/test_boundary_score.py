@@ -265,15 +265,23 @@ def test_included_rejects_symlink():
         real = wiki / "real.md"
         real.write_text("---\ntype: concept\n---\nbody\n")
         link = wiki / "link.md"
-        link.symlink_to(real)
+        has_symlink = False
+        try:
+            link.symlink_to(real)
+            has_symlink = True
+        except OSError as exc:
+            if getattr(exc, "winerror", None) != 1314:
+                raise
+            print("[SKIP] test_included_rejects_symlink: OS refused file symlink (WinError 1314)")
 
         original_root = bs.VAULT_ROOT
         bs.VAULT_ROOT = tmp
         try:
             ok_real = bs.included(real, {"type": "concept"})
-            ok_link = bs.included(link, {"type": "concept"})
             assert_true("real file included", ok_real)
-            assert_eq("symlink excluded", False, ok_link)
+            if has_symlink:
+                ok_link = bs.included(link, {"type": "concept"})
+                assert_eq("symlink excluded", False, ok_link)
         finally:
             bs.VAULT_ROOT = original_root
 

@@ -59,7 +59,15 @@ class LegacyLockRuntimeRaceTests(unittest.TestCase):
                 if component == "locks" and descriptor is not None and not swapped:
                     swapped = True
                     locks.rename(pinned)
-                    locks.symlink_to(outside, target_is_directory=True)
+                    try:
+                        locks.symlink_to(outside, target_is_directory=True)
+                    except OSError as exc:
+                        if getattr(exc, "winerror", None) == 1314 and os.name == "nt":
+                            import _winapi
+
+                            _winapi.CreateJunction(str(outside), str(locks))
+                        else:
+                            raise
                 return descriptor
 
             with (
@@ -76,6 +84,10 @@ class LegacyLockRuntimeRaceTests(unittest.TestCase):
             self.assertFalse((pinned / name).exists())
 
     def test_meta_parent_swap_cannot_redirect_release_or_canonical_unlock(self) -> None:
+        if os.name == "nt":
+            self.skipTest(
+                "NTFS pins parent directories against rename while child handles are open"
+            )
         with tempfile.TemporaryDirectory() as directory:
             temporary = Path(directory)
             plugin, vault, locks, target, name = self._fixture(temporary)

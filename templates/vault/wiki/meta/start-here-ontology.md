@@ -39,11 +39,13 @@ certified_on: 2026-11-14
 
 ## 2. Querying Facts
 
-Use `claude-empire ontology need` in automated scripts and agent workflows before taking actions:
+Use `ontology need` in automated scripts and agent workflows before taking actions (PATH- and CWD-independent via the router, or from the module checkout as current working directory):
 
 ```bash
 # Verify required facts are certified and fresh
-claude-empire ontology need --keys example-service.domain,example-service.phone
+python -m cto_legends --home <cto-legends-home> run legends-empire -- ontology need --vault <vault> --keys example-service.domain,example-service.phone
+# From the module source checkout (requires the repo root as CWD):
+python scripts/claude-empire.py ontology need --vault <vault> --keys example-service.domain,example-service.phone
 ```
 
 Exit codes:
@@ -55,11 +57,18 @@ Exit codes:
 
 ## 3. Proposing & Certifying
 
+`ontology propose` and `ontology certify` require `--generated-at <ISO-UTC>` and have no `--apply` flag; they write reversible transaction bundles into the derived cache under `.vault-meta/ontology/bundles/` for `transaction apply`.
+
 1. Generate alias proposals for unindexed notes:
    ```bash
-   claude-empire ontology propose
+   python -m cto_legends --home <cto-legends-home> run legends-empire -- ontology propose --vault <vault> --operation-id prop-1 --generated-at 2026-11-16T00:00:00Z
    ```
 2. Review and certify owner facts:
    ```bash
-   claude-empire ontology certify --keys example-service.domain --class owner --digest path/to/digest.md
+   python -m cto_legends --home <cto-legends-home> run legends-empire -- ontology certify --vault <vault> --keys example-service.domain --class owner --digest path/to/digest.md --operation-id cert-1 --generated-at 2026-11-16T00:00:00Z
+   ```
+3. Inspect and apply an emitted bundle:
+   ```bash
+   python -m cto_legends --home <cto-legends-home> run legends-empire -- transaction inspect --vault <vault> --bundle <bundle.json>
+   python -m cto_legends --home <cto-legends-home> run legends-empire -- transaction apply --vault <vault> --bundle <bundle.json> --approved-plan-sha256 <sha256>
    ```

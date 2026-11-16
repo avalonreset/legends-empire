@@ -23,8 +23,8 @@ remain member records. A release inventory is an ownership boundary, not
 permission to overwrite everything under a folder. Conflicting owner files
 are reported for reconciliation rather than replaced.
 
-Resolve the module through the single `cto-legends handoff legends-empire`
-router. The commands below use the installed module's `scripts/claude-empire.py`.
+Resolve the module through the single `python -m cto_legends --home <cto-legends-home> handoff legends-empire`
+router (or shorthand `cto-legends handoff legends-empire` when on `PATH`). You can run any command below from any working directory via `python -m cto_legends --home <cto-legends-home> run legends-empire -- <subcommand> ...`, or from the module checkout root (CWD) using `python scripts/claude-empire.py`.
 They do not acquire Home, authenticate GitHub, install packages, or grant a license.
 
 ## Layout and ownership
@@ -130,7 +130,7 @@ and checked for its bounded `type: handoff` record shape rather than frozen to i
 original bytes. Methods, scripts, guidance and other release entries remain
 digest-checked. Newly created customer/session records are outside the release inventory.
 
-The explicit approved plan covers bounded recoverable batches (at most 400 files
+The explicit approved plan covers bounded recoverable batches (at most 150 files
 each). An `installing` marker precedes writes; only a final verification of every
 selected file allows `installed`. Native routing refuses incomplete or changed
 managed installs. A failed run can leave completed batches, not a claim of whole

@@ -234,6 +234,12 @@ def test_intent_to_add_index_state_is_rejected_and_preserved() -> None:
 
 
 def test_executable_mode_drift_is_rejected_before_ref_update() -> None:
+    if os.name == "nt":
+        print(
+            "[SKIP] test_executable_mode_drift_is_rejected_before_ref_update: "
+            "Windows NTFS does not track POSIX executable mode bits"
+        )
+        return
     with tempfile.TemporaryDirectory() as td:
         root = make_repo(Path(td) / "vault")
         transaction(root)
@@ -249,6 +255,12 @@ def test_executable_mode_drift_is_rejected_before_ref_update() -> None:
 
 
 def test_executable_mode_drift_is_ignored_when_core_filemode_is_false() -> None:
+    if os.name == "nt":
+        print(
+            "[SKIP] test_executable_mode_drift_is_ignored_when_core_filemode_is_false: "
+            "Windows NTFS does not track POSIX executable mode bits"
+        )
+        return
     for false_value in ("false", "no", "off", "0"):
         with tempfile.TemporaryDirectory() as td:
             root = make_repo(Path(td) / "vault")
@@ -339,7 +351,15 @@ def test_operation_ids_and_transaction_directories_are_confined() -> None:
         outside = base / "outside"
         outside.mkdir()
         escape = root / ".vault-meta/transactions/escape"
-        escape.symlink_to(outside, target_is_directory=True)
+        try:
+            escape.symlink_to(outside, target_is_directory=True)
+        except OSError as exc:
+            if getattr(exc, "winerror", None) == 1314 and os.name == "nt":
+                import _winapi
+
+                _winapi.CreateJunction(str(outside), str(escape))
+            else:
+                raise
         expect_code(
             "UNSAFE_TRANSACTION_DIRECTORY",
             lambda: checkpoint_operation(root, "escape", run_lint=False),

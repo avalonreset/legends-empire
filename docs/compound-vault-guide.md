@@ -60,7 +60,7 @@ operation; never force an old plan through.
 
 One transaction content or predecessor file is limited to 64 MiB; aggregate
 new content and aggregate recovery backups are each limited to 128 MiB. A
-transaction has at most 1,024 writes and preflights its journal/result against
+transaction has at most 150 writes and preflights its journal/result against
 recovery's 8 MiB reader cap. The capture queue uses the same limit for reads and
 writes (8 MiB canonical JSON, at most 4,096 entries), preserving recoverability
 under bounded resources.

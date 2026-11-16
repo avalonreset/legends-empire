@@ -2,7 +2,7 @@
 
 ## Report a vulnerability
 
-Use GitHub [private vulnerability reporting](https://github.com/AgriciDaniel/claude-obsidian/security/advisories/new)
+Use GitHub [private vulnerability reporting](https://github.com/avalonreset/legends-empire/security/advisories/new)
 for the public canonical repository. If that form is unavailable, contact the
 repository or community maintainers through an existing private channel and
 request a secure handoff before sharing details. Do not place secrets, private

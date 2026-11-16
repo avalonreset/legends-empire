@@ -12,13 +12,17 @@ The ontology workflow consists of read-only queries and two-phase transaction bu
 2. **`ontology resolve <term>`** (or `--term <term>`): Resolves an entity ID (case-insensitive), alias, or title to its primary vault note.
 3. **`ontology need --keys <key1,key2>`**: Validates fact existence, freshness, and certification before executing automated actions.
 4. **`ontology ask "<question>"`** (or `--question "<question>"`): Suggests relevant entities, facts, and verification states for conversational queries.
-5. **`ontology propose [--scope <prefix>]`**: Emits reversible transaction bundle(s) proposing `entity_id`, `entity_type`, and `aliases` for untagged canonical entity notes, and reports any per-note `skipped` or `skipped_aliases` entries without aborting the run.
-6. **`ontology certify --keys ... --class owner|evidence [--secrets-root <dir>]`**: Prepares a transaction bundle adding facts to owner or evidence certification (verifying any `secret-ref:` pointers against `--secrets-root` by filename and variable name only).
+5. **`ontology propose --generated-at <ISO-UTC> [--vault <vault>] [--operation-id <id>] [--scope <prefix>] [--note-paths <p1,p2>] [--batch-size <N>]`**: Emits reversible transaction bundle(s) under `.vault-meta/ontology/bundles/` (derived bundle cache) proposing `entity_id`, `entity_type`, and `aliases` for untagged canonical entity notes, and reports any per-note `skipped` or `skipped_aliases` entries without aborting the run. Requires `--generated-at` and has no `--apply` flag.
+6. **`ontology certify --keys ... --class owner|evidence --generated-at <ISO-UTC> [--vault <vault>] [--operation-id <id>] [--digest <rel-path>] [--evidence-map <json>] [--note-paths <p1,p2>] [--secrets-root <dir>]`**: Prepares a transaction bundle under `.vault-meta/ontology/bundles/` (derived bundle cache) adding facts to owner or evidence certification (verifying any `secret-ref:` pointers against `--secrets-root` by filename and variable name only). Requires `--generated-at` and has no `--apply` flag.
 
-Applying mutating bundles is always gated through the transaction engine:
+Applying mutating bundles is always gated through the transaction engine (invoke via the PATH- and CWD-independent router, or from the module checkout with the repository root as current working directory):
 ```bash
-claude-empire transaction inspect --bundle <bundle.json>
-claude-empire transaction apply --bundle <bundle.json> --approved-plan-sha256 <sha256>
+python -m cto_legends --home <cto-legends-home> run legends-empire -- transaction inspect --vault <vault> --bundle <bundle.json>
+python -m cto_legends --home <cto-legends-home> run legends-empire -- transaction apply --vault <vault> --bundle <bundle.json> --approved-plan-sha256 <sha256>
+
+# Or from the module source checkout (requires the repo root as CWD):
+python scripts/claude-empire.py transaction inspect --vault <vault> --bundle <bundle.json>
+python scripts/claude-empire.py transaction apply --vault <vault> --bundle <bundle.json> --approved-plan-sha256 <sha256>
 ```
 
 ---

@@ -21,7 +21,6 @@ LEGACY_JOURNAL = "claude-obsidian.transaction-journal.v1"
 LEGACY_RESULT = "claude-obsidian.transaction-result.v1"
 
 
-@unittest.skipIf(os.name == "nt", "transaction recovery requires POSIX/WSL")
 class HistoricalRecoveryTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()

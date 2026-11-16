@@ -16,4 +16,4 @@ When editing:
 - Do not add secrets, private paths, unsupported capability claims, or duplicate
   command wrappers.
 
-Public canonical: https://github.com/AgriciDaniel/claude-obsidian
+Public canonical: https://github.com/avalonreset/legends-empire

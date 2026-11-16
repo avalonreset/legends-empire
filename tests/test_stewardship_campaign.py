@@ -17,7 +17,6 @@ sys.path.insert(0, str(ROOT))
 from claude_empire.transaction import TransactionError, apply_bundle, inspect_bundle
 
 
-@unittest.skipUnless(os.name == "posix", "Empire transaction writes require POSIX")
 class StewardshipCampaignTests(unittest.TestCase):
     def scan(self, vault):
         result = subprocess.run(

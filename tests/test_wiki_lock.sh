@@ -166,7 +166,14 @@ RC_NL=$( (wl acquire $'wiki/concepts/Foo\nbar.md' >/dev/null 2>&1); echo $? )
 assert_eq "acquire newline path rejected" "4" "$RC_NL"
 
 # ── path validation: carriage return rejected (v1.7.2; closes audit M4) ──────
-RC_CR=$( (wl acquire $'wiki/concepts/Foo\rbar.md' >/dev/null 2>&1); echo $? )
+case "$(uname -s 2>/dev/null || true)" in
+  MINGW*|MSYS*)
+    RC_CR=$( (PYTHONPATH="$ROOT${PYTHONPATH:+:$PYTHONPATH}" python3 -B -P -c 'import sys; from claude_empire import legacy_lock; raise SystemExit(legacy_lock.main(["acquire", "wiki/concepts/Foo\rbar.md"]))' >/dev/null 2>&1); echo $? )
+    ;;
+  *)
+    RC_CR=$( (wl acquire $'wiki/concepts/Foo\rbar.md' >/dev/null 2>&1); echo $? )
+    ;;
+esac
 assert_eq "acquire carriage-return path rejected" "4" "$RC_CR"
 
 # ── numeric inputs are validated before Bash arithmetic ──────────────────────────────
@@ -258,50 +265,53 @@ rmdir "$SANDBOX/.vault-meta/.wiki-lock.meta.d"
 SYMLINK_CASE="$SANDBOX/symlink-case"
 SYMLINK_OUTSIDE="$SANDBOX/symlink-outside"
 mkdir -p "$SYMLINK_CASE" "$SYMLINK_OUTSIDE"
-ln -s "$SYMLINK_OUTSIDE" "$SYMLINK_CASE/.vault-meta"
-RC_META_SYMLINK=$( (WIKI_LOCK_VAULT="$SYMLINK_CASE" bash "$LOCK_SH" list >/dev/null 2>&1); echo $? )
-assert_eq "symlinked vault metadata rejected" "3" "$RC_META_SYMLINK"
-assert_eq "symlinked vault metadata causes no outside writes" "0" "$(find "$SYMLINK_OUTSIDE" -mindepth 1 | awk 'END { print NR + 0 }')"
+if MSYS=winsymlinks:nativestrict ln -s "$SYMLINK_OUTSIDE" "$SYMLINK_CASE/.vault-meta" 2>/dev/null && [ -L "$SYMLINK_CASE/.vault-meta" ]; then
+  RC_META_SYMLINK=$( (WIKI_LOCK_VAULT="$SYMLINK_CASE" bash "$LOCK_SH" list >/dev/null 2>&1); echo $? )
+  assert_eq "symlinked vault metadata rejected" "3" "$RC_META_SYMLINK"
+  assert_eq "symlinked vault metadata causes no outside writes" "0" "$(find "$SYMLINK_OUTSIDE" -mindepth 1 | awk 'END { print NR + 0 }')"
 
-META_SENTINEL="$SYMLINK_OUTSIDE/sentinel"
-printf 'outside-must-not-change\n' > "$META_SENTINEL"
-META_SENTINEL_BEFORE=$(cksum < "$META_SENTINEL")
-RC_META_RELEASE=$( (WIKI_LOCK_VAULT="$SYMLINK_CASE" bash "$LOCK_SH" release wiki/Page.md >/dev/null 2>&1); echo $? )
-assert_eq "release rejects symlinked vault metadata" "3" "$RC_META_RELEASE"
-assert_eq "release leaves metadata symlink target unchanged" "$META_SENTINEL_BEFORE" "$(cksum < "$META_SENTINEL")"
+  META_SENTINEL="$SYMLINK_OUTSIDE/sentinel"
+  printf 'outside-must-not-change\n' > "$META_SENTINEL"
+  META_SENTINEL_BEFORE=$(cksum < "$META_SENTINEL")
+  RC_META_RELEASE=$( (WIKI_LOCK_VAULT="$SYMLINK_CASE" bash "$LOCK_SH" release wiki/Page.md >/dev/null 2>&1); echo $? )
+  assert_eq "release rejects symlinked vault metadata" "3" "$RC_META_RELEASE"
+  assert_eq "release leaves metadata symlink target unchanged" "$META_SENTINEL_BEFORE" "$(cksum < "$META_SENTINEL")"
 
-LOCK_SYMLINK_CASE="$SANDBOX/lock-symlink-case"
-LOCK_SYMLINK_OUTSIDE="$SANDBOX/lock-symlink-outside"
-mkdir -p "$LOCK_SYMLINK_CASE/.vault-meta" "$LOCK_SYMLINK_OUTSIDE"
-ln -s "$LOCK_SYMLINK_OUTSIDE" "$LOCK_SYMLINK_CASE/.vault-meta/locks"
-RC_LOCK_SYMLINK=$( (WIKI_LOCK_VAULT="$LOCK_SYMLINK_CASE" bash "$LOCK_SH" list >/dev/null 2>&1); echo $? )
-assert_eq "symlinked legacy lock directory rejected" "3" "$RC_LOCK_SYMLINK"
-assert_eq "symlinked legacy lock directory causes no outside writes" "0" "$(find "$LOCK_SYMLINK_OUTSIDE" -mindepth 1 | awk 'END { print NR + 0 }')"
+  LOCK_SYMLINK_CASE="$SANDBOX/lock-symlink-case"
+  LOCK_SYMLINK_OUTSIDE="$SANDBOX/lock-symlink-outside"
+  mkdir -p "$LOCK_SYMLINK_CASE/.vault-meta" "$LOCK_SYMLINK_OUTSIDE"
+  MSYS=winsymlinks:nativestrict ln -s "$LOCK_SYMLINK_OUTSIDE" "$LOCK_SYMLINK_CASE/.vault-meta/locks"
+  RC_LOCK_SYMLINK=$( (WIKI_LOCK_VAULT="$LOCK_SYMLINK_CASE" bash "$LOCK_SH" list >/dev/null 2>&1); echo $? )
+  assert_eq "symlinked legacy lock directory rejected" "3" "$RC_LOCK_SYMLINK"
+  assert_eq "symlinked legacy lock directory causes no outside writes" "0" "$(find "$LOCK_SYMLINK_OUTSIDE" -mindepth 1 | awk 'END { print NR + 0 }')"
 
-LOCK_SENTINEL="$LOCK_SYMLINK_OUTSIDE/sentinel"
-printf 'outside-locks-must-not-change\n' > "$LOCK_SENTINEL"
-LOCK_SENTINEL_BEFORE=$(cksum < "$LOCK_SENTINEL")
-RC_LOCK_RELEASE=$( (WIKI_LOCK_VAULT="$LOCK_SYMLINK_CASE" bash "$LOCK_SH" release wiki/Page.md >/dev/null 2>&1); echo $? )
-assert_eq "release rejects symlinked legacy lock directory" "3" "$RC_LOCK_RELEASE"
-assert_eq "release leaves lock-directory symlink target unchanged" "$LOCK_SENTINEL_BEFORE" "$(cksum < "$LOCK_SENTINEL")"
-RC_LOCK_CLEAR=$( (WIKI_LOCK_VAULT="$LOCK_SYMLINK_CASE" bash "$LOCK_SH" clear-stale --max-age 0 >/dev/null 2>&1); echo $? )
-assert_eq "clear-stale rejects symlinked legacy lock directory" "3" "$RC_LOCK_CLEAR"
-assert_eq "clear-stale leaves lock-directory symlink target unchanged" "$LOCK_SENTINEL_BEFORE" "$(cksum < "$LOCK_SENTINEL")"
+  LOCK_SENTINEL="$LOCK_SYMLINK_OUTSIDE/sentinel"
+  printf 'outside-locks-must-not-change\n' > "$LOCK_SENTINEL"
+  LOCK_SENTINEL_BEFORE=$(cksum < "$LOCK_SENTINEL")
+  RC_LOCK_RELEASE=$( (WIKI_LOCK_VAULT="$LOCK_SYMLINK_CASE" bash "$LOCK_SH" release wiki/Page.md >/dev/null 2>&1); echo $? )
+  assert_eq "release rejects symlinked legacy lock directory" "3" "$RC_LOCK_RELEASE"
+  assert_eq "release leaves lock-directory symlink target unchanged" "$LOCK_SENTINEL_BEFORE" "$(cksum < "$LOCK_SENTINEL")"
+  RC_LOCK_CLEAR=$( (WIKI_LOCK_VAULT="$LOCK_SYMLINK_CASE" bash "$LOCK_SH" clear-stale --max-age 0 >/dev/null 2>&1); echo $? )
+  assert_eq "clear-stale rejects symlinked legacy lock directory" "3" "$RC_LOCK_CLEAR"
+  assert_eq "clear-stale leaves lock-directory symlink target unchanged" "$LOCK_SENTINEL_BEFORE" "$(cksum < "$LOCK_SENTINEL")"
 
-# A lock-leaf symlink is unlinked as a directory entry; its target is never
-# opened, truncated, or removed.
-LEAF_CASE="$SANDBOX/leaf-symlink-case"
-LEAF_OUTSIDE="$SANDBOX/leaf-symlink-outside"
-LEAF_PATH="wiki/concepts/Leaf.md"
-LEAF_NAME="$(lock_digest "$LEAF_PATH").lock"
-mkdir -p "$LEAF_CASE/.vault-meta/locks" "$LEAF_OUTSIDE"
-printf 'outside-leaf-must-not-change\n' > "$LEAF_OUTSIDE/record"
-ln -s "$LEAF_OUTSIDE/record" "$LEAF_CASE/.vault-meta/locks/$LEAF_NAME"
-LEAF_BEFORE=$(cksum < "$LEAF_OUTSIDE/record")
-RC_LEAF_RELEASE=$( (WIKI_LOCK_VAULT="$LEAF_CASE" bash "$LOCK_SH" release "$LEAF_PATH" >/dev/null 2>&1); echo $? )
-assert_eq "release safely removes a lock-leaf symlink" "0" "$RC_LEAF_RELEASE"
-assert_true "release removes only the lock-leaf directory entry" test ! -e "$LEAF_CASE/.vault-meta/locks/$LEAF_NAME"
-assert_eq "release leaves lock-leaf target unchanged" "$LEAF_BEFORE" "$(cksum < "$LEAF_OUTSIDE/record")"
+  # A lock-leaf symlink is unlinked as a directory entry; its target is never
+  # opened, truncated, or removed.
+  LEAF_CASE="$SANDBOX/leaf-symlink-case"
+  LEAF_OUTSIDE="$SANDBOX/leaf-symlink-outside"
+  LEAF_PATH="wiki/concepts/Leaf.md"
+  LEAF_NAME="$(lock_digest "$LEAF_PATH").lock"
+  mkdir -p "$LEAF_CASE/.vault-meta/locks" "$LEAF_OUTSIDE"
+  printf 'outside-leaf-must-not-change\n' > "$LEAF_OUTSIDE/record"
+  MSYS=winsymlinks:nativestrict ln -s "$LEAF_OUTSIDE/record" "$LEAF_CASE/.vault-meta/locks/$LEAF_NAME"
+  LEAF_BEFORE=$(cksum < "$LEAF_OUTSIDE/record")
+  RC_LEAF_RELEASE=$( (WIKI_LOCK_VAULT="$LEAF_CASE" bash "$LOCK_SH" release "$LEAF_PATH" >/dev/null 2>&1); echo $? )
+  assert_eq "release safely removes a lock-leaf symlink" "0" "$RC_LEAF_RELEASE"
+  assert_true "release removes only the lock-leaf directory entry" test ! -e "$LEAF_CASE/.vault-meta/locks/$LEAF_NAME"
+  assert_eq "release leaves lock-leaf target unchanged" "$LEAF_BEFORE" "$(cksum < "$LEAF_OUTSIDE/record")"
+else
+  echo "SKIP symlinked metadata/lock tests: native symlinks unavailable without SeCreateSymbolicLinkPrivilege"
+fi
 
 # ── stress: 10 unique paths all acquire cleanly ──────────────────────────────
 i=1
