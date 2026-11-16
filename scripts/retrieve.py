@@ -223,7 +223,18 @@ def chunk_is_current(hit, chunk, page_path, page_hash_cache):
     return page_hash_cache[cache_key] == page_hash
 
 
+def _force_utf8_stdio() -> None:
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if callable(reconfigure):
+            try:
+                reconfigure(encoding="utf-8", errors="replace")
+            except (OSError, ValueError):
+                pass
+
+
 def main(argv=None):
+    _force_utf8_stdio()
     parser = argparse.ArgumentParser(description="Hybrid retrieval over the vault.")
     parser.add_argument("--vault", help="Explicit vault root")
     parser.add_argument("query", help="Natural-language query")

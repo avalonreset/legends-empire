@@ -1,3 +1,14 @@
+---
+title: Vault stewardship
+type: reference
+status: evergreen
+created: 2026-11-16
+updated: 2026-11-16
+tags:
+  - knowledge-pack
+  - stewardship
+---
+
 # Vault stewardship
 
 Stewardship keeps an Empire usable as work, evidence and decisions accumulate.

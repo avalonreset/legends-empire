@@ -1,3 +1,15 @@
+---
+title: What counts as stewardship evidence
+type: reference
+status: evergreen
+created: 2026-11-16
+updated: 2026-11-16
+tags:
+  - knowledge-pack
+  - stewardship
+  - verification
+---
+
 # What counts as stewardship evidence
 
 | Claim | Evidence needed |

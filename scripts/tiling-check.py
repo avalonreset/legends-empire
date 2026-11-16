@@ -619,7 +619,18 @@ def cmd_peek(ollama_url: str, model: str) -> int:
     return EXIT_OK
 
 
+def _force_utf8_stdio() -> None:
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if callable(reconfigure):
+            try:
+                reconfigure(encoding="utf-8", errors="replace")
+            except (OSError, ValueError):
+                pass
+
+
 def main(argv: list[str]) -> int:
+    _force_utf8_stdio()
     p = argparse.ArgumentParser()
     p.add_argument("--vault", help="Explicit vault root")
     p.add_argument(

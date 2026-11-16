@@ -201,6 +201,13 @@ def check(root: Path = ROOT) -> list[str]:
 
 
 if __name__ == "__main__":
+    for _stream in (sys.stdout, sys.stderr):
+        _reconf = getattr(_stream, "reconfigure", None)
+        if callable(_reconf):
+            try:
+                _reconf(encoding="utf-8", errors="replace")
+            except (OSError, ValueError):
+                pass
     parser = argparse.ArgumentParser(description="Offline release checks.")
     parser.add_argument("--root", type=Path, default=ROOT)
     options = parser.parse_args()

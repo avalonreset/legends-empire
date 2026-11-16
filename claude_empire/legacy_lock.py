@@ -682,7 +682,18 @@ def run(argv: Sequence[str], *, plugin_root: Path) -> int:
     raise AssertionError(f"unreachable command: {command}")
 
 
+def _force_utf8_stdio() -> None:
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if callable(reconfigure):
+            try:
+                reconfigure(encoding="utf-8", errors="replace")
+            except (OSError, ValueError):
+                pass
+
+
 def main(argv: Sequence[str] | None = None) -> int:
+    _force_utf8_stdio()
     arguments = tuple(sys.argv[1:] if argv is None else argv)
     plugin_root = Path(__file__).resolve().parents[1]
     try:

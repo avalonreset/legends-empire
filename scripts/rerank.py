@@ -558,7 +558,18 @@ def rerank(query, candidates, top_k=5, allow_remote=False, model=None):
     return ranked[:top_k]
 
 
+def _force_utf8_stdio() -> None:
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if callable(reconfigure):
+            try:
+                reconfigure(encoding="utf-8", errors="replace")
+            except (OSError, ValueError):
+                pass
+
+
 def main(argv=None):
+    _force_utf8_stdio()
     parser = argparse.ArgumentParser(description="Rerank chunk candidates by semantic similarity.")
     parser.add_argument("--vault", help="Explicit vault root")
     parser.add_argument("query", nargs="?", help="Query text")

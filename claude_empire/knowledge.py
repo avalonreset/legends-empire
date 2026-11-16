@@ -257,11 +257,22 @@ def attachment_bundle(vault_root: Path | str, manifest_path: Path | str, *, oper
     if len(tracked) > MAX_FILES:
         _fail("retained references exceed the pack limit; review an explicit migration")
     if index is None:
-        text = (f"# {manifest['module']}: {manifest['id']}\n\n"
+        date_str = stamp.date().isoformat()
+        text = (f"---\n"
+                f"title: \"{manifest['module']}: {manifest['id']}\"\n"
+                f"type: reference\n"
+                f"status: evergreen\n"
+                f"created: {date_str}\n"
+                f"updated: {date_str}\n"
+                f"tags:\n"
+                f"  - knowledge-pack\n"
+                f"  - {manifest['id']}\n"
+                f"---\n\n"
+                f"# {manifest['module']}: {manifest['id']}\n\n"
                 f"{manifest['ontology']['purpose']}\n\n"
                 f"Read the [reference shelf](reference/{quote(manifest['entrypoint'], safe='/')}). "
                 "It is a versioned offline snapshot of reusable module knowledge.\n\n"
-                f"Resolve the installed module through `cto-legends handoff {manifest['module']}`. "
+                f"Resolve the installed module through `python -m cto_legends --home <home> handoff {manifest['module']}`. "
                 "The installed version and this snapshot can differ; pack-state.json records the snapshot.\n\n"
                 "This index is yours to edit. Keep private campaigns, decisions and evidence in your existing "
                 "vault locations, or deliberately create a work/ folder beside this index. "

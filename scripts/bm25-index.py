@@ -798,7 +798,18 @@ def stats():
     }, indent=2))
 
 
+def _force_utf8_stdio() -> None:
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if callable(reconfigure):
+            try:
+                reconfigure(encoding="utf-8", errors="replace")
+            except (OSError, ValueError):
+                pass
+
+
 def main():
+    _force_utf8_stdio()
     parser = argparse.ArgumentParser(description="BM25 inverted index over wiki chunks.")
     parser.add_argument("--vault", help="Explicit vault root")
     sub = parser.add_subparsers(dest="cmd", required=True)

@@ -330,7 +330,18 @@ def run(top: int, want_json: bool, include_zero: bool, page_filter: str | None) 
     return EXIT_OK
 
 
+def _force_utf8_stdio() -> None:
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if callable(reconfigure):
+            try:
+                reconfigure(encoding="utf-8", errors="replace")
+            except (OSError, ValueError):
+                pass
+
+
 def main(argv: list[str]) -> int:
+    _force_utf8_stdio()
     p = argparse.ArgumentParser()
     p.add_argument("--vault", help="Explicit vault root")
     p.add_argument("--top", type=int, default=DEFAULT_TOP)

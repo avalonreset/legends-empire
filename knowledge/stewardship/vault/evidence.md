@@ -1,3 +1,15 @@
+---
+title: Provider evidence and canonical knowledge
+type: reference
+status: evergreen
+created: 2026-11-16
+updated: 2026-11-16
+tags:
+  - knowledge-pack
+  - stewardship
+  - evidence
+---
+
 # Provider evidence and canonical knowledge
 
 Keep the client's DataForSEO or Firecrawl evidence bank outside installed
@@ -17,7 +29,7 @@ These are separate states; do not automatically promote one into the next.
 4. Run `research-evidence plan` with the explicitly selected vault. Inspect the
    proposed inbox destination; an existing destination requires review.
 5. Reverify, stage without overwrite, and use the existing capture preview/apply
-   transaction on a supported filesystem. Native Windows remains read-only.
+   transaction on a supported local filesystem (POSIX, WSL, or native Windows NTFS).
 6. Read the immutable sources and prepare a separate semantic transaction only
    when an interpretation improves the client's knowledge. Cite those immutable
    locators and retain uncertainty, contradictory findings and incomplete states.

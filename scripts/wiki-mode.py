@@ -19,7 +19,6 @@ CLI:
   wiki-mode.py route TYPE NAME          # print suggested path for new content
                                         # TYPE: source|entity|concept|session|research
   wiki-mode.py id                       # mint a Zettelkasten ID (timestamp)
-  wiki-mode.py templates                # retired legacy command (use claude-empire.py knowledge)
 
 Exit codes:
   0: success
@@ -320,10 +319,21 @@ def route_path(mode, content_type, name, cfg):
     return validate_wiki_route(result)
 
 
+def _force_utf8_stdio() -> None:
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if callable(reconfigure):
+            try:
+                reconfigure(encoding="utf-8", errors="replace")
+            except (OSError, ValueError):
+                pass
+
+
 def main(argv=None):
+    _force_utf8_stdio()
     parser = argparse.ArgumentParser(description="Methodology-mode router for v1.8 Compound Vault.")
     parser.add_argument("--vault", help="Explicit vault root (overrides environment and cwd discovery)")
-    sub = parser.add_subparsers(dest="cmd", required=True)
+    sub = parser.add_subparsers(dest="cmd", required=True, metavar="{get,set,config,route,id}")
 
     sub.add_parser("get", help="Print current mode")
     sub.add_parser("config", help="Print full config JSON")
@@ -342,7 +352,7 @@ def main(argv=None):
                           help="Preview routing under MODE without writing mode.json (default: use current vault mode)")
 
     sub.add_parser("id", help="Mint a Zettelkasten ID (timestamp)")
-    sub.add_parser("templates", help="Retired legacy command (templates now live in knowledge packs)")
+    sub.add_parser("templates")
 
     # Accept --vault after the subcommand as well as before it. Extract it in a
     # tiny pre-pass, then let the existing subparser validate everything else.

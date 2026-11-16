@@ -1,3 +1,15 @@
+---
+title: Reusable operating records
+type: reference
+status: evergreen
+created: 2026-11-16
+updated: 2026-11-16
+tags:
+  - knowledge-pack
+  - stewardship
+  - records
+---
+
 # Reusable operating records
 
 Adapt these templates when a real record is needed. Do not create empty

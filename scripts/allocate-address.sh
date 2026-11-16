@@ -43,11 +43,13 @@ if [ "$MODE" = "disabled" ]; then
 fi
 
 PYTHONPATH="$PLUGIN_ROOT${PYTHONPATH:+:$PYTHONPATH}" python3 - "$EXPLICIT_VAULT" "$PLUGIN_ROOT" <<'PY'
+import os
 import re
+import stat
 import sys
 from pathlib import Path
 
-from claude_empire.paths import VaultSelectionError, resolve_vault_root
+from claude_empire.paths import VaultSelectionError, is_name_surrogate, resolve_vault_root
 from claude_empire.transaction import TransactionError, read_vault_regular
 
 explicit = sys.argv[1] or None
@@ -74,12 +76,39 @@ if raw is not None:
     print(int(value))
     raise SystemExit(0)
 
+
+def _is_unaliased_dir(path: Path) -> bool:
+    try:
+        st = os.lstat(path)
+    except OSError:
+        return False
+    return not is_name_surrogate(st) and stat.S_ISDIR(st.st_mode)
+
+
+def _is_unaliased_regular_file(path: Path) -> bool:
+    try:
+        st = os.lstat(path)
+    except OSError:
+        return False
+    return not is_name_surrogate(st) and stat.S_ISREG(st.st_mode)
+
+
 highest = 0
 wiki = root / "wiki"
-if wiki.is_dir() and not wiki.is_symlink():
-    for page in sorted(wiki.rglob("*.md")):
-        if page.is_symlink() or not page.is_file():
-            continue
+if _is_unaliased_dir(wiki):
+    pages: list[Path] = []
+    for current, dirnames, filenames in os.walk(wiki, followlinks=False):
+        current_path = Path(current)
+        dirnames[:] = sorted(
+            d for d in dirnames if _is_unaliased_dir(current_path / d)
+        )
+        for fname in sorted(filenames):
+            if not fname.lower().endswith(".md"):
+                continue
+            page = current_path / fname
+            if _is_unaliased_regular_file(page):
+                pages.append(page)
+    for page in sorted(pages):
         try:
             page.resolve(strict=True).relative_to(wiki.resolve(strict=True))
             text = page.read_text(encoding="utf-8", errors="replace")

@@ -372,6 +372,18 @@ def command_release_gates(args: argparse.Namespace) -> int:
     _emit(report)
     if not report["ok"]:
         return 1
+    if args.execute and args.gate:
+        selected_ids = set(args.gate)
+        by_id = {item["id"]: item for item in report.get("gates", [])}
+        return (
+            0
+            if selected_ids
+            and all(
+                by_id.get(gate_id, {}).get("status") == "passed"
+                for gate_id in selected_ids
+            )
+            else 1
+        )
     return 0 if not args.execute or report["ready"] else 1
 
 
@@ -1737,7 +1749,7 @@ def _force_utf8_stdio() -> None:
         if reconfigure is None:
             continue
         try:
-            reconfigure(encoding="utf-8", newline="")
+            reconfigure(encoding="utf-8", errors="replace", newline="")
         except (OSError, ValueError):
             pass
 

@@ -1,3 +1,15 @@
+---
+title: The stewardship operating loop
+type: reference
+status: evergreen
+created: 2026-11-16
+updated: 2026-11-16
+tags:
+  - knowledge-pack
+  - stewardship
+  - playbook
+---
+
 # The stewardship operating loop
 
 ## 1. Establish the goal
@@ -30,8 +42,8 @@ user's instructions or the agent's tools.
 Create or update one Markdown campaign with exact paths, expected hashes,
 proposed changes and acceptance criteria. For authorized supported writes,
 prepare an Empire transaction, inspect its actual content and apply the
-reviewed hash. Existing writes are limited to supported `wiki/` content on
-POSIX or WSL. Scanning covers a broader scope. State that boundary honestly.
+reviewed hash. Existing writes are limited to supported vault paths on
+POSIX, WSL, or native Windows local NTFS. Scanning covers a broader scope. State that boundary honestly.
 
 Resolve project status through evidence: keep active, record a blocker,
 propose a next action, or identify the decision needed from the owner. Do not
