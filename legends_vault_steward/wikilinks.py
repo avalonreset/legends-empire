@@ -132,3 +132,31 @@ def resolve_notes(notes: dict[str, NoteRecord]) -> dict[str, list[str]]:
         if not note.inbound_from:
             note.inbound_from = []
     return index
+
+
+def count_unresolved_to_unreadable(notes: dict[str, NoteRecord], unreadable_paths: list[str]) -> dict[str, int]:
+    """Count unresolved outbound links that would resolve to each unreadable path."""
+    if not unreadable_paths:
+        return {}
+    unreadable_set = set(unreadable_paths)
+    combined: dict[str, NoteRecord] = dict(notes)
+    for rel in unreadable_paths:
+        if rel not in combined:
+            combined[rel] = NoteRecord(
+                path=rel,
+                abs_path=rel,
+                sha256="",
+                bytes=0,
+                mtime_ns=0,
+                words=0,
+            )
+    index = build_indexes(combined)
+    counts: dict[str, int] = {rel: 0 for rel in unreadable_paths}
+    for path, note in notes.items():
+        for link in note.outbound:
+            if link.status != "unresolved":
+                continue
+            status, resolved, _ = resolve_target(link.target, path, index, link.kind)
+            if status == "resolved" and resolved in unreadable_set:
+                counts[resolved] = counts.get(resolved, 0) + 1
+    return counts
