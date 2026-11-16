@@ -49,7 +49,7 @@ def high_key(finding: dict[str, Any]) -> str:
 
 
 def merge_and_dedupe_findings(*finding_lists: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    seen: set[tuple[Any, ...]] = set()
+    seen: dict[tuple[Any, ...], int] = {}
     out: list[dict[str, Any]] = []
     for flist in finding_lists:
         for f in flist:
@@ -66,8 +66,13 @@ def merge_and_dedupe_findings(*finding_lists: list[dict[str, Any]]) -> list[dict
                 f.get("sha256") or "",
             )
             if key in seen:
+                idx = seen[key]
+                old_sev = SEVERITY_ORDER.get(str(out[idx].get("severity")), 9)
+                new_sev = SEVERITY_ORDER.get(str(f.get("severity")), 9)
+                if new_sev < old_sev:
+                    out[idx] = f
                 continue
-            seen.add(key)
+            seen[key] = len(out)
             out.append(f)
     out.sort(
         key=lambda item: (
@@ -239,8 +244,12 @@ def run_digest(
         profile=profile,
     )
 
+    obs_findings = [
+        f for f in obs_report.get("findings", [])
+        if not str(f.get("code", "")).startswith("law.")
+    ]
     merged_findings = merge_and_dedupe_findings(
-        obs_report.get("findings", []),
+        obs_findings,
         ea_report.get("findings", []),
     )
 

@@ -10,6 +10,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
+from .config import validate_conflict_keys
 from .models import Finding, SEVERITY_ORDER
 from .parse import FENCE_RE, iter_unfenced_lines, parse_frontmatter
 from .paths import (
@@ -27,7 +28,6 @@ MAX_LAW_LINE_CHARS = 4096
 EXPIRED_DIRECTIVE_RE = re.compile(
     r"(?i)\b(?:through|until|ends?|expires?)\b[ \t]{1,16}[*_]{0,6}(\d{4}-\d{2}-\d{2})\b"
 )
-_NESTED_QUANTIFIER_RE = re.compile(r"([+*?]|\{\d+,?\d*\})\s*\)[+*?{]")
 _SECRET_LIKE_RE = re.compile(
     r"(?i)(?:^sk_live_|^rk_live_|^gh[pousr]_|^aiza|^akia|^xox[baprs]-|^eyJ[A-Za-z0-9_-]{10,}|bearer\s+\S+)"
 )
@@ -216,34 +216,13 @@ def _extract_paragraphs(text: str) -> list[tuple[int, str]]:
     return paragraphs
 
 
-def _validate_conflict_keys(conflict_keys: list[Any]) -> list[tuple[str, re.Pattern[str]]]:
-    compiled_list: list[tuple[str, re.Pattern[str]]] = []
-    for ck in conflict_keys:
-        if not isinstance(ck, dict) or not isinstance(ck.get("id"), str) or not ck["id"].strip():
-            raise ValueError("each conflict_keys item requires a non-empty string id")
-        key_id = ck["id"].strip()
-        pattern = ck.get("pattern")
-        if not isinstance(pattern, str) or not pattern or len(pattern) > 256:
-            raise ValueError(f"conflict_keys '{key_id}' pattern must be a 1..256 char string")
-        if _NESTED_QUANTIFIER_RE.search(pattern):
-            raise ValueError(f"conflict_keys '{key_id}' pattern contains a nested quantifier")
-        try:
-            compiled = re.compile(pattern)
-        except re.error as exc:
-            raise ValueError(f"conflict_keys '{key_id}' invalid regex: {exc}") from exc
-        if compiled.groups != 1:
-            raise ValueError(f"conflict_keys '{key_id}' pattern must have exactly 1 capture group")
-        compiled_list.append((key_id, compiled))
-    return compiled_list
-
-
 def evaluate_laws(
     files: list[LawFile],
     config: dict[str, Any],
     scan_date: date,
 ) -> list[Finding]:
     findings: list[Finding] = []
-    compiled_keys = _validate_conflict_keys(config.get("conflict_keys", []))
+    compiled_keys = validate_conflict_keys(config.get("conflict_keys", []))
 
     # 1. law.expired_directive
     for lf in files:

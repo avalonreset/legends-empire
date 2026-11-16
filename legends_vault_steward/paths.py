@@ -21,11 +21,15 @@ _WIN_DEVICE_NAMES = frozenset(
         "PRN",
         "AUX",
         "NUL",
+        "CONIN$",
+        "CONOUT$",
         *(f"COM{i}" for i in range(1, 10)),
         *(f"LPT{i}" for i in range(1, 10)),
     }
 )
 _DRIVE_REL_RE = re.compile(r"^[A-Za-z]:(?![/\\])")
+_DRIVE_PREFIX_RE = re.compile(r"^[A-Za-z]:(?=[/\\])")
+_UNC_PREFIX_RE = re.compile(r"^[/\\]{2}")
 
 
 def get_home_dir() -> Path:
@@ -59,29 +63,39 @@ def is_disallowed_path_token(
     allow_tilde: bool = True,
     reject_env: bool = True,
 ) -> str | None:
-    s = str(raw).strip()
+    s_raw = str(raw)
+    s = s_raw.strip()
     if not s:
         return "empty path"
-    if "\x00" in s:
+    if "\x00" in s_raw:
         return "null byte in path"
-    if s.startswith("\\\\") or s.startswith("//"):
+    if _UNC_PREFIX_RE.match(s) or s.startswith(("\\??\\", "/??/")) or re.match(r"^[/\\]\?\?[/\\]", s):
         return "UNC path is not permitted"
     if _DRIVE_REL_RE.match(s):
         return "drive-relative path is not permitted"
+    rest = _DRIVE_PREFIX_RE.sub("", s, count=1)
+    if ":" in rest:
+        return "colon or alternate data stream in path is not permitted"
     if s.startswith("~"):
         if not allow_tilde:
             return "home-relative path is not permitted here"
         if not (s == "~" or s.startswith("~/") or s.startswith("~\\")):
             return "other-user home expansion is not permitted"
-    parts = [p for p in re.split(r"[/\\]+", s) if p]
+    parts = [p for p in re.split(r"[/\\]+", rest) if p]
     for part in parts:
-        stem = part.split(".", 1)[0].upper()
+        seg = part if part in {".", ".."} else part.rstrip(" .")
+        if not seg:
+            return f"trailing dot or space in path segment is not permitted: {part}"
+        stem = seg.split(".", 1)[0].upper()
         if stem in _WIN_DEVICE_NAMES:
             return f"Windows device name is not permitted: {part}"
     if reject_env and parts:
-        leaf = parts[-1].lower()
+        leaf = parts[-1].rstrip(" .").lower()
         if leaf == ".env" or leaf.startswith(".env.") or leaf.endswith(".env"):
             return ".env files are not permitted"
+    for part in parts:
+        if part not in {".", ".."} and part.rstrip(" .") != part:
+            return f"trailing dot or space in path segment is not permitted: {part}"
     return None
 
 
@@ -218,6 +232,18 @@ def resolve_vault_root(raw: str | os.PathLike[str]) -> VaultRoot:
 
 def _is_contained(path: Path, root: Path) -> bool:
     try:
+        raw_str = str(path)
+        if _UNC_PREFIX_RE.match(raw_str) or raw_str.startswith(("\\??\\", "/??/")):
+            return False
+        if os.path.splitdrive(raw_str)[0].startswith(("\\\\", "//")):
+            return False
+        abs_str = os.path.abspath(path)
+        if _UNC_PREFIX_RE.match(abs_str) or abs_str.startswith(("\\??\\", "/??/")):
+            return False
+        path_drive = os.path.splitdrive(abs_str)[0]
+        root_drive = os.path.splitdrive(str(root))[0] or os.path.splitdrive(os.path.abspath(root))[0]
+        if path_drive.startswith(("\\\\", "//")) or path_drive.upper() != root_drive.upper():
+            return False
         path.resolve().relative_to(root.resolve())
         return True
     except (OSError, ValueError):
