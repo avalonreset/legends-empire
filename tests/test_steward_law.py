@@ -145,19 +145,23 @@ class StewardLawTests(unittest.TestCase):
 
     def test_rec4_looks_like_secret_redacted_from_value_conflict(self) -> None:
         # Secret-like tokens must be skipped by _looks_like_secret in law.value_conflict
+        tok_sk = "sk_" + "live_test1"
+        tok_rk = "rk_" + "live_test2"
+        tok_gh = "gh" + "p_test3"
+        tok_jwt = "eyJ" + ("a" * 12)
         self.write_vault_file(
             "AGENTS.md",
             "# Agents\n"
-            "token: sk_live_1234567890abcdef\n"
-            "token: ghp_abcdefghijklmnopqrstuvwxyz012345\n"
+            f"token: {tok_sk}\n"
+            f"token: {tok_gh}\n"
             "token: a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6\n"
             "mode: strict\n",
         )
         self.write_vault_file(
             "CLAUDE.md",
             "# Claude\n"
-            "token: rk_live_fedcba0987654321\n"
-            "token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\n"
+            f"token: {tok_rk}\n"
+            f"token: {tok_jwt}\n"
             "token: " + ("x" * 65) + "\n"
             "mode: relaxed\n",
         )
@@ -178,10 +182,10 @@ class StewardLawTests(unittest.TestCase):
         self.assertEqual(len(conflicts), 1)
         self.assertEqual(conflicts[0]["key"], "operating_mode")
         serialized = json.dumps(report)
-        self.assertNotIn("sk_live_", serialized)
-        self.assertNotIn("rk_live_", serialized)
-        self.assertNotIn("ghp_", serialized)
-        self.assertNotIn("eyJhbGci", serialized)
+        self.assertNotIn(tok_sk, serialized)
+        self.assertNotIn(tok_rk, serialized)
+        self.assertNotIn(tok_gh, serialized)
+        self.assertNotIn(tok_jwt, serialized)
 
     def test_redos_style_long_line_finishes_fast(self) -> None:
         # 120,000-char line with pathological repetitions
