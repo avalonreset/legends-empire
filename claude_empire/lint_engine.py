@@ -45,6 +45,7 @@ import json
 import os
 import posixpath
 import re
+import stat
 import sys
 import urllib.parse
 from dataclasses import dataclass
@@ -57,6 +58,7 @@ if __package__ in {None, ""}:
 
 from claude_empire.gitignore import GitignoreMatcher
 from claude_empire.json_utils import strict_json_loads
+from claude_empire.paths import is_name_surrogate
 
 REPORT_VERSION = 1
 ENGINE_VERSION = "1.1.1"
@@ -399,23 +401,95 @@ def _page_metadata(path: Path, relative: str, wiki_prefix: str) -> _Page:
     )
 
 
-def _walk_files(root: Path) -> list[Path]:
+def _format_os_error(exc: OSError) -> str:
+    winerror = getattr(exc, "winerror", None)
+    if winerror is not None and exc.strerror:
+        detail = f"[WinError {winerror}] {exc.strerror}"
+    else:
+        detail = exc.strerror or str(exc)
+    return f"unreadable path ({exc.__class__.__name__}): {detail}"
+
+
+def _is_unaliased_dir(path: Path) -> bool:
+    try:
+        st = os.lstat(path)
+    except OSError:
+        return False
+    return not is_name_surrogate(st) and stat.S_ISDIR(st.st_mode)
+
+
+def _walk_files(
+    root: Path,
+    exclude_patterns: Sequence[str] = (),
+    *,
+    read_errors: list[dict[str, str]] | None = None,
+    excluded_counter: list[int] | None = None,
+) -> list[Path]:
     files: list[Path] = []
-    for current, dirnames, filenames in os.walk(root, followlinks=False):
-        current_path = Path(current)
-        dirnames[:] = sorted(
-            (
-                name
-                for name in dirnames
-                if name not in _IGNORED_WALK_DIRS
-                and not (name.startswith(".") and name not in _DOT_DIR_KEEPLIST)
-                and not (current_path / name).is_symlink()
-            ),
-            key=lambda value: (value.casefold(), value),
+
+    def _record_error(target: Path, exc: OSError) -> None:
+        if read_errors is None:
+            return
+        try:
+            rel = target.relative_to(root).as_posix()
+        except ValueError:
+            rel = target.as_posix()
+        if _is_excluded(rel, exclude_patterns) or _is_excluded(f"{rel}/", exclude_patterns):
+            return
+        read_errors.append(
+            {
+                "path": rel,
+                "code": "lint.unreadable_path",
+                "message": _format_os_error(exc),
+            }
         )
+
+    def _on_walk_error(exc: OSError) -> None:
+        target = Path(exc.filename) if exc.filename else root
+        _record_error(target, exc)
+
+    for current, dirnames, filenames in os.walk(
+        root, followlinks=False, onerror=_on_walk_error
+    ):
+        current_path = Path(current)
+        kept_dirs: list[str] = []
+        for name in sorted(dirnames, key=lambda value: (value.casefold(), value)):
+            if name in _IGNORED_WALK_DIRS or (
+                name.startswith(".") and name not in _DOT_DIR_KEEPLIST
+            ):
+                continue
+            dir_path = current_path / name
+            rel_dir = dir_path.relative_to(root).as_posix()
+            if _is_excluded(rel_dir, exclude_patterns):
+                if excluded_counter is not None:
+                    excluded_counter[0] += 1
+                continue
+            try:
+                dir_stat = os.lstat(dir_path)
+            except OSError as exc:
+                _record_error(dir_path, exc)
+                continue
+            if is_name_surrogate(dir_stat) or not stat.S_ISDIR(dir_stat.st_mode):
+                continue
+            kept_dirs.append(name)
+        dirnames[:] = kept_dirs
+
         for filename in sorted(filenames, key=lambda value: (value.casefold(), value)):
             path = current_path / filename
-            if path.is_symlink() or not path.is_file():
+            rel_file = path.relative_to(root).as_posix()
+            if _is_excluded(rel_file, exclude_patterns):
+                if excluded_counter is not None:
+                    excluded_counter[0] += 1
+                continue
+            try:
+                lstat_res = os.lstat(path)
+                if is_name_surrogate(lstat_res):
+                    continue
+                stat_res = os.stat(path)
+                if not stat.S_ISREG(stat_res.st_mode):
+                    continue
+            except OSError as exc:
+                _record_error(path, exc)
                 continue
             files.append(path)
     return sorted(
@@ -425,9 +499,9 @@ def _walk_files(root: Path) -> list[Path]:
 
 def _wiki_location(root: Path) -> tuple[Path, str]:
     candidate = root / "wiki"
-    if candidate.is_dir() and not candidate.is_symlink():
+    if _is_unaliased_dir(candidate):
         return candidate, "wiki"
-    if root.name.casefold() == "wiki" and root.is_dir():
+    if root.name.casefold() == "wiki" and _is_unaliased_dir(root):
         return root, "."
     return candidate, "wiki"
 
@@ -1009,17 +1083,23 @@ def lint_vault(
         raise ValueError("as_of must be an ISO date, date object, or null")
     patterns, config_exclude_patterns, configuration_errors = _load_allowlist(vault_root)
 
-    all_paths = _walk_files(root_path)
     exclude_patterns = tuple(
         sorted(
             {*_normalize_exclude_patterns(exclude), *config_exclude_patterns},
             key=_path_sort_key,
         )
     )
-    excluded_paths = 0
+    excluded_counter = [0]
+    read_errors: list[dict[str, str]] = []
+    all_paths = _walk_files(
+        root_path,
+        exclude_patterns,
+        read_errors=read_errors,
+        excluded_counter=excluded_counter,
+    )
+    excluded_paths = excluded_counter[0]
     pages_by_path: dict[str, _Page] = {}
     targets: list[_Target] = []
-    read_errors: list[dict[str, str]] = []
     for path in all_paths:
         relative = path.relative_to(root_path).as_posix()
         if _is_excluded(relative, exclude_patterns):
@@ -1030,10 +1110,18 @@ def lint_vault(
             try:
                 page = _page_metadata(path, relative, wiki_prefix)
                 pages_by_path[relative] = page
-            except (OSError, UnicodeError) as exc:
+            except UnicodeError as exc:
                 read_errors.append(
                     {
                         "path": relative,
+                        "message": f"unable to read Markdown: {exc.__class__.__name__}",
+                    }
+                )
+            except OSError as exc:
+                read_errors.append(
+                    {
+                        "path": relative,
+                        "code": "lint.unreadable_path",
                         "message": f"unable to read Markdown: {exc.__class__.__name__}",
                     }
                 )
@@ -1043,7 +1131,7 @@ def lint_vault(
         wiki_pages = sorted(
             pages_by_path.values(), key=lambda page: _path_sort_key(page.path)
         )
-    elif wiki_dir.is_dir():
+    elif _is_unaliased_dir(wiki_dir):
         wiki_pages = sorted(
             (page for page in pages_by_path.values() if page.is_wiki_page),
             key=lambda page: _path_sort_key(page.path),
@@ -1148,10 +1236,10 @@ def lint_vault(
         if len(group) < 2:
             continue
         ordered = sorted(group, key=lambda page: _path_sort_key(page.path))
-        # Directory-local `_index.md` files are an intentional Obsidian
-        # convention. An unsafe unqualified `[[_index]]` still appears in
-        # `ambiguous_targets`; path-qualified links remain noise-free.
-        if PurePosixPath(ordered[0].path).stem.casefold() == "_index":
+        # Directory-local `_index.md` and `index.md` files are intentional
+        # conventions. An unsafe unqualified `[[_index]]` or `[[index]]` still
+        # appears in `ambiguous_targets`; path-qualified links remain noise-free.
+        if PurePosixPath(ordered[0].path).stem.casefold() in {"_index", "index"}:
             continue
         duplicate_basenames.append(
             {
@@ -1391,7 +1479,18 @@ def render_markdown(report: dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
+def _force_utf8_stdio() -> None:
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if callable(reconfigure):
+            try:
+                reconfigure(encoding="utf-8", errors="replace")
+            except (OSError, ValueError):
+                pass
+
+
 def main(argv: Sequence[str] | None = None) -> int:
+    _force_utf8_stdio()
     parser = argparse.ArgumentParser(
         description="Lint an Obsidian wiki without modifying it"
     )
