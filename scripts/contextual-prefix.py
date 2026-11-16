@@ -1014,7 +1014,18 @@ def process_selection(args, pages, *, root_fd=None, meta_fd=None):
     return EXIT_OK
 
 
+def _force_utf8_stdio() -> None:
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if callable(reconfigure):
+            try:
+                reconfigure(encoding="utf-8", errors="replace")
+            except (OSError, ValueError):
+                pass
+
+
 def main():
+    _force_utf8_stdio()
     parser = argparse.ArgumentParser(description="Chunk + contextualize wiki pages.")
     parser.add_argument("--vault", help="Explicit vault root")
     parser.add_argument(
