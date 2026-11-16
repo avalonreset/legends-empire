@@ -293,6 +293,10 @@ tags:
                     os.O_WRONLY | os.O_CREAT | os.O_EXCL,
                     0o600,
                 )
+            except UnicodeDecodeError:
+                self.skipTest(
+                    "Windows os.open rejects byte paths that are not valid UTF-8"
+                )
             except OSError as exc:
                 if exc.errno in {errno.EILSEQ, errno.EINVAL}:
                     self.skipTest(
@@ -447,7 +451,15 @@ tags:
             (outside / "lint-allowlist.json").write_text(
                 json.dumps(["Gone"]), encoding="utf-8"
             )
-            (copy / ".vault-meta").symlink_to(outside, target_is_directory=True)
+            try:
+                (copy / ".vault-meta").symlink_to(outside, target_is_directory=True)
+            except OSError as exc:
+                if getattr(exc, "winerror", None) == 1314 and os.name == "nt":
+                    import _winapi
+
+                    _winapi.CreateJunction(str(outside), str(copy / ".vault-meta"))
+                else:
+                    raise
             report = lint_engine.lint_vault(copy, as_of="2026-07-11")
         self.assertTrue(report["configuration_errors"])
         self.assertIn("Gone", {item["target"] for item in report["dead_links"]})

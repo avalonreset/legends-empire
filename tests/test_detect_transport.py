@@ -9,6 +9,7 @@ import os
 import shutil
 import stat
 import subprocess
+import sys
 import tempfile
 import time
 import unittest
@@ -20,12 +21,43 @@ SCRIPT = ROOT / "scripts" / "detect-transport.sh"
 REQUIRED_TOOLS = ("python3", "sed", "cat", "chmod", "mv", "mkdir", "mktemp", "rm")
 
 
+def _git_bash() -> str:
+    if os.name == "nt":
+        for candidate in (
+            Path(r"C:\Program Files\Git\bin\bash.exe"),
+            Path(r"C:\Program Files\Git\usr\bin\bash.exe"),
+            Path(r"C:\Program Files (x86)\Git\bin\bash.exe"),
+        ):
+            if candidate.is_file():
+                return str(candidate)
+        for directory in os.environ.get("PATH", "").split(os.pathsep):
+            if not directory:
+                continue
+            lowered = directory.lower()
+            if "system32" in lowered or "windowsapps" in lowered:
+                continue
+            candidate = Path(directory) / "bash.exe"
+            if candidate.is_file():
+                return str(candidate)
+        raise unittest.SkipTest("Git Bash is required on Windows")
+    return shutil.which("bash") or "/bin/bash"
+
+
 def _tool_path(directory: Path) -> str:
     for name in REQUIRED_TOOLS:
         source = shutil.which(name)
         if source is None:
             raise unittest.SkipTest(f"required test tool is unavailable: {name}")
-        (directory / name).symlink_to(source)
+        try:
+            (directory / name).symlink_to(source)
+        except OSError as exc:
+            if getattr(exc, "winerror", None) == 1314:
+                raise unittest.SkipTest(
+                    "OS refused file symlink creation (WinError 1314)"
+                ) from exc
+            raise
+    if os.name == "nt":
+        return f"{directory}{os.pathsep}{Path(sys.executable).parent}"
     return str(directory)
 
 
@@ -67,7 +99,7 @@ def _run(
     if extra_env:
         env.update(extra_env)
     return subprocess.run(
-        ["/bin/bash", str(SCRIPT), *arguments],
+        [_git_bash(), SCRIPT.as_posix(), *arguments],
         cwd=vault,
         env=env,
         capture_output=True,

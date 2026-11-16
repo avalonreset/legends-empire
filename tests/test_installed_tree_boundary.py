@@ -35,10 +35,33 @@ PRODUCT_DIRS = (
     "claude_empire",
     "config",
     "hooks",
+    "legends_vault_steward",
     "scripts",
     "skills",
     "templates",
 )
+
+
+def _git_bash() -> str:
+    if os.name == "nt":
+        for candidate in (
+            Path(r"C:\Program Files\Git\bin\bash.exe"),
+            Path(r"C:\Program Files\Git\usr\bin\bash.exe"),
+            Path(r"C:\Program Files (x86)\Git\bin\bash.exe"),
+        ):
+            if candidate.is_file():
+                return str(candidate)
+        for directory in os.environ.get("PATH", "").split(os.pathsep):
+            if not directory:
+                continue
+            lowered = directory.lower()
+            if "system32" in lowered or "windowsapps" in lowered:
+                continue
+            candidate = Path(directory) / "bash.exe"
+            if candidate.is_file():
+                return str(candidate)
+        raise unittest.SkipTest("Git Bash is required on Windows")
+    return shutil.which("bash") or "/bin/bash"
 
 
 def copy_product(destination: Path) -> None:
@@ -121,10 +144,14 @@ class InstalledTreeBoundaryTests(unittest.TestCase):
 
             home = temporary / "home"
             home.mkdir()
-            environment = os.environ.copy()
+            bash = _git_bash()
+            environment = {k: v for k, v in os.environ.items() if k.lower() != "path"}
             environment.pop("PYTHONDONTWRITEBYTECODE", None)
             environment.pop("PYTHONPYCACHEPREFIX", None)
             environment.pop("PYTHONPATH", None)
+            environment["PATH"] = (
+                f"{Path(sys.executable).parent}{os.pathsep}{os.environ.get('PATH', '')}"
+            )
             environment["HOME"] = str(home)
             environment["CLAUDE_PLUGIN_ROOT"] = str(installed)
             environment["CLAUDE_EMPIRE_VAULT"] = str(vault)
@@ -138,8 +165,8 @@ class InstalledTreeBoundaryTests(unittest.TestCase):
                 (
                     (
                         [
-                            "bash",
-                            str(installed / "scripts/setup-dragonscale.sh"),
+                            bash,
+                            (installed / "scripts/setup-dragonscale.sh").as_posix(),
                             "--vault",
                             str(vault),
                             "--check",
@@ -148,8 +175,8 @@ class InstalledTreeBoundaryTests(unittest.TestCase):
                     ),
                     (
                         [
-                            "bash",
-                            str(installed / "scripts/setup-mode.sh"),
+                            bash,
+                            (installed / "scripts/setup-mode.sh").as_posix(),
                             "--vault",
                             str(vault),
                             "--check",
@@ -158,8 +185,8 @@ class InstalledTreeBoundaryTests(unittest.TestCase):
                     ),
                     (
                         [
-                            "bash",
-                            str(installed / "scripts/setup-retrieve.sh"),
+                            bash,
+                            (installed / "scripts/setup-retrieve.sh").as_posix(),
                             "--vault",
                             str(vault),
                             "--check",
@@ -168,8 +195,8 @@ class InstalledTreeBoundaryTests(unittest.TestCase):
                     ),
                     (
                         [
-                            "bash",
-                            str(installed / "scripts/setup-vault.sh"),
+                            bash,
+                            (installed / "scripts/setup-vault.sh").as_posix(),
                             "--vault",
                             str(vault),
                             "--check",
@@ -178,8 +205,8 @@ class InstalledTreeBoundaryTests(unittest.TestCase):
                     ),
                     (
                         [
-                            "bash",
-                            str(installed / "scripts/allocate-address.sh"),
+                            bash,
+                            (installed / "scripts/allocate-address.sh").as_posix(),
                             "--vault",
                             str(vault),
                             "--peek",
@@ -188,8 +215,8 @@ class InstalledTreeBoundaryTests(unittest.TestCase):
                     ),
                     (
                         [
-                            "bash",
-                            str(installed / "scripts/detect-transport.sh"),
+                            bash,
+                            (installed / "scripts/detect-transport.sh").as_posix(),
                             "--vault",
                             str(vault),
                             "--peek",
@@ -199,10 +226,19 @@ class InstalledTreeBoundaryTests(unittest.TestCase):
                     ),
                     (
                         [
-                            "bash",
-                            str(installed / "scripts/wiki-lock.sh"),
+                            bash,
+                            (installed / "scripts/wiki-lock.sh").as_posix(),
                             "peek",
                             "wiki/Page.md",
+                        ],
+                        {0},
+                    ),
+                    (
+                        [
+                            sys.executable,
+                            str(installed / "scripts/claude-empire.py"),
+                            "steward",
+                            "doctor",
                         ],
                         {0},
                     ),

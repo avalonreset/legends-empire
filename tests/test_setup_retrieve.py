@@ -3,7 +3,10 @@
 
 from __future__ import annotations
 
+import os
+import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -11,6 +14,28 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts/setup-retrieve.sh"
+
+
+def _git_bash() -> str:
+    if os.name == "nt":
+        for candidate in (
+            Path(r"C:\Program Files\Git\bin\bash.exe"),
+            Path(r"C:\Program Files\Git\usr\bin\bash.exe"),
+            Path(r"C:\Program Files (x86)\Git\bin\bash.exe"),
+        ):
+            if candidate.is_file():
+                return str(candidate)
+        for directory in os.environ.get("PATH", "").split(os.pathsep):
+            if not directory:
+                continue
+            lowered = directory.lower()
+            if "system32" in lowered or "windowsapps" in lowered:
+                continue
+            candidate = Path(directory) / "bash.exe"
+            if candidate.is_file():
+                return str(candidate)
+        raise unittest.SkipTest("Git Bash is required on Windows")
+    return shutil.which("bash") or "/bin/bash"
 
 
 class SetupRetrieveTests(unittest.TestCase):
@@ -26,9 +51,12 @@ class SetupRetrieveTests(unittest.TestCase):
         return vault
 
     def invoke(self, *arguments: str) -> subprocess.CompletedProcess[str]:
+        env = {k: v for k, v in os.environ.items() if k.lower() != "path"}
+        env["PATH"] = f"{Path(sys.executable).parent}{os.pathsep}{os.environ.get('PATH', '')}"
         return subprocess.run(
-            ["bash", str(SCRIPT), *arguments],
+            [_git_bash(), SCRIPT.as_posix(), *arguments],
             cwd=ROOT,
+            env=env,
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,

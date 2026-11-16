@@ -129,7 +129,15 @@ def test_assert_within_resolves_symlink_escape() -> None:
         vault = make_vault(base / "vault")
         outside = base / "outside"
         outside.mkdir()
-        (vault / "escape").symlink_to(outside, target_is_directory=True)
+        try:
+            (vault / "escape").symlink_to(outside, target_is_directory=True)
+        except OSError as exc:
+            if getattr(exc, "winerror", None) == 1314 and os.name == "nt":
+                import _winapi
+
+                _winapi.CreateJunction(str(outside), str(vault / "escape"))
+            else:
+                raise
         try:
             assert_within(vault, "escape/file.md")
         except VaultSelectionError as exc:
@@ -163,7 +171,7 @@ def test_workspace_config_rejects_ambiguous_or_nonregular_authority() -> None:
         config = workspace / ".claude-empire.json"
         config.write_text(
             '{"schema":"claude-empire.workspace.v1",'
-            f'"vault":"{first}","vault":"{second}"}}',
+            f'"vault":{json.dumps(str(first))},"vault":{json.dumps(str(second))}}}',
             encoding="utf-8",
         )
         try:
@@ -188,13 +196,22 @@ def test_workspace_config_rejects_ambiguous_or_nonregular_authority() -> None:
             json.dumps({"schema": "claude-empire.workspace.v1", "vault": str(first)}),
             encoding="utf-8",
         )
-        config.symlink_to(outside)
         try:
-            resolve_vault_root(start=workspace, environ={})
-        except VaultSelectionError as exc:
-            assert exc.code == "INVALID_WORKSPACE_CONFIG"
+            config.symlink_to(outside)
+        except OSError as exc:
+            if getattr(exc, "winerror", None) != 1314:
+                raise
+            print(
+                "[SKIP] test_workspace_config_rejects_ambiguous_or_nonregular_authority: "
+                "OS refused file symlink (WinError 1314)"
+            )
         else:
-            raise AssertionError("symlinked workspace authority must fail closed")
+            try:
+                resolve_vault_root(start=workspace, environ={})
+            except VaultSelectionError as exc:
+                assert exc.code == "INVALID_WORKSPACE_CONFIG"
+            else:
+                raise AssertionError("symlinked workspace authority must fail closed")
 
         if hasattr(os, "mkfifo"):
             config.unlink()

@@ -3,6 +3,7 @@ import json
 import os
 from pathlib import Path
 import sys
+import tempfile
 import unittest
 from unittest.mock import patch
 
@@ -76,23 +77,29 @@ class FinishSliceTests(unittest.TestCase):
         self.assertEqual(len(upgrade.finish_slices({"a": b"1", "b": b"2"}, size=1)), 2)
 
 
-@unittest.skipIf(os.name == "nt" or not Path("/tmp").is_dir(), "POSIX /tmp required")
 class DarwinSymlinkDirTests(unittest.TestCase):
     def setUp(self):
-        st = os.lstat("/tmp")
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.target = self._tmp.name
+        st = os.lstat(self.target)
         self.key = (st.st_dev, st.st_ino)
         self.fake = lambda s: (s.st_dev, s.st_ino) == self.key
 
     def test_darwin_system_link_is_allowed(self):
+        darwin_dirs = set(adapter._DARWIN_SYMLINK_DIRS) | {Path(self.target).as_posix()}
         with patch.object(adapter, "is_name_surrogate", side_effect=self.fake), \
+                patch.object(adapter, "_DARWIN_SYMLINK_DIRS", darwin_dirs), \
                 patch.object(adapter.sys, "platform", "darwin"):
-            self.assertTrue(adapter.safe_root("/tmp").is_dir())
+            self.assertTrue(adapter.safe_root(self.target).is_dir())
 
     def test_other_platforms_still_refuse(self):
+        darwin_dirs = set(adapter._DARWIN_SYMLINK_DIRS) | {Path(self.target).as_posix()}
         with patch.object(adapter, "is_name_surrogate", side_effect=self.fake), \
+                patch.object(adapter, "_DARWIN_SYMLINK_DIRS", darwin_dirs), \
                 patch.object(adapter.sys, "platform", "linux"):
             with self.assertRaises(Exception):
-                adapter.safe_root("/tmp")
+                adapter.safe_root(self.target)
 
 
 if __name__ == "__main__":

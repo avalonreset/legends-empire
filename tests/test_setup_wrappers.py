@@ -5,7 +5,9 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -15,6 +17,28 @@ ROOT = Path(__file__).resolve().parents[1]
 MODE = ROOT / "scripts/setup-mode.sh"
 DRAGONSCALE = ROOT / "scripts/setup-dragonscale.sh"
 SETUP_VAULT = ROOT / "scripts/setup-vault.sh"
+
+
+def _git_bash() -> str:
+    if os.name == "nt":
+        for candidate in (
+            Path(r"C:\Program Files\Git\bin\bash.exe"),
+            Path(r"C:\Program Files\Git\usr\bin\bash.exe"),
+            Path(r"C:\Program Files (x86)\Git\bin\bash.exe"),
+        ):
+            if candidate.is_file():
+                return str(candidate)
+        for directory in os.environ.get("PATH", "").split(os.pathsep):
+            if not directory:
+                continue
+            lowered = directory.lower()
+            if "system32" in lowered or "windowsapps" in lowered:
+                continue
+            candidate = Path(directory) / "bash.exe"
+            if candidate.is_file():
+                return str(candidate)
+        raise unittest.SkipTest("Git Bash is required on Windows")
+    return shutil.which("bash") or "/bin/bash"
 
 
 class SetupWrapperTests(unittest.TestCase):
@@ -28,9 +52,14 @@ class SetupWrapperTests(unittest.TestCase):
     def invoke(
         self, script: Path, vault: Path, *arguments: str
     ) -> subprocess.CompletedProcess[str]:
+        environment = {k: v for k, v in os.environ.items() if k.lower() != "path"}
+        environment["PATH"] = (
+            f"{Path(sys.executable).parent}{os.pathsep}{os.environ.get('PATH', '')}"
+        )
         return subprocess.run(
-            ["bash", str(script), *arguments],
+            [_git_bash(), script.as_posix(), *arguments],
             cwd=vault,
+            env=environment,
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -46,12 +75,18 @@ class SetupWrapperTests(unittest.TestCase):
         fake_python.write_text(
             "#!/bin/bash\nprintf '%s\\n' \"$@\"\n",
             encoding="utf-8",
+            newline="\n",
         )
         fake_python.chmod(0o755)
-        environment = os.environ.copy()
-        environment["PATH"] = f"{fake_bin}{os.pathsep}{environment.get('PATH', '')}"
+        environment = {k: v for k, v in os.environ.items() if k.lower() != "path"}
+        environment["HOME"] = str(parent)
+        environment["USERPROFILE"] = str(parent)
+        environment["PATH"] = (
+            f"{fake_bin}{os.pathsep}{Path(sys.executable).parent}"
+            f"{os.pathsep}{os.environ.get('PATH', '')}"
+        )
         return subprocess.run(
-            ["bash", str(SETUP_VAULT), *arguments],
+            [_git_bash(), SETUP_VAULT.as_posix(), *arguments],
             cwd=parent,
             env=environment,
             text=True,
