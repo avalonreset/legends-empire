@@ -49,8 +49,8 @@ class StewardEntryAuditTests(unittest.TestCase):
 
     def test_import_cycle_and_depth_cap(self) -> None:
         # Cycle: A.md -> B.md -> A.md
-        self.write_vault_file("A.md", "# A\n@B.md\n")
-        self.write_vault_file("B.md", "# B\n@A.md\n@C0.md\n")
+        self.write_vault_file("A.md", "# A\n" "@B.md\n")
+        self.write_vault_file("B.md", "# B\n" "@A.md\n" "@C0.md\n")
         # Depth chain: C0 -> C1 -> ... -> C9 (exceeds depth cap 8)
         for idx in range(10):
             nxt = f"@C{idx + 1}.md\n" if idx < 9 else ""
@@ -207,7 +207,7 @@ class StewardEntryAuditTests(unittest.TestCase):
     def test_over_budget_chain_and_over_budget_shim_and_expired_fresh_until(self) -> None:
         self.write_vault_file(
             "CLAUDE.md",
-            "---\nfresh_until: 2026-10-01\n---\n# Shim\n@AGENTS.md\n" + ("shim padding " * 20) + "\n",
+            "---\nfresh_until: 2026-10-01\n---\n# Shim\n" "@AGENTS.md\n" + ("shim padding " * 20) + "\n",
         )
         self.write_vault_file("AGENTS.md", "# Core\n" + ("core content " * 40) + "\n")
         cfg = self.write_config(
@@ -238,7 +238,7 @@ class StewardEntryAuditTests(unittest.TestCase):
         self.write_vault_file("secrets.env", "SECRET=123\n")
         self.write_vault_file(
             "AGENTS.md",
-            "@../outside.md\n@\\\\server\\share\\file.md\n@secrets.env\n",
+            "@../outside.md\n" "@\\\\server\\share\\file.md\n" "@secrets.env\n",
         )
         cfg = self.write_config(
             {"entry_harnesses": [{"id": "agents", "entry": ["AGENTS.md"]}]}

@@ -73,7 +73,7 @@ class StewardDigestTests(unittest.TestCase):
         return cfg_path
 
     def test_digest_first_run_no_change_and_new_high_without_ratchet(self) -> None:
-        self.write_vault_file("AGENTS.md", "# Agents\n@missing-1.md\n")
+        self.write_vault_file("AGENTS.md", "# Agents\n" "@missing-1.md\n")
         cfg = self.write_config(
             {"entry_harnesses": [{"id": "agents", "entry": ["AGENTS.md"]}]}
         )
@@ -123,7 +123,7 @@ class StewardDigestTests(unittest.TestCase):
         self.assertEqual(d2["new_high_keys"], [])
 
         # 3. Third run with a new high in the same file -> exit 12
-        self.write_vault_file("AGENTS.md", "# Agents\n@missing-1.md\n@missing-2.md\n")
+        self.write_vault_file("AGENTS.md", "# Agents\n" "@missing-1.md\n" "@missing-2.md\n")
         with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
             rc3 = main(
                 [
