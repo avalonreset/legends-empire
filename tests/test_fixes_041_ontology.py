@@ -414,6 +414,68 @@ class Ontology041FixesTests(unittest.TestCase):
             self.assertEqual(paths2, [])
             self.assertTrue(paths1[0].is_file())
 
+    def test_p4_need_without_as_of_checks_review_after_against_today_on_cached_index(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            vault = Path(td)
+            wiki = vault / "wiki"
+            wiki.mkdir(parents=True)
+            note = wiki / "acme.md"
+            note.write_text(
+                "---\n"
+                "entity_id: acme\n"
+                "title: Acme Corp\n"
+                "fact.tier: gold\n"
+                "certified_owner:\n"
+                "  - fact.tier\n"
+                "certified_on: 2026-10-15\n"
+                "review_after: 2026-11-10\n"
+                "---\n"
+                "# Acme Corp\n",
+                encoding="utf-8",
+            )
+
+            # Build and cache index.json as of 2026-11-01 (when review_after 2026-11-10 was still fresh)
+            idx, code = ont.build_index(vault, as_of="2026-11-01", write_file=True)
+            self.assertEqual(code, 0)
+            self.assertEqual(idx["facts"]["acme.tier"]["state"], "certified-owner")
+
+            # Calling need_keys without --as-of must compare review_after against today's date and exit 13 (stale)
+            rep, n_code = ont.need_keys(vault, keys=["acme.tier"])
+            self.assertEqual(n_code, 13)
+            self.assertEqual(rep["keys"]["acme.tier"]["state"], "stale")
+
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                cli_code = cli.main(["ontology", "need", "--vault", str(vault), "--keys", "acme.tier"])
+            self.assertEqual(cli_code, 13)
+            cli_out = json.loads(buf.getvalue())
+            self.assertEqual(cli_out["keys"]["acme.tier"]["state"], "stale")
+
+    def test_rec3_in_vault_junction_guards_in_ontology_and_hook_adapter(self) -> None:
+        import os as std_os
+        from claude_empire.hook_adapter import _safe_directory
+
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            vault = base / "vault"
+            vault.mkdir()
+            outside = base / "outside-dir"
+            outside.mkdir()
+            (outside / "index.json").write_text("{}", encoding="utf-8")
+
+            meta_dir = vault / ".vault-meta"
+            meta_dir.mkdir()
+            ont_link = meta_dir / "ontology"
+
+            if std_os.name == "nt":
+                import _winapi
+                _winapi.CreateJunction(str(outside), str(ont_link))
+            else:
+                std_os.symlink(outside, ont_link)
+
+            self.assertFalse(_safe_directory(vault, ont_link))
+            self.assertIsNone(ont._load_fresh_index(vault))
+
 
 if __name__ == "__main__":
     unittest.main()

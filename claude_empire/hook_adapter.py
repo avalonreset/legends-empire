@@ -120,6 +120,7 @@ def _safe_directory(root: Path, path: Path) -> bool:
         resolved == path.resolve(strict=False)
         and stat.S_ISDIR(metadata.st_mode)
         and not path.is_symlink()
+        and not is_name_surrogate(metadata)
     )
 
 
