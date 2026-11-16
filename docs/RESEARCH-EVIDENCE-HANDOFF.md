@@ -23,9 +23,15 @@ snapshots do not represent new charges; reusing evidence makes no provider call.
 
 ## Verify before intake
 
-Run from the installed Empire source directory:
+Run from any working directory via the router, or from the installed Empire source directory (with the module checkout root as CWD):
 
 ```bash
+python -m cto_legends --home <cto-legends-home> run legends-empire -- \
+  research-evidence verify /path/to/package --workspace client-a
+python -m cto_legends --home <cto-legends-home> run legends-empire -- \
+  research-evidence plan /path/to/package --workspace client-a --vault /path/to/selected-vault
+
+# Or from the module source checkout (requires the repo root as CWD):
 python scripts/claude-empire.py research-evidence verify /path/to/package \
   --workspace client-a
 python scripts/claude-empire.py research-evidence plan /path/to/package \

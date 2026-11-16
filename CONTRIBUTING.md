@@ -1,7 +1,7 @@
-# Contributing to claude-empire
+# Contributing to legends-empire
 
 Contributions are welcome in the public canonical repository:
-https://github.com/AgriciDaniel/claude-obsidian.
+https://github.com/avalonreset/legends-empire.
 
 For a substantial change, open an issue that describes the user problem,
 proposed behavior, compatibility impact, privacy/egress implications, and a

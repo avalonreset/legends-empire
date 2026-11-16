@@ -61,9 +61,10 @@ the designs are theirs.
 
 ---
 
-## claude-empire
+## Upstream origin (`claude-obsidian` / `claude-empire`)
 
-**Author:** AgriciDaniel / AI Marketing Hub
+**Public canonical repository (`legends-empire`):** https://github.com/avalonreset/legends-empire
+**Upstream origin:** https://github.com/AgriciDaniel/claude-obsidian
+**Upstream author:** AgriciDaniel / AI Marketing Hub
 **License:** MIT (see [LICENSE](LICENSE))
-**Repository (public canonical):** https://github.com/AgriciDaniel/claude-obsidian
 **Community early-access mirror (Pro):** https://github.com/AI-Marketing-Hub

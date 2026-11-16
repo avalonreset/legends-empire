@@ -27,11 +27,13 @@ as its own skill and do not link per-module skills into host skill
 directories.
 
 ```bash
-cto-legends install legends-empire
+python -m cto_legends --home <cto-legends-home> install legends-empire --apply
+# Or when cto-legends is on PATH:
+cto-legends install legends-empire --apply
 ```
 
-Follow the module recipe the router loads. The recipe lives in the
-module README plus `docs/`; there is no per-host skill installer.
+Follow the module recipe the router loads (`python -m cto_legends --home <cto-legends-home> handoff legends-empire`). The recipe lives in the
+module README plus `docs/`; there is no per-host skill installer. Commands below can be invoked from any working directory via `python -m cto_legends --home <cto-legends-home> run legends-empire -- <subcommand> ...`, or from the module checkout root (CWD) using `python3 scripts/claude-empire.py ...`.
 
 ## Host support
 
@@ -206,7 +208,7 @@ from its vault-local pending record.
 
 ## Uninstall
 
-Remove the module through the router, not the vault: ask `cto-legends`
+Remove the module through the router (`python -m cto_legends --home <cto-legends-home> uninstall legends-empire --apply`), not the vault: ask `cto-legends`
 to drop the `legends-empire` registration.
 
 User notes, sources, ledgers, and Obsidian settings remain untouched.

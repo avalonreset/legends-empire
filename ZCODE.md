@@ -1,4 +1,4 @@
-# claude-empire: ZCode instructions
+# legends-empire: ZCode instructions
 
 Read `AGENTS.md` as the canonical host-neutral contract. The only
 registered skill is the vendored `cto-legends` router copy at
@@ -9,7 +9,7 @@ skills into host skill directories.
 ZCode reads `AGENTS.md` at the workspace and user scope natively (per the
 ZCode Agent documentation, https://zcode.z.ai/en/docs/agents), so no mirrored
 rules file is needed. Route module work through `cto-legends`
-(`cto-legends install legends-empire`) and point ZCode at the vendored
+(`python -m cto_legends --home <cto-legends-home> install legends-empire --apply` or `python -m cto_legends --home <cto-legends-home> handoff legends-empire`) and point ZCode at the vendored
 router copy by path when a skill reference is needed.
 
 This repository is product source, not the default user vault. Create a
@@ -21,4 +21,4 @@ Parallel workers draft only. Do not use direct shared writes, automatic commits,
 or the deprecated per-file lock helper. Remote egress and destructive actions
 need explicit user consent.
 
-Public canonical: https://github.com/AgriciDaniel/claude-obsidian
+Public canonical: https://github.com/avalonreset/legends-empire

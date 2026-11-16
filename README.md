@@ -111,7 +111,7 @@ Version `0.4.0` introduces the **Ontology Engine** ([docs/ontology.md](docs/onto
 
 Part of the [CTO Legends](https://github.com/avalonreset/cto-legends) ecosystem. `cto-legends` is the only registered skill; this repo vendors a pinned copy at [skills/cto-legends/SKILL.md](skills/cto-legends/SKILL.md).
 
-Install with `cto-legends install legends-empire`, then follow the module recipe the router loads ([docs/AGENT-RECIPE.md](docs/AGENT-RECIPE.md)). Do not register this module as its own skill.
+Install with `python -m cto_legends --home <cto-legends-home> install legends-empire --apply` (or shorthand `cto-legends install legends-empire --apply` when `cto-legends` is on `PATH`), then follow the module recipe the router loads ([docs/AGENT-RECIPE.md](docs/AGENT-RECIPE.md)). Do not register this module as its own skill.
 
 ## Install and use
 
@@ -129,15 +129,22 @@ optional WSL route.
 
 ## Quick start
 
-Install and inspect `legends-empire` through the central [`cto-legends`](https://github.com/avalonreset/cto-legends) router:
+Install and inspect `legends-empire` through the central [`cto-legends`](https://github.com/avalonreset/cto-legends) router (replace `<cto-legends-home>` with your router state directory, such as `~/.cto-legends`; bare `cto-legends ...` is an optional shorthand when `Scripts`/`bin` is on `PATH`):
 
 ```sh
-cto-legends sync --apply
-cto-legends install legends-empire --apply
-cto-legends handoff legends-empire
+python -m cto_legends --home <cto-legends-home> sync --apply
+python -m cto_legends --home <cto-legends-home> install legends-empire --apply
+python -m cto_legends --home <cto-legends-home> handoff legends-empire
 ```
 
-Run a read-only vault stewardship check or verify an exported research evidence bank:
+Run a read-only vault stewardship check or verify an exported research evidence bank from any working directory through the router:
+
+```sh
+python -m cto_legends --home <cto-legends-home> run legends-vault-stewardship -- steward --help
+python -m cto_legends --home <cto-legends-home> run legends-empire -- --help
+```
+
+When running directly from a source checkout, set the repository root as the current working directory first:
 
 ```sh
 python -m legends_vault_steward --help

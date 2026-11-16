@@ -22,7 +22,8 @@ Obsidian, alongside the owner's existing knowledge.
 The first attachment creates a readable `index.md`, a `reference/` snapshot,
 and a `pack-state.json` ledger. The index explains the purpose, links to the
 reference entrypoint and gives the stable module resolver:
-`cto-legends handoff legends-empire`. It is thereafter owned by the user.
+`python -m cto_legends --home <cto-legends-home> handoff legends-empire`
+(or shorthand `cto-legends handoff legends-empire` when `cto-legends` is on `PATH`). It is thereafter owned by the user.
 The workflow does not create an empty `work/` directory. A person can choose
 that destination for private records or keep using existing vault locations.
 
@@ -34,9 +35,15 @@ does not relocate the module or synchronize private records upstream.
 ## Attach or update
 
 Use the pack from the installed module. Preview with an explicit vault and
-pinned operation identity and timestamp:
+pinned operation identity and timestamp (via the PATH- and CWD-independent router, or from the module checkout root as current working directory):
 
 ```bash
+python -m cto_legends --home <cto-legends-home> run legends-empire -- \
+  knowledge attach knowledge/stewardship/pack.json \
+  --vault /path/to/Empire --operation-id attach-stewardship-001 \
+  --generated-at 2026-09-28T12:00:00Z
+
+# Or from the module source checkout (requires the repo root as CWD):
 python scripts/claude-empire.py knowledge attach knowledge/stewardship/pack.json \
   --vault /path/to/Empire --operation-id attach-stewardship-001 \
   --generated-at 2026-09-28T12:00:00Z
@@ -117,7 +124,7 @@ access to other vaults.
 
 File paths resolve beneath `pack.json`'s sibling `vault/` directory. Only
 declared UTF-8 Markdown files are copied. The entrypoint must be declared.
-The pack allows at most 256 files and 8 MiB in total. Paths must be portable,
+The pack allows at most 148 files and 8 MiB in total. Paths must be portable,
 relative and non-colliding. IDs use lowercase hyphenated names; versions use
 stable `X.Y.Z`. Ontology kind is `machinery` or `library`, and placement remains
 an overridable suggestion. The contract contains no executable commands.

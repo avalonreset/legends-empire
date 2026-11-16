@@ -174,5 +174,5 @@ def plan_intake(package: Path | str, *, workspace: str, vault: Path | str) -> di
                 status="review_required", transaction=None,
                 steps=["Review workspace, collection time, request settings and response state.",
                        "Reverify the package immediately before staging its three fixed members without overwrite.",
-                       "Use existing capture plan, then capture apply preview and approved transaction on a supported POSIX filesystem.",
+                       "Use existing capture plan, then capture apply preview and approved transaction on a supported local filesystem (POSIX or native Windows NTFS).",
                        "Inspect immutable source locators before a separate reviewed semantic ingest."])
