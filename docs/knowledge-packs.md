@@ -104,7 +104,7 @@ access to other vaults.
   "schema": "legends.knowledge-pack/v1",
   "id": "stewardship",
   "module": "legends-empire",
-  "version": "0.2.0",
+  "version": "0.2.2",
   "entrypoint": "index.md",
   "files": [{"path": "index.md", "sha256": "<64 lowercase hex characters>"}],
   "ontology": {

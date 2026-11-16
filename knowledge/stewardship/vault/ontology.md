@@ -1,3 +1,15 @@
+---
+title: Where stewardship belongs
+type: reference
+status: evergreen
+created: 2026-11-16
+updated: 2026-11-16
+tags:
+  - knowledge-pack
+  - stewardship
+  - ontology
+---
+
 # Where stewardship belongs
 
 `cto-legends` discovers and prepares capabilities. `legends-empire` holds

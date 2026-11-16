@@ -2,32 +2,32 @@
   "schema": "legends.knowledge-pack/v1",
   "id": "stewardship",
   "module": "legends-empire",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "entrypoint": "index.md",
   "files": [
     {
       "path": "evidence.md",
-      "sha256": "2925aa32512f846e35b50e6371a382982907cb8499a505b2093e88a8defb2116"
+      "sha256": "ad1bb289f0922a1133c9b38116c8ee13c2299621d81d584135a63db90e0b5e71"
     },
     {
       "path": "index.md",
-      "sha256": "5e743f84c0029cb2d1fa69dc8546dcb7025aba365d66637a0c73ac1f01170143"
+      "sha256": "5f955848d97543de09facefe56456c0b2544715788c512a8347355aa5617dbfc"
     },
     {
       "path": "ontology.md",
-      "sha256": "65dfe0bb674bd749e602775d1923a18ec02f004de278b4da1872456f8844ba64"
+      "sha256": "b18ddff24e35c97992f6d6d82e24f9023cd421be8fb0210c966dc864391a3bb4"
     },
     {
       "path": "playbook.md",
-      "sha256": "a0e2660fffd7404c9a9aeb4271e05b22a177eac9fd150880ea0850c5ec40f635"
+      "sha256": "90b45251837cdea5f537192d4788d8ac9942e66213c64fa470012a0631673800"
     },
     {
       "path": "records.md",
-      "sha256": "f9f63a6e06da31e7fe762d5628d7f7139fc21f4cb9be5558a2ac349be929c8b3"
+      "sha256": "0f8fe3d84ffda659b54a5257fdcf44cd367c5151f06f6b021f997ea37fb471cd"
     },
     {
       "path": "verification.md",
-      "sha256": "bb1e71798b7e9762b083ec7ad43c9ed057368bd0f4052bae14977e55e1f9d08d"
+      "sha256": "318e4d009b3d89f48ba186283c5b10605e31a520b1c0dfe969e90328902082f4"
     }
   ],
   "ontology": {
