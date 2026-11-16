@@ -45,6 +45,8 @@ Internal release. Health pass over 0.4.0 plus multi-vendor entry checks.
 - `steward digest` keeps `high` severity on entry-chain `law.*` findings: duplicate `law.*` entries from the observe pass are dropped and deduplication key collisions keep the higher severity.
 - `ontology need` without `--as-of` evaluates `review_after` against today on a cached `index.json`; `.vault-meta/ontology` and hook transaction directories refuse junctions and reparse points.
 - `docs/AGENT-RECIPE.md` and `docs/ontology.md` list only CLI flags that exist.
+- `lint` no longer stalls on large vaults: `_Resolver` precomputes a slash-boundary suffix index and caches `without_link_suffix` per target, and a fresh cached `.vault-meta/ontology/index.json` is reused (otherwise the index is rebuilt in memory without writing `.vault-meta`). On a 1,713-page, 17,094-link vault, lint completes in about 3 minutes instead of stalling past 9.
+- `lint` filters `ontology_findings` by active `--exclude` patterns and records ontology configuration or read failures in `configuration_errors` and `read_errors` instead of swallowing exceptions.
 
 ### Erratum (0.4.0)
 
