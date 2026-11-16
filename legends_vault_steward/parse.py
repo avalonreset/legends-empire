@@ -11,7 +11,32 @@ WIKILINK_RE = re.compile(r"(!)?\[\[([^\]]+)\]\]")
 MD_LINK_RE = re.compile(r"(?<!!)\[([^\]]*)\]\(([^)]+)\)")
 FENCE_RE = re.compile(r"^(\s*)(`{3,}|~{3,})")
 DATED_BULLET_RE = re.compile(r"^\s*(?:[-*+]|\d+\.)\s+.*\d{4}-\d{2}-\d{2}")
+DATED_LINE_RE = re.compile(r"\b\d{4}-\d{2}-\d{2}\b")
 SIMPLE_SCALAR = re.compile(r"^([A-Za-z0-9_.-]+)\s*:\s*(.*)$")
+
+
+def iter_unfenced_lines(text: str) -> list[tuple[int, str]]:
+    """Return (1-based line_no, line) for lines outside fenced code blocks."""
+    out: list[tuple[int, str]] = []
+    fence_char: str | None = None
+    fence_len = 0
+    for idx, line in enumerate(text.splitlines(), start=1):
+        match = FENCE_RE.match(line)
+        if match:
+            char = match.group(2)[0]
+            length = len(match.group(2))
+            if fence_char is None:
+                fence_char = char
+                fence_len = length
+                continue
+            if char == fence_char and length >= fence_len:
+                fence_char = None
+                fence_len = 0
+                continue
+        if fence_char is None:
+            out.append((idx, line))
+    return out
+
 
 
 def strip_fences(text: str) -> str:
@@ -120,6 +145,10 @@ def word_count(text: str) -> int:
 
 def dated_bullet_count(text: str) -> int:
     return sum(1 for line in text.splitlines() if DATED_BULLET_RE.search(line))
+
+
+def dated_line_count(body: str) -> int:
+    return sum(1 for _, line in iter_unfenced_lines(body) if DATED_LINE_RE.search(line))
 
 
 def injection_like(text: str, patterns: list[str]) -> bool:

@@ -1,0 +1,33 @@
+{
+  "jobs": [
+    {
+      "job_id": "empire-steward-digest",
+      "title": "empire steward digest",
+      "description": "Run a daily read-only Legends Vault Steward digest as a deterministic script job.",
+      "kind": "script",
+      "cron": "0 7 * * *",
+      "timezone": "America/New_York",
+      "overlap": "SKIP",
+      "script": "-m",
+      "args": [
+        "cto_legends",
+        "--home",
+        "<cto-legends-home>",
+        "run",
+        "legends-vault-stewardship",
+        "--",
+        "steward",
+        "digest",
+        "<vault>",
+        "--profile",
+        "empire",
+        "--config",
+        "<overlay>",
+        "--out",
+        "<vault>/.steward/digest"
+      ],
+      "timeout_s": 300,
+      "notify_channel": "ops"
+    }
+  ]
+}

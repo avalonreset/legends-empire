@@ -2,14 +2,16 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
-from .paths import read_bounded_json
+from .paths import is_disallowed_path_token, read_bounded_json
 
 PACKAGE_DIR = Path(__file__).resolve().parent
 DEFAULT_CONFIG_PATH = PACKAGE_DIR / "data" / "default.json"
+_NESTED_QUANTIFIER_RE = re.compile(r"([+*?]|\{\d+,?\d*\})\s*\)[+*?{]")
 
 
 def _read_json(path: Path) -> dict[str, Any]:
@@ -68,15 +70,94 @@ def load_config(path: str | Path | None = None, profile: str = "generic") -> dic
     for surface in config["surfaces"]:
         if not isinstance(surface, dict) or not all(isinstance(surface.get(k), str) and surface[k] for k in ("id", "path")):
             raise ValueError("each surface requires an id and vault-relative path")
-        for key in ("max_words", "max_age_days", "max_living_bullets"):
-            if key in surface and (not isinstance(surface[key], (int, float)) or surface[key] < 0):
+        if is_disallowed_path_token(surface["path"], allow_tilde=False) is not None or Path(surface["path"]).is_absolute() or ".." in Path(surface["path"]).parts:
+            raise ValueError(f"surface path must be a safe vault-relative path: {surface['path']}")
+        if "role" in surface and not isinstance(surface["role"], str):
+            raise ValueError("surface role must be a string")
+        for key in ("max_words", "max_age_days", "max_living_bullets", "max_bytes", "max_dated_lines"):
+            if key in surface and (isinstance(surface[key], bool) or not isinstance(surface[key], (int, float)) or surface[key] < 0):
                 raise ValueError(f"surface {key} must be nonnegative")
     for rule in config["classifier_rules"]:
         if not isinstance(rule, dict) or "id" not in rule or rule.get("class") not in set("ABCDEFGHI"):
             raise ValueError("classifier rule requires id and class A-I")
     operations = config.get("operations", {})
-    if not isinstance(operations, dict) or not isinstance(operations.get("review_after_days", 14), int) or operations.get("review_after_days", 14) < 0:
+    if not isinstance(operations, dict) or isinstance(operations.get("review_after_days", 14), bool) or not isinstance(operations.get("review_after_days", 14), int) or operations.get("review_after_days", 14) < 0:
         raise ValueError("operations.review_after_days must be a nonnegative integer")
+
+    harnesses = config.get("entry_harnesses", [])
+    if not isinstance(harnesses, list):
+        raise ValueError("entry_harnesses must be a list")
+    for harness in harnesses:
+        if not isinstance(harness, dict) or not isinstance(harness.get("id"), str) or not harness["id"].strip():
+            raise ValueError("each entry_harnesses item requires a non-empty string id")
+        raw_entry = harness.get("entry")
+        if isinstance(raw_entry, str) and raw_entry.strip():
+            entries = [raw_entry.strip()]
+            harness["entry"] = entries
+        elif isinstance(raw_entry, list) and raw_entry and all(isinstance(e, str) and e.strip() for e in raw_entry):
+            entries = [e.strip() for e in raw_entry]
+        else:
+            raise ValueError(f"harness {harness['id']} requires a non-empty entry list")
+        for entry_path in entries:
+            reason = is_disallowed_path_token(entry_path, allow_tilde=True, reject_env=True)
+            if reason is not None:
+                raise ValueError(f"harness {harness['id']} entry '{entry_path}' rejected: {reason}")
+        core = harness.get("core")
+        if core is not None:
+            if not isinstance(core, str) or not core.strip():
+                raise ValueError(f"harness {harness['id']} core must be a non-empty string")
+            reason = is_disallowed_path_token(core, allow_tilde=True, reject_env=True)
+            if reason is not None:
+                raise ValueError(f"harness {harness['id']} core '{core}' rejected: {reason}")
+        max_chain = harness.get("max_chain_bytes")
+        if max_chain is not None:
+            if isinstance(max_chain, bool) or not isinstance(max_chain, int) or max_chain < 0:
+                raise ValueError(f"harness {harness['id']} max_chain_bytes must be a nonnegative integer")
+        shim = harness.get("shim")
+        if shim is not None:
+            if not isinstance(shim, dict) or not isinstance(shim.get("path"), str) or not shim["path"].strip():
+                raise ValueError(f"harness {harness['id']} shim requires a path string")
+            reason = is_disallowed_path_token(shim["path"], allow_tilde=True, reject_env=True)
+            if reason is not None:
+                raise ValueError(f"harness {harness['id']} shim path '{shim['path']}' rejected: {reason}")
+            shim_max = shim.get("max_bytes")
+            if shim_max is not None and (isinstance(shim_max, bool) or not isinstance(shim_max, int) or shim_max < 0):
+                raise ValueError(f"harness {harness['id']} shim max_bytes must be a nonnegative integer")
+
+    forbidden = config.get("forbidden_paths", [])
+    if not isinstance(forbidden, list) or not all(isinstance(p, str) and p.strip() for p in forbidden):
+        raise ValueError("forbidden_paths must be a list of non-empty strings")
+    for f_path in forbidden:
+        reason = is_disallowed_path_token(f_path, allow_tilde=True, reject_env=False)
+        if reason is not None:
+            raise ValueError(f"forbidden_paths item '{f_path}' rejected: {reason}")
+
+    law_paths = config.get("law_paths", [])
+    if not isinstance(law_paths, list) or not all(isinstance(p, str) and p.strip() for p in law_paths):
+        raise ValueError("law_paths must be a list of non-empty strings")
+    for l_path in law_paths:
+        reason = is_disallowed_path_token(l_path, allow_tilde=False, reject_env=True)
+        if reason is not None or Path(l_path).is_absolute() or ".." in Path(l_path).parts:
+            raise ValueError(f"law_paths item '{l_path}' must be an in-vault relative glob")
+
+    conflict_keys = config.get("conflict_keys", [])
+    if not isinstance(conflict_keys, list):
+        raise ValueError("conflict_keys must be a list")
+    for ck in conflict_keys:
+        if not isinstance(ck, dict) or not isinstance(ck.get("id"), str) or not ck["id"].strip():
+            raise ValueError("each conflict_keys item requires a non-empty string id")
+        pattern = ck.get("pattern")
+        if not isinstance(pattern, str) or not pattern or len(pattern) > 256:
+            raise ValueError(f"conflict_keys '{ck['id']}' pattern must be a 1..256 char string")
+        if _NESTED_QUANTIFIER_RE.search(pattern):
+            raise ValueError(f"conflict_keys '{ck['id']}' pattern contains a nested quantifier")
+        try:
+            compiled = re.compile(pattern)
+        except re.error as exc:
+            raise ValueError(f"conflict_keys '{ck['id']}' invalid regex: {exc}") from exc
+        if compiled.groups != 1:
+            raise ValueError(f"conflict_keys '{ck['id']}' pattern must have exactly 1 capture group (got {compiled.groups})")
+
     return config
 
 

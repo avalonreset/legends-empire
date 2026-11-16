@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import stat
 import sys
 from dataclasses import dataclass
@@ -10,8 +11,79 @@ from typing import Any
 
 STEWARD_STATE_DIR = ".steward"
 MAX_JSON_INPUT_BYTES = 1_048_576
+MAX_BASELINE_JSON_BYTES = 67_108_864
+MAX_ENTRY_FILE_BYTES = 262_144
 _DARWIN_SYMLINK_DIRS = frozenset({"/var", "/tmp", "/etc"})
 _CFA_DIR_NAMES = ("Desktop", "Documents", "Pictures", "Videos", "Music", "Favorites")
+_WIN_DEVICE_NAMES = frozenset(
+    {
+        "CON",
+        "PRN",
+        "AUX",
+        "NUL",
+        *(f"COM{i}" for i in range(1, 10)),
+        *(f"LPT{i}" for i in range(1, 10)),
+    }
+)
+_DRIVE_REL_RE = re.compile(r"^[A-Za-z]:(?![/\\])")
+
+
+def get_home_dir() -> Path:
+    return Path(os.path.expanduser("~")).resolve(strict=False)
+
+
+def redact_home_text(text: str) -> str:
+    if not text:
+        return text
+    out = str(text)
+    candidates: list[str] = []
+    for raw_home in (os.path.expanduser("~"), os.environ.get("USERPROFILE", ""), os.environ.get("HOME", "")):
+        if not raw_home or raw_home == "~":
+            continue
+        for variant in (raw_home, str(Path(raw_home).resolve(strict=False))):
+            norm_bs = variant.rstrip("/\\")
+            norm_fs = norm_bs.replace("\\", "/")
+            for item in (norm_bs, norm_fs):
+                if len(item) > 1 and item not in candidates:
+                    candidates.append(item)
+    candidates.sort(key=len, reverse=True)
+    for cand in candidates:
+        pattern = re.compile(re.escape(cand), re.IGNORECASE if os.name == "nt" else 0)
+        out = pattern.sub("~", out)
+    return out
+
+
+def is_disallowed_path_token(
+    raw: str,
+    *,
+    allow_tilde: bool = True,
+    reject_env: bool = True,
+) -> str | None:
+    s = str(raw).strip()
+    if not s:
+        return "empty path"
+    if "\x00" in s:
+        return "null byte in path"
+    if s.startswith("\\\\") or s.startswith("//"):
+        return "UNC path is not permitted"
+    if _DRIVE_REL_RE.match(s):
+        return "drive-relative path is not permitted"
+    if s.startswith("~"):
+        if not allow_tilde:
+            return "home-relative path is not permitted here"
+        if not (s == "~" or s.startswith("~/") or s.startswith("~\\")):
+            return "other-user home expansion is not permitted"
+    parts = [p for p in re.split(r"[/\\]+", s) if p]
+    for part in parts:
+        stem = part.split(".", 1)[0].upper()
+        if stem in _WIN_DEVICE_NAMES:
+            return f"Windows device name is not permitted: {part}"
+    if reject_env and parts:
+        leaf = parts[-1].lower()
+        if leaf == ".env" or leaf.startswith(".env.") or leaf.endswith(".env"):
+            return ".env files are not permitted"
+    return None
+
 
 
 class PathEscapeError(ValueError):

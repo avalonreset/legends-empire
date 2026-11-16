@@ -4,10 +4,31 @@ from __future__ import annotations
 import hashlib
 import json
 
+SNAPSHOT_SCHEMA = "legends.vault-steward.snapshot/v1"
+
 
 def finding_id(item: dict) -> str:
     identity = [item.get(key) for key in ("code", "path", "target", "surface")]
+    for extra_key in ("date", "fresh_until", "key", "line", "byte_offset"):
+        if item.get(extra_key) is not None:
+            identity.append(f"{extra_key}:{item[extra_key]}")
     return hashlib.sha256(json.dumps(identity, ensure_ascii=True).encode()).hexdigest()[:20]
+
+
+def build_snapshot(report: dict) -> dict:
+    return {
+        "schema": SNAPSHOT_SCHEMA,
+        "version": report["version"],
+        "profile": report["profile"],
+        "config_hash": report["config_hash"],
+        "vault": {"id": report["vault"]["id"]},
+        "inventory": {
+            key: int(report["inventory"].get(key, 0))
+            for key in ("skipped_escapes", "skipped_unreadable", "skipped_dir_symlinks")
+        },
+        "snapshot": dict(report["snapshot"]),
+        "finding_ids": sorted({finding_id(f) for f in report.get("findings", [])}),
+    }
 
 
 def agenda(report: dict, limit: int = 5) -> dict:
@@ -41,22 +62,40 @@ def agenda(report: dict, limit: int = 5) -> dict:
             "items": selected, "authority": "Review proposals only; source hashes are evidence, not permission to edit."}
 
 
+def _extract_finding_ids(report: dict) -> set[str]:
+    schema = report.get("schema")
+    if schema == "legends.vault-steward.observe/v1":
+        findings = report.get("findings")
+        if not isinstance(findings, list) or not all(isinstance(f, dict) and "code" in f for f in findings):
+            raise ValueError("baseline findings must be objects with codes")
+        return {finding_id(f) for f in findings}
+    if schema == SNAPSHOT_SCHEMA:
+        if "finding_ids" in report:
+            fids = report.get("finding_ids")
+            if not isinstance(fids, list) or not all(isinstance(fid, str) and fid for fid in fids):
+                raise ValueError("snapshot baseline finding_ids must be non-empty strings")
+            return set(fids)
+        findings = report.get("findings")
+        if isinstance(findings, list) and all(isinstance(f, dict) and "code" in f for f in findings):
+            return {finding_id(f) for f in findings}
+        raise ValueError("snapshot baseline is missing finding_ids")
+    raise ValueError("baseline requires a current full snapshot report")
+
+
 def compare(before: dict, after: dict) -> dict:
     for report in (before, after):
-        if not isinstance(report, dict) or report.get("schema") != "legends.vault-steward.observe/v1" or not isinstance(report.get("snapshot"), dict):
+        if not isinstance(report, dict) or report.get("schema") not in {"legends.vault-steward.observe/v1", SNAPSHOT_SCHEMA} or not isinstance(report.get("snapshot"), dict):
             raise ValueError("baseline requires a current full snapshot report")
-        if not isinstance(report.get("vault"), dict) or not report["vault"].get("id") or not isinstance(report.get("inventory"), dict) or not isinstance(report.get("findings"), list):
+        if not isinstance(report.get("vault"), dict) or not report["vault"].get("id") or not isinstance(report.get("inventory"), dict):
             raise ValueError("baseline is missing vault, inventory or findings")
-        if not all(isinstance(f, dict) and "code" in f for f in report["findings"]):
-            raise ValueError("baseline findings must be objects with codes")
+    old_findings = _extract_finding_ids(before)
+    new_findings = _extract_finding_ids(after)
     for key in ("config_hash", "version"):
         if before.get(key) != after.get(key):
             raise ValueError(f"baseline {key} differs; start a new baseline")
     if before["vault"]["id"] != after["vault"]["id"]:
         raise ValueError("baseline belongs to a different vault")
     old, new = before["snapshot"], after["snapshot"]
-    old_findings = {finding_id(f) for f in before["findings"]}
-    new_findings = {finding_id(f) for f in after["findings"]}
     incomplete = any(after["inventory"].get(k, 0) or before["inventory"].get(k, 0)
                      for k in ("skipped_escapes", "skipped_unreadable", "skipped_dir_symlinks"))
     return {"added_notes": sorted(new.keys()-old.keys()), "removed_notes": sorted(old.keys()-new.keys()),

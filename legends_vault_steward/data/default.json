@@ -15,7 +15,12 @@
     ".pytest_cache",
     ".codex-tmp",
     ".scratch",
-    ".tmp"
+    ".tmp",
+    "backups",
+    "_runtime",
+    "_third-party",
+    ".backup",
+    ".cache"
   ],
   "skip_dir_prefixes": [],
   "note_suffixes": [".md", ".markdown"],
@@ -55,14 +60,15 @@
   "default_confidence": 0.35,
   "default_reason": "DEFAULT_UNCLASSIFIED",
   "surfaces": [],
+  "entry_harnesses": [],
+  "forbidden_paths": [],
+  "law_paths": [],
+  "conflict_keys": [],
   "findings": {
     "emit_orphan_normal": false,
     "orphan_defect_classes": ["A", "B"],
     "orphan_queue_classes": ["E"],
-    "orphan_normal_classes": ["D", "F", "G", "I"],
-    "unresolved_core_classes": ["A", "B", "C", "H"],
-    "max_queue_orphan_findings": 50,
-    "max_unresolved_findings": 80
+    "orphan_normal_classes": ["D", "F", "G", "I"]
   },
   "injection_patterns": [
     "ignore previous instructions",

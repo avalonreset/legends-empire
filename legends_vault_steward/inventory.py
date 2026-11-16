@@ -9,6 +9,7 @@ from .models import NoteRecord
 from .parse import (
     aliases_from_frontmatter,
     dated_bullet_count,
+    dated_line_count,
     extract_links,
     injection_like,
     parse_frontmatter,
@@ -22,6 +23,7 @@ class InventoryResult:
     notes: dict[str, NoteRecord] = field(default_factory=dict)
     skipped_escapes: list[str] = field(default_factory=list)
     skipped_unreadable: list[str] = field(default_factory=list)
+    unreadable_details: dict[str, dict[str, object]] = field(default_factory=dict)
     skipped_dir_symlinks: list[str] = field(default_factory=list)
     markdown_bytes: int = 0
 
@@ -57,6 +59,7 @@ def walk_notes(vault: VaultRoot, config: dict) -> InventoryResult:
         except ValueError:
             name = str(failed)
         result.skipped_unreadable.append(name)
+        result.unreadable_details[name] = {"reason": "os_error"}
 
     for dirpath, dirnames, filenames in os.walk(root, followlinks=False, onerror=walk_error):
         current = Path(dirpath)
@@ -91,15 +94,18 @@ def walk_notes(vault: VaultRoot, config: dict) -> InventoryResult:
                 stat = path.lstat()
                 if stat.st_size > 8 * 1024 * 1024:
                     result.skipped_unreadable.append(rel)
+                    result.unreadable_details[rel] = {"reason": "oversize", "bytes": stat.st_size}
                     continue
                 data = path.read_bytes()
             except OSError:
                 result.skipped_unreadable.append(rel)
+                result.unreadable_details[rel] = {"reason": "os_error"}
                 continue
             try:
                 text = data.decode("utf-8-sig")
-            except UnicodeDecodeError:
+            except UnicodeDecodeError as exc:
                 result.skipped_unreadable.append(rel)
+                result.unreadable_details[rel] = {"reason": "decode_error", "byte_offset": exc.start}
                 continue
             fm, body = parse_frontmatter(text)
             title = fm.get("title")
@@ -125,6 +131,7 @@ def walk_notes(vault: VaultRoot, config: dict) -> InventoryResult:
                 outbound=extract_links(body, rel, attachments),
                 injection_like=injection_like(text, patterns),
                 dated_bullets=dated_bullet_count(text),
+                dated_lines=dated_line_count(body),
                 updated=updated,
                 symlink=is_link,
             )

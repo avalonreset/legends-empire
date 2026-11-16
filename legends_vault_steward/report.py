@@ -181,22 +181,28 @@ def write_reports(
     vault,
     format: str = "both",
 ) -> dict[str, Path]:
-    from .paths import validate_report_dir
-
-    from .paths import ReportPathError
+    from .paths import ReportPathError, _is_symlink_or_junction, validate_report_dir
+    from .review import build_snapshot
     if stem != Path(stem).name or stem in {"", ".", ".."}:
         raise ReportPathError("report stem must be a filename")
     if format not in {"both", "json", "md"}:
         raise ValueError("unknown report format")
     out_dir = validate_report_dir(out_dir, vault)
     targets = {kind: out_dir / f"{stem}.{kind}" for kind in ("json", "md") if format in ("both", kind)}
+    if stem == "observe":
+        targets["snapshot"] = out_dir / "snapshot.json"
     for path in targets.values():
-        if path.exists() or path.is_symlink():
+        if path.exists() or _is_symlink_or_junction(path):
             raise ReportPathError(f"report already exists or is a link: {path}; choose a new run directory")
     out_dir.mkdir(parents=True, exist_ok=True)
     for kind, path in targets.items():
         # Exclusive creation refuses existing files, dangling symlinks and hardlinks.
         # Preserve old reports as immutable comparison evidence.
         with path.open("x", encoding="utf-8") as handle:
-            handle.write(render_json(report) if kind == "json" else render_markdown(report))
+            if kind == "json":
+                handle.write(render_json(report))
+            elif kind == "md":
+                handle.write(render_markdown(report))
+            elif kind == "snapshot":
+                handle.write(render_json(build_snapshot(report)))
     return targets

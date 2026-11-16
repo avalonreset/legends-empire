@@ -11,7 +11,7 @@ tags:
 
 # Wiki Index
 
-This catalog is updated by completed knowledge operations.
+This catalog is updated by completed knowledge operations. See [[hot|Hot Cache]], [[overview|Vault Overview]], and [[log|Wiki Log]].
 
 ## Sources
 

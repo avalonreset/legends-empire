@@ -52,6 +52,7 @@ class NoteRecord:
     reasons: list[str] = field(default_factory=list)
     injection_like: bool = False
     dated_bullets: int = 0
+    dated_lines: int = 0
     updated: str | None = None
     symlink: bool = False
 
@@ -104,11 +105,17 @@ class FreshnessResult:
     ok: bool
     words: int | None = None
     max_words: int | None = None
+    bytes: int | None = None
+    max_bytes: int | None = None
     dated_bullets: int | None = None
     max_living_bullets: int | None = None
+    dated_lines: int | None = None
+    max_dated_lines: int | None = None
     age_days: float | None = None
     max_age_days: float | None = None
     updated: str | None = None
+    fresh_until: str | None = None
+    role: str | None = None
     breaches: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
