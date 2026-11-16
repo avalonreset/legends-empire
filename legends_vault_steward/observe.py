@@ -12,10 +12,25 @@ from .classify import classify_notes
 from .config import config_hash, load_config
 from .freshness import evaluate_surfaces
 from .inventory import walk_notes
+from .law import collect_law_files, evaluate_laws
 from .models import Finding, NoteRecord, SEVERITY_ORDER
-from .paths import VaultRoot, resolve_vault_root
-from .wikilinks import resolve_notes
+from .paths import (
+    MAX_BASELINE_JSON_BYTES,
+    VaultRoot,
+    _is_symlink_or_junction,
+    is_contained,
+    read_bounded_json,
+    resolve_vault_root,
+)
+from .wikilinks import count_unresolved_to_unreadable, resolve_notes
 from .operations import operating_records
+
+_ONTOLOGY_FINDING_SEVERITY = {
+    "ontology_duplicate_entity_id": "high",
+    "ontology_certified_without_value": "high",
+    "frontmatter_nested_unsupported": "medium",
+    "frontmatter_mixed_newlines": "medium",
+}
 
 
 def _note_summary(note: NoteRecord) -> dict[str, Any]:
@@ -96,11 +111,6 @@ def _build_findings(
     normal = set(policy.get("orphan_normal_classes", ["D", "F", "G", "I"]))
     core = set("ABCDEFGHI")
     emit_normal = bool(policy.get("emit_orphan_normal", False))
-    max_queue = int(policy.get("max_queue_orphan_findings", 50))
-    max_unresolved = int(policy.get("max_unresolved_findings", 80))
-
-    queue_emitted = 0
-    unresolved_emitted = 0
     ambiguous_seen: set[str] = set()
 
     for path in sorted(notes):
@@ -126,7 +136,7 @@ def _build_findings(
                         message="Class A/B orphan: this class requires a route",
                     )
                 )
-            elif note.record_class in queue and queue_emitted < max_queue:
+            elif note.record_class in queue:
                 findings.append(
                     Finding(
                         code="graph.orphan_queue",
@@ -136,7 +146,6 @@ def _build_findings(
                         message="Class E orphan: candidate for the human review queue",
                     )
                 )
-                queue_emitted += 1
             elif note.record_class in normal and emit_normal:
                 findings.append(
                     Finding(
@@ -148,7 +157,7 @@ def _build_findings(
                     )
                 )
         for link in note.outbound:
-            if link.status == "unresolved" and note.record_class in core and unresolved_emitted < max_unresolved:
+            if link.status == "unresolved" and note.record_class in core:
                 findings.append(
                     Finding(
                         code="link.unresolved",
@@ -159,7 +168,6 @@ def _build_findings(
                         extra={"target": link.target, "kind": link.kind},
                     )
                 )
-                unresolved_emitted += 1
             elif link.status == "ambiguous":
                 ambiguous_seen.add(link.target)
                 findings.append(
@@ -206,34 +214,53 @@ def observe(
     freshness_findings.extend(operation_findings)
 
     inventory_findings: list[Finding] = []
-    # Check ontology signals if index exists
-    idx_path = Path(vault.as_posix) / ".vault-meta/ontology/index.json"
-    if idx_path.exists():
+    # Check ontology signals if index exists (bounded and contained per R2 / O1)
+    idx_path = vault.real / ".vault-meta" / "ontology" / "index.json"
+    if idx_path.exists() and not _is_symlink_or_junction(idx_path) and is_contained(idx_path, vault):
         try:
-            raw_idx = json.loads(idx_path.read_text(encoding="utf-8"))
-            for f_key, f_data in raw_idx.get("facts", {}).items():
-                st = f_data.get("state")
-                f_path = f_data.get("path")
-                if st == "conflict":
-                    inventory_findings.append(
-                        Finding(
-                            code="ontology.conflict",
-                            severity="high",
-                            path=f_path,
-                            record_class=None,
-                            message=f"Ontology fact {f_key} has conflicting uncertified values across notes",
+            raw_idx = read_bounded_json(idx_path, max_bytes=MAX_BASELINE_JSON_BYTES)
+            if isinstance(raw_idx, dict):
+                for f_key, f_data in raw_idx.get("facts", {}).items():
+                    if not isinstance(f_data, dict):
+                        continue
+                    st = f_data.get("state")
+                    f_path = f_data.get("path")
+                    if st == "conflict":
+                        inventory_findings.append(
+                            Finding(
+                                code="ontology.conflict",
+                                severity="high",
+                                path=f_path,
+                                record_class=None,
+                                message=f"Ontology fact {f_key} has conflicting uncertified values across notes",
+                            )
                         )
-                    )
-                elif st == "stale":
-                    inventory_findings.append(
-                        Finding(
-                            code="ontology.stale_fact",
-                            severity="medium",
-                            path=f_path,
-                            record_class=None,
-                            message=f"Ontology fact {f_key} is stale (review overdue or evidence mismatch)",
+                    elif st == "stale":
+                        inventory_findings.append(
+                            Finding(
+                                code="ontology.stale_fact",
+                                severity="medium",
+                                path=f_path,
+                                record_class=None,
+                                message=f"Ontology fact {f_key} is stale (review overdue or evidence mismatch)",
+                            )
                         )
-                    )
+                for ont_f in raw_idx.get("findings", []):
+                    if not isinstance(ont_f, dict):
+                        continue
+                    ont_code = str(ont_f.get("code") or "")
+                    if ont_code in _ONTOLOGY_FINDING_SEVERITY:
+                        ont_path = ont_f.get("path")
+                        ont_detail = str(ont_f.get("detail") or f"Ontology index reported {ont_code}")
+                        inventory_findings.append(
+                            Finding(
+                                code=ont_code,
+                                severity=_ONTOLOGY_FINDING_SEVERITY[ont_code],
+                                path=str(ont_path) if ont_path else None,
+                                record_class=inventory.notes[ont_path].record_class if ont_path in inventory.notes else None,
+                                message=ont_detail,
+                            )
+                        )
         except Exception:
             pass
     for escaped in inventory.skipped_escapes:
@@ -256,20 +283,53 @@ def observe(
                 message="Directory symlink was not followed",
             )
         )
+
+    unreadable_link_counts = count_unresolved_to_unreadable(inventory.notes, inventory.skipped_unreadable)
+    surface_paths_set = {
+        s["path"] for s in config.get("surfaces", []) if isinstance(s, dict) and isinstance(s.get("path"), str)
+    }
+    entrypoints_set = set(config.get("entrypoints", []))
+    for h in config.get("entry_harnesses", []):
+        if isinstance(h, dict):
+            for ep in h.get("entry", []):
+                if isinstance(ep, str):
+                    entrypoints_set.add(ep)
+            if isinstance(h.get("core"), str):
+                entrypoints_set.add(h["core"])
+
     for unread in inventory.skipped_unreadable:
+        detail = inventory.unreadable_details.get(unread, {})
+        link_hits = unreadable_link_counts.get(unread, 0)
+        is_critical = (
+            unread in surface_paths_set
+            or unread in entrypoints_set
+            or link_hits >= 10
+        )
+        sev = "high" if is_critical else "low"
+        extra: dict[str, Any] = {}
+        if "byte_offset" in detail and detail["byte_offset"] is not None:
+            offset = int(detail["byte_offset"])  # type: ignore[arg-type]
+            extra["byte_offset"] = offset
+            msg = f"File could not be decoded as UTF-8 (byte offset {offset}); inventory coverage is incomplete"
+        else:
+            msg = "File or directory could not be read; inventory coverage is incomplete"
+        if link_hits > 0:
+            extra["unresolved_links"] = link_hits
         inventory_findings.append(
             Finding(
                 code="note.unreadable",
-                severity="low",
+                severity=sev,
                 path=unread,
                 record_class=None,
-                message="File or directory could not be read; inventory coverage is incomplete",
+                message=msg,
+                extra=extra,
             )
         )
 
-    # Keep the complete findings ledger; bound the human agenda, not the evidence.
-    config["findings"]["max_queue_orphan_findings"] = len(inventory.notes) + 1
-    config["findings"]["max_unresolved_findings"] = sum(len(n.outbound) for n in inventory.notes.values()) + 1
+    if config.get("law_paths") or config.get("conflict_keys"):
+        law_files = collect_law_files(vault, config)
+        freshness_findings.extend(evaluate_laws(law_files, config, started.date()))
+
     findings = _build_findings(inventory.notes, inventory_findings, freshness_findings, config)
     ended = datetime.now(timezone.utc)
     vault_id = hashlib.sha256(vault.as_posix.encode("utf-8")).hexdigest()
@@ -304,7 +364,7 @@ def observe(
         "findings": [item.to_dict() for item in findings],
         "mutation": {
             "human_notes_written": 0,
-            "commands": ["scan", "doctor", "version"],
+            "commands": ["scan", "entry-audit", "digest", "doctor", "version"],
             "write_commands": [],
         },
     }
