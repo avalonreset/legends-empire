@@ -13,7 +13,7 @@ tags:
 
 ## Last Updated
 
-Vault initialized. No knowledge operations have completed yet.
+Vault initialized. No knowledge operations have completed yet. See [[index|Wiki Index]].
 
 ## Key Recent Facts
 
