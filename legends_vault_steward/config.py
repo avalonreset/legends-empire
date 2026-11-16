@@ -9,9 +9,81 @@ from typing import Any
 
 from .paths import is_disallowed_path_token, read_bounded_json
 
+try:
+    from re import _parser as _re_parser  # type: ignore[attr-defined]
+except ImportError:  # pragma: no cover
+    import sre_parse as _re_parser  # type: ignore[no-redef]
+
 PACKAGE_DIR = Path(__file__).resolve().parent
 DEFAULT_CONFIG_PATH = PACKAGE_DIR / "data" / "default.json"
-_NESTED_QUANTIFIER_RE = re.compile(r"([+*?]|\{\d+,?\d*\})\s*\)[+*?{]")
+
+
+def _check_redos_ast(pattern: str) -> str | None:
+    try:
+        parsed = _re_parser.parse(pattern)
+    except re.error as exc:
+        return f"invalid regex: {exc}"
+
+    def _walk(subpattern: Any, *, in_repeat: bool = False) -> str | None:
+        for opcode, av in subpattern:
+            op_name = str(opcode).upper()
+            if op_name in {"GROUPREF", "GROUPREF_EXISTS"}:
+                return "pattern contains a backreference"
+            if op_name in {"MAX_REPEAT", "MIN_REPEAT", "POSSESSIVE_REPEAT"}:
+                _min_rep, max_rep, child = av
+                if in_repeat:
+                    return "pattern contains a nested quantifier"
+                err = _walk(child, in_repeat=in_repeat or (max_rep != 1))
+                if err is not None:
+                    return err
+            elif op_name == "BRANCH":
+                if in_repeat:
+                    return "pattern contains a nested quantifier or alternation in repeat"
+                for branch_sub in av[1]:
+                    err = _walk(branch_sub, in_repeat=in_repeat)
+                    if err is not None:
+                        return err
+            elif op_name == "SUBPATTERN":
+                err = _walk(av[3], in_repeat=in_repeat)
+                if err is not None:
+                    return err
+            elif op_name in {"ASSERT", "ASSERT_NOT"}:
+                err = _walk(av[1], in_repeat=in_repeat)
+                if err is not None:
+                    return err
+            elif op_name == "ATOMIC_GROUP":
+                err = _walk(av, in_repeat=in_repeat)
+                if err is not None:
+                    return err
+        return None
+
+    return _walk(parsed, in_repeat=False)
+
+
+def validate_conflict_keys(conflict_keys: Any) -> list[tuple[str, re.Pattern[str]]]:
+    if not isinstance(conflict_keys, list):
+        raise ValueError("conflict_keys must be a list")
+    compiled_list: list[tuple[str, re.Pattern[str]]] = []
+    for ck in conflict_keys:
+        if not isinstance(ck, dict) or not isinstance(ck.get("id"), str) or not ck["id"].strip():
+            raise ValueError("each conflict_keys item requires a non-empty string id")
+        key_id = ck["id"].strip()
+        pattern = ck.get("pattern")
+        if not isinstance(pattern, str) or not pattern or len(pattern) > 256:
+            raise ValueError(f"conflict_keys '{key_id}' pattern must be a 1..256 char string")
+        try:
+            compiled = re.compile(pattern)
+        except re.error as exc:
+            raise ValueError(f"conflict_keys '{key_id}' invalid regex: {exc}") from exc
+        ast_err = _check_redos_ast(pattern)
+        if ast_err is not None:
+            raise ValueError(f"conflict_keys '{key_id}' {ast_err}")
+        if compiled.groups != 1:
+            raise ValueError(
+                f"conflict_keys '{key_id}' pattern must have exactly 1 capture group (got {compiled.groups})"
+            )
+        compiled_list.append((key_id, compiled))
+    return compiled_list
 
 
 def _read_json(path: Path) -> dict[str, Any]:
@@ -140,23 +212,10 @@ def load_config(path: str | Path | None = None, profile: str = "generic") -> dic
         if reason is not None or Path(l_path).is_absolute() or ".." in Path(l_path).parts:
             raise ValueError(f"law_paths item '{l_path}' must be an in-vault relative glob")
 
-    conflict_keys = config.get("conflict_keys", [])
-    if not isinstance(conflict_keys, list):
-        raise ValueError("conflict_keys must be a list")
-    for ck in conflict_keys:
-        if not isinstance(ck, dict) or not isinstance(ck.get("id"), str) or not ck["id"].strip():
-            raise ValueError("each conflict_keys item requires a non-empty string id")
-        pattern = ck.get("pattern")
-        if not isinstance(pattern, str) or not pattern or len(pattern) > 256:
-            raise ValueError(f"conflict_keys '{ck['id']}' pattern must be a 1..256 char string")
-        if _NESTED_QUANTIFIER_RE.search(pattern):
-            raise ValueError(f"conflict_keys '{ck['id']}' pattern contains a nested quantifier")
-        try:
-            compiled = re.compile(pattern)
-        except re.error as exc:
-            raise ValueError(f"conflict_keys '{ck['id']}' invalid regex: {exc}") from exc
-        if compiled.groups != 1:
-            raise ValueError(f"conflict_keys '{ck['id']}' pattern must have exactly 1 capture group (got {compiled.groups})")
+    if "duplicate_block_entry_only" in config and not isinstance(config["duplicate_block_entry_only"], bool):
+        raise ValueError("duplicate_block_entry_only must be a boolean")
+
+    validate_conflict_keys(config.get("conflict_keys", []))
 
     return config
 

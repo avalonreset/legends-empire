@@ -968,8 +968,15 @@ def _compute_stat_fingerprint(
 
 def _load_fresh_index(vault_root: Path, *, as_of: str | None = None) -> dict[str, Any] | None:
     vault_root = Path(vault_root).resolve()
-    idx_path = vault_root / ".vault-meta" / "ontology" / "index.json"
-    if not idx_path.is_file() or is_reparse_or_symlink(idx_path):
+    meta_dir = vault_root / ".vault-meta"
+    ont_dir = meta_dir / "ontology"
+    idx_path = ont_dir / "index.json"
+    if (
+        is_reparse_or_symlink(meta_dir)
+        or is_reparse_or_symlink(ont_dir)
+        or not idx_path.is_file()
+        or is_reparse_or_symlink(idx_path)
+    ):
         return None
     try:
         saved_doc = json.loads(idx_path.read_text(encoding="utf-8"))
@@ -1062,8 +1069,15 @@ def need_keys(
     index_doc: dict[str, Any] | None = None,
 ) -> tuple[dict[str, Any], int]:
     """Query fact states for keys with exit code precedence: 12 > 11 > 13 > 10 > 0."""
+    loaded_from_disk = index_doc is None
     if index_doc is None:
         index_doc, _ = load_or_build_index(vault_root, as_of=as_of)
+
+    today_iso: str | None = None
+    if loaded_from_disk and as_of is None:
+        today_iso = datetime.date.today().isoformat()
+        if isinstance(index_doc.get("as_of"), str) and index_doc["as_of"] > today_iso:
+            index_doc, _ = build_index(vault_root, as_of=today_iso, write_file=False)
 
     target_keys: list[str] = []
     if keys:
@@ -1075,7 +1089,7 @@ def need_keys(
     if not target_keys:
         return {"error": "no keys requested", "ok": False}, 20
 
-    effective_as_of = as_of or index_doc.get("as_of") or datetime.date.today().isoformat()
+    effective_as_of = as_of or (today_iso if loaded_from_disk else index_doc.get("as_of")) or datetime.date.today().isoformat()
     facts = index_doc.get("facts", {})
     key_results: dict[str, Any] = {}
     exit_codes_seen: set[int] = set()
@@ -1095,7 +1109,7 @@ def need_keys(
         st = f["state"]
         review_after = f.get("review_after")
         if (
-            as_of is not None
+            (as_of is not None or loaded_from_disk)
             and st in ("certified-owner", "certified-evidence")
             and isinstance(review_after, str)
             and review_after < effective_as_of

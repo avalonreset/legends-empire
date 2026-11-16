@@ -121,20 +121,71 @@ class StewardLawTests(unittest.TestCase):
             {"160K": ["AGENTS.md:2"], "180K": ["CLAUDE.md:2"]},
         )
 
-        # Reject nested quantifier (ReDoS pattern) and wrong capture group count with ValueError / exit 11
-        bad_redos = self.write_config(
-            {"conflict_keys": [{"id": "bad", "pattern": r"((a+)+)"}]}
-        )
-        with self.assertRaises(ValueError):
-            load_config(bad_redos)
-        rc = main(["entry-audit", str(self.vault), "--config", str(bad_redos)])
-        self.assertEqual(rc, 11)
+        # Reject nested quantifier (ReDoS pattern), alternation-in-repeat, and backrefs with ValueError / exit 11 (P2)
+        for bad_pattern in (r"((a+)+)", r"(?:.+:)+(\d+)", r"(?:a|a)+(\d+)", r"(a)\1"):
+            bad_redos = self.write_config(
+                {"conflict_keys": [{"id": "bad", "pattern": bad_pattern}]}
+            )
+            with self.assertRaises(ValueError, msg=f"expected {bad_pattern!r} to raise ValueError"):
+                load_config(bad_redos)
+            rc = main(["entry-audit", str(self.vault), "--config", str(bad_redos)])
+            self.assertEqual(rc, 11, f"expected {bad_pattern!r} to exit 11")
 
         bad_groups = self.write_config(
             {"conflict_keys": [{"id": "no_groups", "pattern": r"compaction \d+K"}]}
         )
         with self.assertRaises(ValueError):
             load_config(bad_groups)
+
+        # Validate duplicate_block_entry_only must be bool (Recommended 2)
+        bad_dup_bool = self.write_config({"duplicate_block_entry_only": "yes"})
+        with self.assertRaises(ValueError):
+            load_config(bad_dup_bool)
+        self.assertEqual(main(["entry-audit", str(self.vault), "--config", str(bad_dup_bool)]), 11)
+
+    def test_rec4_looks_like_secret_redacted_from_value_conflict(self) -> None:
+        # Secret-like tokens must be skipped by _looks_like_secret in law.value_conflict
+        tok_sk = "sk_" + "live_test1"
+        tok_rk = "rk_" + "live_test2"
+        tok_gh = "gh" + "p_test3"
+        tok_jwt = "eyJ" + ("a" * 12)
+        self.write_vault_file(
+            "AGENTS.md",
+            "# Agents\n"
+            f"token: {tok_sk}\n"
+            f"token: {tok_gh}\n"
+            "token: a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6\n"
+            "mode: strict\n",
+        )
+        self.write_vault_file(
+            "CLAUDE.md",
+            "# Claude\n"
+            f"token: {tok_rk}\n"
+            f"token: {tok_jwt}\n"
+            "token: " + ("x" * 65) + "\n"
+            "mode: relaxed\n",
+        )
+        cfg = self.write_config(
+            {
+                "entry_harnesses": [
+                    {"id": "agents", "entry": ["AGENTS.md"]},
+                    {"id": "claude", "entry": ["CLAUDE.md"]},
+                ],
+                "conflict_keys": [
+                    {"id": "api_token", "pattern": r"token:\s*(\S+)"},
+                    {"id": "operating_mode", "pattern": r"mode:\s*(\S+)"},
+                ],
+            }
+        )
+        report = entry_audit(str(self.vault), config_path=str(cfg), now=NOW)
+        conflicts = [f for f in report["findings"] if f["code"] == "law.value_conflict"]
+        self.assertEqual(len(conflicts), 1)
+        self.assertEqual(conflicts[0]["key"], "operating_mode")
+        serialized = json.dumps(report)
+        self.assertNotIn(tok_sk, serialized)
+        self.assertNotIn(tok_rk, serialized)
+        self.assertNotIn(tok_gh, serialized)
+        self.assertNotIn(tok_jwt, serialized)
 
     def test_redos_style_long_line_finishes_fast(self) -> None:
         # 120,000-char line with pathological repetitions

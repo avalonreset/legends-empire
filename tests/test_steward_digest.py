@@ -194,6 +194,102 @@ class StewardDigestTests(unittest.TestCase):
         self.assertIn("legends-vault-stewardship", job["args"])
         self.assertIn("digest", job["args"])
 
+    def test_p3_expired_directive_in_entry_chain_and_law_paths_stays_high_and_exits_12(self) -> None:
+        from legends_vault_steward.digest import merge_and_dedupe_findings
+
+        # Verify merge_and_dedupe_findings keeps the higher severity on key collision
+        deduped = merge_and_dedupe_findings(
+            [{"code": "law.expired_directive", "severity": "medium", "path": "AGENTS.md", "date": "2026-10-20", "line": 2, "message": "m"}],
+            [{"code": "law.expired_directive", "severity": "high", "path": "AGENTS.md", "date": "2026-10-20", "line": 2, "message": "m"}],
+        )
+        self.assertEqual(len(deduped), 1)
+        self.assertEqual(deduped[0]["severity"], "high")
+
+        # End-to-end digest where law_paths overlaps entry_harnesses (like multivendor overlay)
+        self.write_vault_file("AGENTS.md", "# Core Agents\nAll policies active.\n")
+        cfg = self.write_config(
+            {
+                "entry_harnesses": [{"id": "agents", "entry": ["AGENTS.md"], "core": "AGENTS.md"}],
+                "law_paths": ["AGENTS.md"],
+            }
+        )
+        out_dir = self.vault / ".steward" / "digest-p3"
+
+        # 1. Baseline run with clean AGENTS.md -> exit 0
+        with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+            rc1 = main(["digest", str(self.vault), "--config", str(cfg), "--out", str(out_dir), "--as-of", "2026-11-16"])
+        self.assertEqual(rc1, 0)
+
+        # 2. Add expired directive to AGENTS.md -> must be high severity in digest and exit 12
+        self.write_vault_file(
+            "AGENTS.md",
+            "# Core Agents\nTemporary routing through 2026-10-20 applies here.\n",
+        )
+        with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+            rc2 = main(["digest", str(self.vault), "--config", str(cfg), "--out", str(out_dir), "--as-of", "2026-11-16"])
+        self.assertEqual(rc2, 12)
+        d2 = json.loads((out_dir / "digest.json").read_text(encoding="utf-8"))
+        self.assertEqual(d2["status"], "regression")
+        self.assertEqual(d2["code_counts"].get("law.expired_directive"), 1)
+        self.assertIn("law.expired_directive|AGENTS.md|2026-10-20", d2["high_keys"])
+        self.assertIn("law.expired_directive|AGENTS.md|2026-10-20", d2["new_high_keys"])
+
+    def test_rec4_digest_missing_previous_exit_10_and_update_baseline(self) -> None:
+        self.write_vault_file("AGENTS.md", "# Core\n")
+        cfg = self.write_config(
+            {"entry_harnesses": [{"id": "agents", "entry": ["AGENTS.md"]}]}
+        )
+        out_dir = self.vault / ".steward" / "digest-rec4"
+
+        # Missing --previous file must exit 10
+        missing_prev = self.base / "does-not-exist.json"
+        with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+            rc_missing = main(
+                [
+                    "digest",
+                    str(self.vault),
+                    "--config",
+                    str(cfg),
+                    "--out",
+                    str(out_dir),
+                    "--previous",
+                    str(missing_prev),
+                    "--as-of",
+                    "2026-11-16",
+                ]
+            )
+        self.assertEqual(rc_missing, 10)
+
+        # Bootstrap baseline (exit 0)
+        with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+            rc_init = main(["digest", str(self.vault), "--config", str(cfg), "--out", str(out_dir), "--as-of", "2026-11-16"])
+        self.assertEqual(rc_init, 0)
+
+        # Introduce new high finding and run with --update-baseline: exits 12 AND updates baseline
+        self.write_vault_file("AGENTS.md", "# Core\n" "@missing-after.md\n")
+        with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+            rc_upd = main(
+                [
+                    "digest",
+                    str(self.vault),
+                    "--config",
+                    str(cfg),
+                    "--out",
+                    str(out_dir),
+                    "--update-baseline",
+                    "--as-of",
+                    "2026-11-16",
+                ]
+            )
+        self.assertEqual(rc_upd, 12)
+        baseline_doc = json.loads((out_dir / "digest.baseline.json").read_text(encoding="utf-8"))
+        self.assertIn("entry.broken_import|AGENTS.md|missing-after.md", baseline_doc["high_keys"])
+
+        # Subsequent run without --update-baseline now sees no new highs against updated baseline -> exits 0
+        with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+            rc_after = main(["digest", str(self.vault), "--config", str(cfg), "--out", str(out_dir), "--as-of", "2026-11-16"])
+        self.assertEqual(rc_after, 0)
+
 
 if __name__ == "__main__":
     unittest.main()

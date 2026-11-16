@@ -173,6 +173,8 @@ entry harnesses, shared core parity, shim byte budgets, and law checks.
   paths are always reported with `~/...`).
 - `law_paths`: opt-in list of in-vault relative globs scanned for law rules
   alongside entry-chain files (up to 512 regular files, 256 KiB each).
+- `duplicate_block_entry_only`: optional boolean (default `false`); when `true`,
+  `law.duplicate_block` scans only entry-chain files and skips `law_paths`.
 - `conflict_keys`: list of `{"id": ..., "pattern": ...}` objects where `pattern`
   is a regular expression (`<= 256` chars, no nested quantifiers, exactly one
   capture group) used to detect conflicting scalar settings across law files.
@@ -193,7 +195,7 @@ entry harnesses, shared core parity, shim byte budgets, and law checks.
   - `freshness.expired_fresh_until` (`high`): frontmatter `fresh_until` date is earlier than the scan date.
   - `freshness.state_leak_in_core` (`medium`): `role: "core"` surface has more dated body lines than `max_dated_lines` (default 5).
   - `freshness.stale_named_surface` (`high`), `freshness.word_count_exceeded` (`high`), `freshness.bullet_count_exceeded` (`high`), `freshness.missing_named_surface` (`medium`).
-  - `note.unreadable` (`high` when the file is an entrypoint, named surface, entry-chain file, or target of `>= 10` unresolved link occurrences; `low` otherwise; includes UTF-8 decode byte offset when applicable).
+  - `note.unreadable` (`high` when the file is an entrypoint, named surface, or target of `>= 10` unresolved link occurrences; `low` otherwise; includes UTF-8 decode byte offset when applicable).
 - **Law checks:**
   - `law.expired_directive` (`high` in an entry chain, `medium` in `law_paths`): prose directive matching `(through|until|ends?|expires?) YYYY-MM-DD` is earlier than the scan date (`file:line`).
   - `law.duplicate_block` (`low`): normalized paragraph `>= 200` characters duplicated across `>= 2` law files.

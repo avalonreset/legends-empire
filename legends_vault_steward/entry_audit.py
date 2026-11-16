@@ -18,6 +18,7 @@ from .paths import (
     MAX_ENTRY_FILE_BYTES,
     ReportPathError,
     VaultRoot,
+    _WIN_DEVICE_NAMES,
     _is_contained,
     _is_symlink_or_junction,
     get_home_dir,
@@ -218,7 +219,8 @@ def _extract_import_tokens(text: str) -> list[tuple[int, str]]:
         token = match.group(1).strip()
         if "@" in token:
             continue
-        if not any(ch in token for ch in ("/", "\\", ".")):
+        stem = token.rstrip(" .").split(".", 1)[0].split(":", 1)[0].upper()
+        if not any(ch in token for ch in ("/", "\\", ".", ":")) and stem not in _WIN_DEVICE_NAMES:
             continue
         imports.append((line_no, token))
     return imports
@@ -703,7 +705,7 @@ def _parse_date_val(value: Any) -> date | None:
 
 
 def _dedupe_findings(items: list[Finding]) -> list[Finding]:
-    seen: set[tuple[Any, ...]] = set()
+    seen: dict[tuple[Any, ...], int] = {}
     out: list[Finding] = []
     for item in items:
         d = item.to_dict()
@@ -719,8 +721,11 @@ def _dedupe_findings(items: list[Finding]) -> list[Finding]:
             d.get("sha256") or "",
         )
         if key in seen:
+            idx = seen[key]
+            if SEVERITY_ORDER.get(item.severity, 9) < SEVERITY_ORDER.get(out[idx].severity, 9):
+                out[idx] = item
             continue
-        seen.add(key)
+        seen[key] = len(out)
         out.append(item)
     out.sort(
         key=lambda f: (

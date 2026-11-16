@@ -249,6 +249,156 @@ class StewardEntryAuditTests(unittest.TestCase):
         lines = sorted(f["line"] for f in broken)
         self.assertEqual(lines, [1, 2, 3])
 
+    def test_p1_mixed_slash_unc_ntfs_ads_trailing_dot_and_conin_rejected_without_io(self) -> None:
+        from legends_vault_steward.paths import _is_contained, is_disallowed_path_token
+
+        for bad_token in (
+            r"\/server/share/x",
+            r"/\server/share/x",
+            r"\??\UNC\server\share\x",
+            "secrets.env.",
+            ".env::$DATA",
+            "CONIN$",
+            "CONOUT$",
+        ):
+            self.assertIsNotNone(
+                is_disallowed_path_token(bad_token, allow_tilde=True, reject_env=True),
+                f"expected {bad_token!r} to be rejected",
+            )
+
+        self.write_vault_file("secrets.env", "TOP_SECRET_ENV=1\n")
+        self.write_vault_file(".env", "DOT_ENV_SECRET=1\n")
+        self.write_vault_file(
+            "AGENTS.md",
+            "\n".join(
+                [
+                    "# Agents",
+                    r"@\/server/share/x",
+                    r"@/\server/share/x",
+                    "@secrets.env.",
+                    "@.env::$DATA",
+                    "@CONIN$",
+                ]
+            )
+            + "\n",
+        )
+        cfg = self.write_config(
+            {"entry_harnesses": [{"id": "agents", "entry": ["AGENTS.md"]}]}
+        )
+
+        orig_resolve = Path.resolve
+        orig_open = os.open
+        resolved_targets: list[str] = []
+        opened_targets: list[str] = []
+
+        def guarded_resolve(path_obj: Path, *args: object, **kwargs: object) -> Path:
+            s = str(path_obj)
+            resolved_targets.append(s)
+            if "server" in s.lower():
+                raise AssertionError(f"Path.resolve called on UNC target: {s}")
+            return orig_resolve(path_obj, *args, **kwargs)
+
+        def guarded_open(path_arg: object, flags: int, *args: object, **kwargs: object) -> int:
+            s = str(path_arg)
+            opened_targets.append(s)
+            if "env" in Path(s).name.lower() or "server" in s.lower() or "conin" in s.lower():
+                raise AssertionError(f"os.open called on disallowed target: {s}")
+            return orig_open(path_arg, flags, *args, **kwargs)
+
+        with patch.object(Path, "resolve", guarded_resolve), patch("os.open", side_effect=guarded_open):
+            self.assertFalse(_is_contained(Path(r"\/server/share/x"), self.vault))
+            self.assertFalse(_is_contained(Path(r"/\server/share/x"), self.vault))
+            self.assertFalse(_is_contained(Path(r"\\server\share\x"), self.vault))
+            report = entry_audit(str(self.vault), config_path=str(cfg), now=NOW)
+
+        broken = [f for f in report["findings"] if f["code"] == "entry.broken_import"]
+        self.assertEqual(len(broken), 5)
+        self.assertEqual(sorted(f["line"] for f in broken), [2, 3, 4, 5, 6])
+
+    def test_rec4_chain_64_file_cap_oversize_256kib_home_escape_and_out_link_refusal(self) -> None:
+        from legends_vault_steward.entry_audit import write_entry_audit_reports
+        from legends_vault_steward.paths import MAX_ENTRY_FILE_BYTES, ReportPathError, resolve_vault_root
+
+        # 1. MAX_CHAIN_FILES = 64 cap
+        imports_list = []
+        for idx in range(70):
+            fname = f"Node-{idx:02d}.md"
+            self.write_vault_file(fname, f"# Node {idx}\n")
+            imports_list.append(f"@{fname}")
+        self.write_vault_file("Root64.md", "# Root\n" + "\n".join(imports_list) + "\n")
+
+        # 2. >256 KiB single chain file oversize
+        self.write_vault_file("Oversize.md", b"# Big\n" + (b"x" * MAX_ENTRY_FILE_BYTES))
+
+        # 3. Home-scope escape: ~/.claude/CLAUDE.md -> @~/.ssh/id_rsa
+        env_patch = {"USERPROFILE": str(self.fake_home), "HOME": str(self.fake_home)}
+        with patch.dict(os.environ, env_patch):
+            claude_dir = self.fake_home / ".claude"
+            claude_dir.mkdir(parents=True, exist_ok=True)
+            ssh_dir = self.fake_home / ".ssh"
+            ssh_dir.mkdir(parents=True, exist_ok=True)
+            (ssh_dir / "id_rsa").write_text("PRIVATE_KEY_NEVER_READ\n", encoding="utf-8")
+            (claude_dir / "CLAUDE.md").write_text("# Home Shim\n" "@~/.ssh/id_rsa\n", encoding="utf-8")
+
+            cfg = self.write_config(
+                {
+                    "entry_harnesses": [
+                        {"id": "cap64", "entry": ["Root64.md"]},
+                        {"id": "big", "entry": ["Oversize.md"]},
+                        {"id": "home-esc", "entry": ["~/.claude/CLAUDE.md"]},
+                    ]
+                }
+            )
+            report = entry_audit(str(self.vault), config_path=str(cfg), now=NOW)
+
+        by_id = {h["id"]: h for h in report["harnesses"]}
+        self.assertTrue(by_id["cap64"]["file_cap_reached"])
+        self.assertEqual(len(by_id["cap64"]["chain"]), 64)
+
+        self.assertEqual(by_id["big"]["chain"][0]["path"], "Oversize.md")
+        self.assertIsNone(by_id["big"]["chain"][0]["sha256"])
+        oversize_findings = [
+            f for f in report["findings"]
+            if f["code"] == "budget.entry_chain_exceeded" and f["path"] == "Oversize.md"
+        ]
+        self.assertEqual(len(oversize_findings), 1)
+        self.assertEqual(oversize_findings[0]["severity"], "high")
+        self.assertGreater(oversize_findings[0]["bytes"], MAX_ENTRY_FILE_BYTES)
+
+        home_broken = [
+            f for f in report["findings"]
+            if f["code"] == "entry.broken_import" and f["harness"] == "home-esc"
+        ]
+        self.assertEqual(len(home_broken), 1)
+        self.assertIn("escapes allowed containment", home_broken[0]["message"])
+        self.assertEqual(len(by_id["home-esc"]["chain"]), 1)
+        self.assertNotIn("PRIVATE_KEY_NEVER_READ", json.dumps(report))
+
+        # 4. entry-audit --out refusal when report file already exists or --out is a link/junction
+        out_dir = self.base / "ea-out"
+        v_root = resolve_vault_root(self.vault)
+        write_entry_audit_reports(report, out_dir, vault=v_root, format="json")
+        with self.assertRaises(ReportPathError):
+            write_entry_audit_reports(report, out_dir, vault=v_root, format="json")
+
+        link_out = self.base / "ea-out-link"
+        real_out = self.base / "ea-out-real"
+        real_out.mkdir()
+        created_link = False
+        if os.name == "nt":
+            import _winapi
+            _winapi.CreateJunction(str(real_out), str(link_out))
+            created_link = True
+        else:
+            os.symlink(real_out, link_out)
+            created_link = True
+        if created_link:
+            with self.assertRaises(ReportPathError):
+                write_entry_audit_reports(report, link_out, vault=v_root, format="json")
+            with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+                rc_link = main(["entry-audit", str(self.vault), "--out", str(link_out)])
+            self.assertEqual(rc_link, 11)
+
     def test_multivendor_overlay_example_is_valid(self) -> None:
         example_path = ROOT / "examples" / "steward-overlay.multivendor.json"
         self.assertTrue(example_path.is_file())
