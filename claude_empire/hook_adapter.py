@@ -266,7 +266,7 @@ def stop_status(
                     if entry.is_dir(
                         follow_symlinks=False
                     ) and _SAFE_OPERATION_ID.fullmatch(entry.name):
-                        directories.append(Path(entry.path))
+                        directories.append(transactions / entry.name)
                     elif entry.is_symlink():
                         warnings.append("an unsafe transaction entry is present")
         except OSError:

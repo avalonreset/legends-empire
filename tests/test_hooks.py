@@ -450,13 +450,6 @@ def main() -> None:
     test_non_vault_and_plugin_root_are_silent()
     test_context_rejects_symlinked_hot_cache_and_parent()
     test_context_parent_swap_reads_only_from_pinned_directory()
-    if hook_adapter.os.name == "nt":
-        print(
-            "[SKIP] stop_status journal-scan tests: "
-            "product bug in claude_empire/hook_adapter.py:269 with windows_fs._Entry.path"
-        )
-        print("All hook tests passed.")
-        return
     test_stop_status_is_bounded_and_emitted_as_supported_json()
     test_stop_status_reads_journals_at_transaction_bound()
     test_stop_status_rejects_journals_above_transaction_bound()
