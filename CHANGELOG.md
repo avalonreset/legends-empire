@@ -29,6 +29,7 @@ Internal release. Health pass over 0.4.0 plus multi-vendor entry checks.
 - Docs, recipes, and starter ontology templates use PATH- and CWD-independent router invocations, document mandatory `--generated-at` and the derived `.vault-meta/ontology/bundles/` cache, align limits (150 writes per batch, 148 knowledge pack files, Home v0.7.2), and route contribution and security links to `avalonreset/legends-empire` while preserving upstream attribution.
 - `release gates --execute --gate <id>` exit status is scoped to the selected gate; the retired `templates` subcommand is hidden from `scripts/wiki-mode.py --help`; `scripts/read-hot-cache.sh` recognizes `.claude-empire.json` and `CLAUDE_EMPIRE_HOT_CACHE_MAX_BYTES`.
 - `claude_empire/__main__.py` and `legends_vault_steward/__main__.py` set `sys.dont_write_bytecode`, and `legends_vault_steward` is covered by installed-tree boundary verification.
+- `law.value_conflict` `conflict_keys` are validated by a shared stdlib regex AST check that rejects nested quantifiers, alternation inside repeated groups, and backreferences; `duplicate_block_entry_only` must be a boolean.
 
 ### Fixed
 
@@ -40,6 +41,10 @@ Internal release. Health pass over 0.4.0 plus multi-vendor entry checks.
 - `ontology bench` evaluates `expected_exit`, boolean `expect_halt`, and unresolved queries; `ontology propose` no-op runs keep prior proposal bundles.
 - `hook_adapter.stop_status()` builds journal paths from the transactions directory on native Windows, so incomplete or corrupt journals are reported instead of silently skipped.
 - All 15 Windows-native Python test suite failures and the Git Bash `test_wiki_lock.sh` failure are fixed (explicit Git Bash resolution, `WinError 1314` symlink sub-check guards with junction fallbacks, restored `windows_fs.os_proxy.scandir` in `test_ledgers.py`); 15 previously skipped Windows tests now run.
+- `legends_vault_steward` path validation rejects mixed-slash UNC prefixes, `\??\` device paths, NTFS alternate data stream colons, trailing dots or spaces, and `CONIN$`/`CONOUT$` before containment checks.
+- `steward digest` keeps `high` severity on entry-chain `law.*` findings: duplicate `law.*` entries from the observe pass are dropped and deduplication key collisions keep the higher severity.
+- `ontology need` without `--as-of` evaluates `review_after` against today on a cached `index.json`; `.vault-meta/ontology` and hook transaction directories refuse junctions and reparse points.
+- `docs/AGENT-RECIPE.md` and `docs/ontology.md` list only CLI flags that exist.
 
 ### Erratum (0.4.0)
 
