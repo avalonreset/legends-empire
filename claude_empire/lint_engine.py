@@ -48,7 +48,7 @@ import re
 import stat
 import sys
 import urllib.parse
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Any, Iterable, Mapping, Sequence, cast
@@ -129,11 +129,50 @@ class _Page:
     path: str
     absolute: Path
     text: str
-    masked: str
+    _masked: str | None
     frontmatter: _Frontmatter
-    headings: frozenset[str]
-    block_ids: frozenset[str]
+    _headings: frozenset[str] | None
+    _block_ids: frozenset[str] | None
     is_wiki_page: bool
+
+    @property
+    def masked(self) -> str:
+        val = self._masked
+        if val is None:
+            val = _mask_markdown_code(self.text, self.frontmatter.end_offset)
+            object.__setattr__(self, "_masked", val)
+        return val
+
+    @property
+    def headings(self) -> frozenset[str]:
+        val = self._headings
+        if val is None:
+            masked = self.masked
+            val = frozenset(
+                normalized
+                for match in _ATX_HEADING_RE.finditer(masked)
+                if (normalized := _normalize_heading(match.group(2)))
+            )
+            object.__setattr__(self, "_headings", val)
+        return val
+
+    @property
+    def block_ids(self) -> frozenset[str]:
+        val = self._block_ids
+        if val is None:
+            masked = self.masked
+            val = frozenset(
+                match.group(1).casefold() for match in _BLOCK_ID_RE.finditer(masked)
+            )
+            object.__setattr__(self, "_block_ids", val)
+        return val
+
+
+def _compute_without_link_suffix(path: str) -> str | None:
+    suffix = PurePosixPath(path).suffix
+    if suffix.casefold() not in _EXTENSIONLESS_WIKILINK_SUFFIXES:
+        return None
+    return path[: -len(suffix)]
 
 
 @dataclass(frozen=True)
@@ -141,17 +180,16 @@ class _Target:
     path: str
     absolute: Path
     page: _Page | None
+    without_link_suffix: str | None = field(init=False, repr=False, compare=False)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self, "without_link_suffix", _compute_without_link_suffix(self.path)
+        )
 
     @property
     def is_markdown(self) -> bool:
         return self.path.casefold().endswith(".md")
-
-    @property
-    def without_link_suffix(self) -> str | None:
-        suffix = PurePosixPath(self.path).suffix
-        if suffix.casefold() not in _EXTENSIONLESS_WIKILINK_SUFFIXES:
-            return None
-        return self.path[: -len(suffix)]
 
 
 @dataclass(frozen=True)
@@ -379,25 +417,36 @@ def _normalize_heading(value: str) -> str:
 def _page_metadata(path: Path, relative: str, wiki_prefix: str) -> _Page:
     text = path.read_text(encoding="utf-8-sig")
     frontmatter = _parse_frontmatter(text)
-    masked = _mask_markdown_code(text, frontmatter.end_offset)
-    headings = frozenset(
-        normalized
-        for match in _ATX_HEADING_RE.finditer(masked)
-        if (normalized := _normalize_heading(match.group(2)))
-    )
-    block_ids = frozenset(
-        match.group(1).casefold() for match in _BLOCK_ID_RE.finditer(masked)
-    )
     is_wiki = relative == wiki_prefix or relative.startswith(f"{wiki_prefix}/")
+    if is_wiki:
+        masked = _mask_markdown_code(text, frontmatter.end_offset)
+        headings = frozenset(
+            normalized
+            for match in _ATX_HEADING_RE.finditer(masked)
+            if (normalized := _normalize_heading(match.group(2)))
+        )
+        block_ids = frozenset(
+            match.group(1).casefold() for match in _BLOCK_ID_RE.finditer(masked)
+        )
+        return _Page(
+            path=relative,
+            absolute=path,
+            text=text,
+            _masked=masked,
+            frontmatter=frontmatter,
+            _headings=headings,
+            _block_ids=block_ids,
+            is_wiki_page=True,
+        )
     return _Page(
         path=relative,
         absolute=path,
         text=text,
-        masked=masked,
+        _masked=None,
         frontmatter=frontmatter,
-        headings=headings,
-        block_ids=block_ids,
-        is_wiki_page=is_wiki,
+        _headings=None,
+        _block_ids=None,
+        is_wiki_page=False,
     )
 
 
@@ -485,8 +534,7 @@ def _walk_files(
                 lstat_res = os.lstat(path)
                 if is_name_surrogate(lstat_res):
                     continue
-                stat_res = os.stat(path)
-                if not stat.S_ISREG(stat_res.st_mode):
+                if not stat.S_ISREG(lstat_res.st_mode):
                     continue
             except OSError as exc:
                 _record_error(path, exc)
@@ -613,6 +661,18 @@ def _parse_links(page: _Page) -> list[_Link]:
     )
 
 
+def _slash_suffixes(folded_path: str) -> list[str]:
+    suffixes: list[str] = []
+    start = 0
+    while True:
+        slash = folded_path.find("/", start)
+        if slash < 0:
+            break
+        suffixes.append(folded_path[slash + 1 :])
+        start = slash + 1
+    return suffixes
+
+
 class _Resolver:
     def __init__(self, targets: Sequence[_Target], wiki_prefix: str) -> None:
         self.targets = tuple(targets)
@@ -621,18 +681,24 @@ class _Resolver:
         self.by_without_link_suffix: dict[str, list[_Target]] = {}
         self.by_basename: dict[str, list[_Target]] = {}
         self.by_alias: dict[str, list[_Target]] = {}
+        self.by_suffix: dict[str, list[_Target]] = {}
         for target in self.targets:
             full = target.path.casefold()
             self.by_full.setdefault(full, []).append(target)
             name = PurePosixPath(target.path).name
             self.by_basename.setdefault(name.casefold(), []).append(target)
+            for suffix in _slash_suffixes(full):
+                self.by_suffix.setdefault(suffix, []).append(target)
             without_link_suffix = target.without_link_suffix
             if without_link_suffix is not None:
+                folded_without_suffix = without_link_suffix.casefold()
                 self.by_without_link_suffix.setdefault(
-                    without_link_suffix.casefold(), []
+                    folded_without_suffix, []
                 ).append(target)
                 stem = PurePosixPath(without_link_suffix).name
                 self.by_basename.setdefault(stem.casefold(), []).append(target)
+                for suffix in _slash_suffixes(folded_without_suffix):
+                    self.by_suffix.setdefault(suffix, []).append(target)
             if target.page:
                 for alias in target.page.frontmatter.aliases:
                     self.by_alias.setdefault(alias.casefold(), []).append(target)
@@ -681,16 +747,7 @@ class _Resolver:
             return self._deduplicate(candidates)
 
         suffix = posixpath.normpath(raw).casefold()
-        candidates = [
-            target
-            for target in self.targets
-            if target.path.casefold().endswith(f"/{suffix}")
-            or (
-                target.without_link_suffix is not None
-                and target.without_link_suffix.casefold().endswith(f"/{suffix}")
-            )
-        ]
-        return self._deduplicate(candidates)
+        return self._deduplicate(self.by_suffix.get(suffix, ()))
 
 
 def _allowlist_values(data: Any) -> list[str]:
@@ -746,6 +803,23 @@ def _is_excluded(relative: str, patterns: Sequence[str]) -> bool:
     return any(
         fnmatch.fnmatchcase(candidate, pattern.casefold()) for pattern in patterns
     )
+
+
+def _is_path_or_ancestor_excluded(relative: str, patterns: Sequence[str]) -> bool:
+    if not patterns:
+        return False
+    norm = relative.replace("\\", "/").strip("/")
+    if _is_excluded(norm, patterns):
+        return True
+    parts = norm.split("/")
+    for index in range(1, len(parts)):
+        ancestor = "/".join(parts[:index])
+        if ancestor and (
+            _is_excluded(ancestor, patterns)
+            or _is_excluded(f"{ancestor}/", patterns)
+        ):
+            return True
+    return False
 
 
 def _load_allowlist(
@@ -1279,25 +1353,64 @@ def lint_vault(
     orphans.sort(key=_entry_sort_key)
     missing_frontmatter.sort(key=_entry_sort_key)
     empty_sections.sort(key=_entry_sort_key)
-    read_errors.sort(key=_entry_sort_key)
-    configuration_errors.sort(key=_entry_sort_key)
     provenance_errors = _provenance_errors(vault_root, as_of=audit_date)
 
     ontology_findings: list[dict[str, Any]] = []
+    ont_module: Any = None
     try:
+        from . import ontology as ont_module
+    except ImportError:
         try:
-            from . import ontology as ont
+            from claude_empire import ontology as ont_module
         except ImportError:
-            from claude_empire import ontology as ont
-        idx_doc, _ = ont.build_index(vault_root, as_of=audit_date.isoformat(), write_file=False)
-        for f in idx_doc.get("findings", []):
-            ontology_findings.append({
-                "code": f["code"],
-                "path": f["path"],
-                "detail": f.get("detail", ""),
-            })
-    except Exception as exc:
-        pass
+            ont_module = None
+
+    if ont_module is not None:
+        try:
+            ont_as_of = audit_date.isoformat() if as_of is not None else None
+            idx_doc, _ = ont_module.load_or_build_index(vault_root, as_of=ont_as_of)
+            for f in idx_doc.get("findings", []):
+                f_path = str(f.get("path", ""))
+                if _is_path_or_ancestor_excluded(f_path, exclude_patterns):
+                    continue
+                if (
+                    wiki_prefix == "."
+                    and f_path.casefold().startswith("wiki/")
+                    and _is_path_or_ancestor_excluded(f_path[5:], exclude_patterns)
+                ):
+                    continue
+                ontology_findings.append(
+                    {
+                        "code": f["code"],
+                        "path": f_path,
+                        "detail": f.get("detail", ""),
+                    }
+                )
+        except OSError as exc:
+            read_errors.append(
+                {
+                    "path": ".vault-meta/ontology/index.json",
+                    "code": getattr(exc, "code", None) or "lint.ontology_error",
+                    "message": f"ontology index error ({exc.__class__.__name__}): {exc}",
+                }
+            )
+        except Exception as exc:
+            err_code = getattr(exc, "code", None)
+            err_path = (
+                ".claude-empire.json"
+                if err_code == "ONTOLOGY_CONFIG_INVALID"
+                else ".vault-meta/ontology/index.json"
+            )
+            configuration_errors.append(
+                {
+                    "path": err_path,
+                    "code": str(err_code) if err_code else "lint.ontology_error",
+                    "message": f"ontology index error ({exc.__class__.__name__}): {exc}",
+                }
+            )
+
+    read_errors.sort(key=_entry_sort_key)
+    configuration_errors.sort(key=_entry_sort_key)
     ontology_findings.sort(key=lambda item: (item["path"], item["code"]))
 
     categories: dict[str, list[dict[str, Any]]] = {
