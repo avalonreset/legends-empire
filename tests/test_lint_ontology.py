@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import tempfile
 import unittest
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 import sys
@@ -101,6 +102,38 @@ class LintOntologyTests(unittest.TestCase):
             md = render_markdown(report)
             self.assertIn("ontology_duplicate_entity_id", md)
             self.assertIn("frontmatter_nested_unsupported", md)
+
+            # Verify exclude scopes out ontology findings matching excluded paths
+            report_excluded = lint_vault(vault, exclude=["wiki/nested.md"])
+            excluded_codes = [f["code"] for f in report_excluded["ontology_findings"]]
+            self.assertIn("ontology_duplicate_entity_id", excluded_codes)
+            self.assertNotIn("frontmatter_nested_unsupported", excluded_codes)
+
+            # Verify ImportError fallback keeps lint running cleanly without configuration_errors
+            import claude_empire
+
+            with mock.patch.dict(
+                sys.modules, {"claude_empire.ontology": None}
+            ), mock.patch.object(claude_empire, "ontology", None, create=True):
+                import builtins
+
+                real_import = builtins.__import__
+
+                def _block_ontology(
+                    name: str,
+                    globals: object = None,
+                    locals: object = None,
+                    fromlist: tuple[str, ...] = (),
+                    level: int = 0,
+                ) -> object:
+                    if "ontology" in name or (fromlist and "ontology" in fromlist):
+                        raise ImportError("ontology unavailable")
+                    return real_import(name, globals, locals, fromlist, level)  # type: ignore[arg-type]
+
+                with mock.patch("builtins.__import__", side_effect=_block_ontology):
+                    report_no_ont = lint_vault(vault)
+            self.assertEqual(report_no_ont["ontology_findings"], [])
+            self.assertEqual(report_no_ont["configuration_errors"], [])
 
 
 if __name__ == "__main__":
