@@ -7,9 +7,9 @@ implementation record for older releases.
 
 ## [Unreleased]
 
-## [0.4.1] - 2026-11-16
+## [0.4.1] - 2026-11-21
 
-Internal release. Health pass over 0.4.0 plus multi-vendor entry checks.
+Public release. Health pass over 0.4.0 plus multi-vendor entry checks, ontology and lint performance hardening, and native Windows test isolation.
 
 ### Added
 
@@ -47,6 +47,9 @@ Internal release. Health pass over 0.4.0 plus multi-vendor entry checks.
 - `docs/AGENT-RECIPE.md` and `docs/ontology.md` list only CLI flags that exist.
 - `lint` no longer stalls on large vaults: `_Resolver` precomputes a slash-boundary suffix index and caches `without_link_suffix` per target, and a fresh cached `.vault-meta/ontology/index.json` is reused (otherwise the index is rebuilt in memory without writing `.vault-meta`). On a 1,713-page, 17,094-link vault, lint completes in about 3 minutes instead of stalling past 9.
 - `lint` filters `ontology_findings` by active `--exclude` patterns and records ontology configuration or read failures in `configuration_errors` and `read_errors` instead of swallowing exceptions.
+- `steward digest` preserves `harness` in both `merge_and_dedupe_findings()` and `high_key()` so multi-harness `entry.core_unreached` and `entry.encoding` findings stay distinct and trigger regressions, and collapses duplicate `freshness.expired_fresh_until` entries across `observe` and `entry-audit` (preferring the named surface finding).
+- `steward entry-audit` supports `core_by_reference: true` for non-`@` prose entry files referencing the configured `core` path; `empire.json` skips `archive` and recognizes `fleet/Core.md` and `HOT.md` as optional Empire surfaces alongside `wiki/index.md` and `wiki/hot.md`; `examples/steward-overlay.multivendor.json` uses an unambiguous single-value `conflict_keys` example (`primary_branch`).
+- Standalone test scripts no longer leak `CLAUDE_EMPIRE_VAULT` at import time, and `tests/test_setup_wrappers.py` isolates `CLAUDE_EMPIRE_VAULT` in subprocess environments so `python -m unittest discover -s tests -p "test_*.py"` passes cleanly in a shared Windows process.
 
 ### Erratum (0.4.0)
 

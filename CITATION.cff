@@ -10,7 +10,7 @@ repository-code: 'https://github.com/avalonreset/legends-empire'
 url: 'https://github.com/avalonreset/legends-empire'
 license: MIT
 version: 0.4.1
-date-released: '2026-11-16'
+date-released: '2026-11-21'
 keywords:
   - obsidian
   - claude-code

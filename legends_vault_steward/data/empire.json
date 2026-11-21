@@ -1,12 +1,14 @@
 {
   "comment": "Portable opt-in Empire profile. No personal vault configuration.",
-  "entrypoints": ["wiki/index.md", "EMPIRE-ENTRY.md", "EMPIRE-START.md"],
+  "entrypoints": ["wiki/index.md", "EMPIRE-ENTRY.md", "EMPIRE-START.md", "fleet/Core.md", "HOT.md"],
   "classifier_rules": [
-    {"id": "EMPIRE_ENTRY", "paths": ["wiki/index.md", "wiki/hot.md", "EMPIRE-ENTRY.md", "EMPIRE-START.md"], "class": "A", "weight": 0.99}
+    {"id": "EMPIRE_ENTRY", "paths": ["wiki/index.md", "wiki/hot.md", "EMPIRE-ENTRY.md", "EMPIRE-START.md", "fleet/Core.md", "HOT.md"], "class": "A", "weight": 0.99}
   ],
   "surfaces": [
     {"id": "hot", "path": "wiki/hot.md", "role": "hot", "max_words": 500, "max_age_days": 14},
-    {"id": "index", "path": "wiki/index.md", "max_age_days": 30}
+    {"id": "index", "path": "wiki/index.md", "max_age_days": 30},
+    {"id": "empire_hot", "path": "HOT.md", "role": "hot", "max_words": 500, "max_bytes": 4096, "max_age_days": 14, "optional": true},
+    {"id": "empire_core", "path": "fleet/Core.md", "role": "core", "max_bytes": 16384, "max_dated_lines": 5, "optional": true}
   ],
   "operations": {"review_after_days": 14},
   "ontology_roots": [
@@ -20,6 +22,7 @@
   ],
   "skip_dir_names": [
     "node_modules",
+    "archive",
     "backups",
     "_runtime",
     "tmp",

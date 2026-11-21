@@ -162,12 +162,15 @@ entry harnesses, shared core parity, shim byte budgets, and law checks.
 ### Config keys
 
 - `surfaces`: list of surface objects (`id`, `path`, optional `role` (`"hot"` or
-  `"core"`), `max_words`, `max_bytes`, `max_age_days`, `max_living_bullets`,
-  `max_dated_lines`). Surfaces with `role: "hot"` default `max_age_days` to `14`.
-  Surfaces with `role: "core"` default `max_dated_lines` to `5`.
+  `"core"`), optional boolean `optional` to skip `missing_named_surface` when
+  absent or overridden on the same path, `max_words`, `max_bytes`, `max_age_days`,
+  `max_living_bullets`, `max_dated_lines`). Surfaces with `role: "hot"` default
+  `max_age_days` to `14`. Surfaces with `role: "core"` default `max_dated_lines`
+  to `5`.
 - `entry_harnesses`: list of harness objects (`id`, `entry` list of vault-relative
-  or `~/...` paths, optional `core` path, optional `max_chain_bytes`, optional
-  `shim: {"path": ..., "max_bytes": ...}`).
+  or `~/...` paths, optional `core` path, optional boolean `core_by_reference`
+  for non-`@` prose entry files that reference the configured `core` path,
+  optional `max_chain_bytes`, optional `shim: {"path": ..., "max_bytes": ...}`).
 - `forbidden_paths`: list of vault-relative or `~/...` paths that must not exist
   on disk (inspected via `lstat` only; file contents are never read, and home
   paths are always reported with `~/...`).

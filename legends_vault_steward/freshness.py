@@ -33,12 +33,21 @@ def evaluate_surfaces(notes: dict[str, NoteRecord], config: dict, now: datetime)
     results: list[FreshnessResult] = []
     findings: list[Finding] = []
     surface_paths: set[str] = set()
+    explicit_paths = {
+        s["path"]
+        for s in config.get("surfaces", [])
+        if isinstance(s, dict) and isinstance(s.get("path"), str) and not s.get("optional")
+    }
     for surface in config.get("surfaces", []):
         path = surface["path"]
+        if surface.get("optional") and path in explicit_paths:
+            continue
         surface_paths.add(path)
         role = surface.get("role")
         note = notes.get(path)
         if note is None:
+            if surface.get("optional"):
+                continue
             result = FreshnessResult(
                 id=surface["id"],
                 path=path,

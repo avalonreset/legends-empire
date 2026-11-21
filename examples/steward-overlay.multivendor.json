@@ -50,6 +50,7 @@
         "AGENTS.md"
       ],
       "core": "AGENTS.md",
+      "core_by_reference": true,
       "max_chain_bytes": 32768
     }
   ],
@@ -65,8 +66,8 @@
   ],
   "conflict_keys": [
     {
-      "id": "context_compaction_threshold",
-      "pattern": "(?i)compaction[^\\n]{0,40}?(\\b\\d{2,3}K\\b)"
+      "id": "primary_branch",
+      "pattern": "(?i)primary[_ -]branch:\\s*([A-Za-z0-9._/-]+)"
     }
   ]
 }

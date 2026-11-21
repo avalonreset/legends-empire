@@ -20,7 +20,6 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 HELPER = ROOT / "scripts" / "tiling-check.py"
-os.environ["CLAUDE_EMPIRE_VAULT"] = str(ROOT)
 
 spec = importlib.util.spec_from_file_location("tc", HELPER)
 tc = importlib.util.module_from_spec(spec)

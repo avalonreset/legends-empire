@@ -30,6 +30,7 @@ MAX_DIGEST_MD_BYTES = 1024
 def high_key(finding: dict[str, Any]) -> str:
     code = str(finding.get("code") or "")
     path = str(finding.get("path") or "")
+    harness = str(finding.get("harness") or "")
     subkey = ""
     if finding.get("target"):
         subkey = str(finding["target"])
@@ -41,11 +42,12 @@ def high_key(finding: dict[str, Any]) -> str:
         subkey = str(finding["byte_offset"])
     elif finding.get("surface") and finding.get("code", "").startswith("budget."):
         subkey = str(finding["surface"])
-    elif finding.get("harness") and not path:
-        subkey = str(finding["harness"])
+    parts = [code, path]
     if subkey:
-        return f"{code}|{path}|{subkey}"
-    return f"{code}|{path}"
+        parts.append(subkey)
+    if harness and harness != subkey:
+        parts.append(harness)
+    return "|".join(parts)
 
 
 def merge_and_dedupe_findings(*finding_lists: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -53,24 +55,39 @@ def merge_and_dedupe_findings(*finding_lists: list[dict[str, Any]]) -> list[dict
     out: list[dict[str, Any]] = []
     for flist in finding_lists:
         for f in flist:
-            key = (
-                f.get("code"),
-                f.get("path") or "",
-                f.get("target") or "",
-                f.get("date") or "",
-                f.get("fresh_until") or "",
-                f.get("line") if f.get("line") is not None else "",
-                f.get("byte_offset") if f.get("byte_offset") is not None else "",
-                f.get("surface") or "",
-                f.get("key") or "",
-                f.get("sha256") or "",
-            )
+            code = f.get("code")
+            if code == "freshness.expired_fresh_until":
+                key: tuple[Any, ...] = (
+                    code,
+                    f.get("path") or "",
+                    f.get("fresh_until") or "",
+                )
+            else:
+                key = (
+                    code,
+                    f.get("path") or "",
+                    f.get("target") or "",
+                    f.get("date") or "",
+                    f.get("fresh_until") or "",
+                    f.get("line") if f.get("line") is not None else "",
+                    f.get("byte_offset") if f.get("byte_offset") is not None else "",
+                    f.get("surface") or "",
+                    f.get("harness") or "",
+                    f.get("key") or "",
+                    f.get("sha256") or "",
+                )
             if key in seen:
                 idx = seen[key]
-                old_sev = SEVERITY_ORDER.get(str(out[idx].get("severity")), 9)
+                existing = out[idx]
+                old_sev = SEVERITY_ORDER.get(str(existing.get("severity")), 9)
                 new_sev = SEVERITY_ORDER.get(str(f.get("severity")), 9)
                 if new_sev < old_sev:
                     out[idx] = f
+                elif code == "freshness.expired_fresh_until" and new_sev == old_sev:
+                    old_rank = (1 if existing.get("surface") else 0, 0 if existing.get("harness") else 1)
+                    new_rank = (1 if f.get("surface") else 0, 0 if f.get("harness") else 1)
+                    if new_rank > old_rank:
+                        out[idx] = f
                 continue
             seen[key] = len(out)
             out.append(f)

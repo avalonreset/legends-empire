@@ -138,6 +138,71 @@ class Steward041FixesTests(unittest.TestCase):
         self.assertTrue(
             any(f["path"] == "wiki/index.md" and f["code"] == "freshness.stale_named_surface" for f in findings)
         )
+        # Optional empire surfaces (HOT.md, fleet/Core.md) do not emit missing_named_surface when absent
+        self.assertFalse(
+            any(
+                f["code"] == "freshness.missing_named_surface" and f["path"] in {"HOT.md", "fleet/Core.md"}
+                for f in findings
+            )
+        )
+
+    def test_empire_profile_skips_archive_and_recognizes_core_and_hot_surfaces(self) -> None:
+        self.write_note(
+            "archive/Old-Now.md",
+            "---\nupdated: 2026-01-01\nfresh_until: 2026-02-01\n---\n# Archived\n",
+        )
+        self.write_note(
+            "HOT.md",
+            "---\nupdated: 2026-10-01\nfresh_until: 2026-11-01\n---\n# Hot\n",
+        )
+        self.write_note(
+            "fleet/Core.md",
+            "---\nupdated: 2026-11-16\n---\n# Core\n"
+            "- 2026-01-01 a\n- 2026-01-02 b\n- 2026-01-03 c\n"
+            "- 2026-01-04 d\n- 2026-01-05 e\n- 2026-01-06 f\n",
+        )
+        self.write_note("wiki/index.md", "---\nupdated: 2026-11-16\n---\n# Index\n")
+        self.write_note("wiki/hot.md", "---\nupdated: 2026-11-16\n---\n# Wiki Hot\n")
+
+        report = observe(str(self.vault), now=NOW, profile="empire")
+        self.assertNotIn("archive/Old-Now.md", report["snapshot"])
+        notes_by_path = {n["path"]: n for n in report["notes"]}
+        self.assertEqual(notes_by_path["HOT.md"]["class"], "A")
+        self.assertEqual(notes_by_path["fleet/Core.md"]["class"], "A")
+        findings = report["findings"]
+        self.assertFalse(
+            any(
+                f["code"] == "graph.orphan_defect" and f["path"] in {"HOT.md", "fleet/Core.md"}
+                for f in findings
+            )
+        )
+        self.assertTrue(
+            any(
+                f["code"] == "freshness.expired_fresh_until" and f["path"] == "HOT.md"
+                for f in findings
+            )
+        )
+        self.assertTrue(
+            any(
+                f["code"] == "freshness.state_leak_in_core" and f["path"] == "fleet/Core.md"
+                for f in findings
+            )
+        )
+
+        # Explicit overlay overriding HOT.md yields optional empire_hot without duplicate findings
+        overlay = self.base / "explicit-hot.json"
+        overlay.write_text(
+            json.dumps({"surfaces": [{"id": "hot", "path": "HOT.md", "role": "hot", "max_age_days": 14}]}),
+            encoding="utf-8",
+        )
+        report_ov = observe(str(self.vault), config_path=str(overlay), now=NOW, profile="empire")
+        hot_expired = [
+            f
+            for f in report_ov["findings"]
+            if f["code"] == "freshness.expired_fresh_until" and f["path"] == "HOT.md"
+        ]
+        self.assertEqual(len(hot_expired), 1)
+        self.assertEqual(hot_expired[0].get("surface"), "hot")
 
     def test_f6_unreadable_severity_promotion_and_byte_offset(self) -> None:
         # Unreadable note with invalid UTF-8 at byte offset 7

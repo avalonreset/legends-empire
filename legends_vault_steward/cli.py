@@ -110,7 +110,7 @@ def _cmd_doctor() -> int:
     else:
         try:
             load_config()
-        except Exception as exc:  # noqa: BLE001 — doctor must stay broad
+        except Exception as exc:  # noqa: BLE001: doctor must stay broad
             problems.append(f"default config failed to load: {exc}")
     if problems:
         print("lvs doctor FAIL", file=sys.stderr)

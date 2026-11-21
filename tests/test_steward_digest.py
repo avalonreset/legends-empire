@@ -101,7 +101,7 @@ class StewardDigestTests(unittest.TestCase):
         self.assertTrue(d1["first_run"])
         self.assertIn("baseline", md1.lower())
         self.assertLessEqual(len(md1.encode("utf-8")), 1024)
-        self.assertEqual(d1["high_keys"], ["entry.broken_import|AGENTS.md|missing-1.md"])
+        self.assertEqual(d1["high_keys"], ["entry.broken_import|AGENTS.md|missing-1.md|agents"])
 
         # 2. Second run with no change -> exit 0
         with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
@@ -140,7 +140,7 @@ class StewardDigestTests(unittest.TestCase):
         self.assertEqual(rc3, 12)
         d3 = json.loads((out_dir / "digest.json").read_text(encoding="utf-8"))
         self.assertEqual(d3["status"], "regression")
-        self.assertEqual(d3["new_high_keys"], ["entry.broken_import|AGENTS.md|missing-2.md"])
+        self.assertEqual(d3["new_high_keys"], ["entry.broken_import|AGENTS.md|missing-2.md|agents"])
 
         # 4. Fourth run (Day N+1) with the unfixed regression still present -> still exits 12 (no upward ratchet!)
         with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
@@ -283,12 +283,153 @@ class StewardDigestTests(unittest.TestCase):
             )
         self.assertEqual(rc_upd, 12)
         baseline_doc = json.loads((out_dir / "digest.baseline.json").read_text(encoding="utf-8"))
-        self.assertIn("entry.broken_import|AGENTS.md|missing-after.md", baseline_doc["high_keys"])
+        self.assertIn("entry.broken_import|AGENTS.md|missing-after.md|agents", baseline_doc["high_keys"])
 
         # Subsequent run without --update-baseline now sees no new highs against updated baseline -> exits 0
         with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
             rc_after = main(["digest", str(self.vault), "--config", str(cfg), "--out", str(out_dir), "--as-of", "2026-11-16"])
         self.assertEqual(rc_after, 0)
+
+    def test_multiharness_core_unreached_and_encoding_stay_distinct_and_regress(self) -> None:
+        from legends_vault_steward.digest import high_key, merge_and_dedupe_findings
+
+        # Unit check: distinct harnesses on the same path must not collapse
+        f_agy = {
+            "code": "entry.core_unreached",
+            "severity": "high",
+            "path": "fleet/Core.md",
+            "harness": "agy",
+            "message": "Harness 'agy' chain did not reach declared core fleet/Core.md",
+        }
+        f_codex = {
+            "code": "entry.core_unreached",
+            "severity": "high",
+            "path": "fleet/Core.md",
+            "harness": "codex-muse",
+            "message": "Harness 'codex-muse' chain did not reach declared core fleet/Core.md",
+        }
+        f_enc_claude = {
+            "code": "entry.encoding",
+            "severity": "high",
+            "path": "Shared.md",
+            "byte_offset": 12,
+            "harness": "claude",
+            "message": "Invalid UTF-8 in Shared.md at byte offset 12",
+        }
+        f_enc_gemini = {
+            "code": "entry.encoding",
+            "severity": "high",
+            "path": "Shared.md",
+            "byte_offset": 12,
+            "harness": "gemini",
+            "message": "Invalid UTF-8 in Shared.md at byte offset 12",
+        }
+        merged = merge_and_dedupe_findings([f_agy, f_codex, f_enc_claude, f_enc_gemini])
+        self.assertEqual(len(merged), 4)
+        self.assertEqual(
+            {high_key(item) for item in merged},
+            {
+                "entry.core_unreached|fleet/Core.md|agy",
+                "entry.core_unreached|fleet/Core.md|codex-muse",
+                "entry.encoding|Shared.md|12|claude",
+                "entry.encoding|Shared.md|12|gemini",
+            },
+        )
+
+        # End-to-end digest: second harness losing core reachability must exit 12 (regression)
+        self.write_vault_file("fleet/Core.md", "# Core\n")
+        self.write_vault_file("AGY.md", "# AGY without core import\n")
+        self.write_vault_file("CODEX.md", "@fleet/Core.md\n")
+        cfg = self.write_config(
+            {
+                "entry_harnesses": [
+                    {"id": "agy", "entry": ["AGY.md"], "core": "fleet/Core.md"},
+                    {"id": "codex-muse", "entry": ["CODEX.md"], "core": "fleet/Core.md"},
+                ]
+            }
+        )
+        out_dir = self.vault / ".steward" / "digest-harnesses"
+        with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+            rc1 = main(["digest", str(self.vault), "--config", str(cfg), "--out", str(out_dir), "--as-of", "2026-11-21"])
+        self.assertEqual(rc1, 0)
+        d1 = json.loads((out_dir / "digest.json").read_text(encoding="utf-8"))
+        self.assertEqual(d1["high_keys"], ["entry.core_unreached|fleet/Core.md|agy"])
+
+        # Now codex-muse also drops @fleet/Core.md -> must detect regression
+        self.write_vault_file("CODEX.md", "# Codex without core import\n")
+        with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+            rc2 = main(["digest", str(self.vault), "--config", str(cfg), "--out", str(out_dir), "--as-of", "2026-11-21"])
+        self.assertEqual(rc2, 12)
+        d2 = json.loads((out_dir / "digest.json").read_text(encoding="utf-8"))
+        self.assertEqual(d2["status"], "regression")
+        self.assertEqual(d2["code_counts"].get("entry.core_unreached"), 2)
+        self.assertEqual(d2["new_high_keys"], ["entry.core_unreached|fleet/Core.md|codex-muse"])
+        self.assertEqual(
+            d2["high_keys"],
+            [
+                "entry.core_unreached|fleet/Core.md|agy",
+                "entry.core_unreached|fleet/Core.md|codex-muse",
+            ],
+        )
+
+    def test_expired_fresh_until_collapses_observe_and_entry_audit_duplicates(self) -> None:
+        from legends_vault_steward.digest import merge_and_dedupe_findings
+
+        obs_item = {
+            "code": "freshness.expired_fresh_until",
+            "severity": "high",
+            "path": "HOT.md",
+            "surface": "hot",
+            "fresh_until": "2026-11-24",
+            "message": "hot declared fresh_until 2026-11-24 has passed",
+        }
+        ea_claude = {
+            "code": "freshness.expired_fresh_until",
+            "severity": "high",
+            "path": "HOT.md",
+            "harness": "claude",
+            "fresh_until": "2026-11-24",
+            "message": "Entry file HOT.md declared fresh_until 2026-11-24 has passed",
+        }
+        ea_gemini = {
+            "code": "freshness.expired_fresh_until",
+            "severity": "high",
+            "path": "HOT.md",
+            "harness": "gemini",
+            "fresh_until": "2026-11-24",
+            "message": "Entry file HOT.md declared fresh_until 2026-11-24 has passed",
+        }
+        # Both input orders must collapse to 1 finding preferring the named surface
+        for merged in (
+            merge_and_dedupe_findings([obs_item], [ea_claude, ea_gemini]),
+            merge_and_dedupe_findings([ea_claude, ea_gemini], [obs_item]),
+        ):
+            self.assertEqual(len(merged), 1)
+            self.assertEqual(merged[0].get("surface"), "hot")
+            self.assertNotIn("harness", merged[0])
+
+        # End-to-end digest: HOT.md imported by two harnesses and declared as surface="hot"
+        self.write_vault_file("HOT.md", "---\nupdated: 2026-11-21\nfresh_until: 2026-11-24\n---\n# Hot\n")
+        self.write_vault_file("CLAUDE.md", "@HOT.md\n")
+        self.write_vault_file("GEMINI.md", "@HOT.md\n")
+        cfg = self.write_config(
+            {
+                "surfaces": [{"id": "hot", "path": "HOT.md", "role": "hot", "max_age_days": 14}],
+                "entry_harnesses": [
+                    {"id": "claude", "entry": ["CLAUDE.md"]},
+                    {"id": "gemini", "entry": ["GEMINI.md"]},
+                ],
+            }
+        )
+        out_dir = self.vault / ".steward" / "digest-hot-dedupe"
+        with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+            rc = main(["digest", str(self.vault), "--config", str(cfg), "--out", str(out_dir), "--as-of", "2026-11-25"])
+        self.assertEqual(rc, 0)
+        doc = json.loads((out_dir / "digest.json").read_text(encoding="utf-8"))
+        md = (out_dir / "digest.md").read_text(encoding="utf-8")
+        self.assertEqual(doc["code_counts"].get("freshness.expired_fresh_until"), 1)
+        self.assertEqual(doc["high_keys"], ["freshness.expired_fresh_until|HOT.md|2026-11-24"])
+        self.assertEqual(md.count("freshness.expired_fresh_until"), 1)
 
 
 if __name__ == "__main__":

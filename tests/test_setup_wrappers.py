@@ -52,7 +52,11 @@ class SetupWrapperTests(unittest.TestCase):
     def invoke(
         self, script: Path, vault: Path, *arguments: str
     ) -> subprocess.CompletedProcess[str]:
-        environment = {k: v for k, v in os.environ.items() if k.lower() != "path"}
+        environment = {
+            k: v
+            for k, v in os.environ.items()
+            if k.lower() not in {"path", "claude_empire_vault"}
+        }
         environment["PATH"] = (
             f"{Path(sys.executable).parent}{os.pathsep}{os.environ.get('PATH', '')}"
         )
@@ -78,7 +82,11 @@ class SetupWrapperTests(unittest.TestCase):
             newline="\n",
         )
         fake_python.chmod(0o755)
-        environment = {k: v for k, v in os.environ.items() if k.lower() != "path"}
+        environment = {
+            k: v
+            for k, v in os.environ.items()
+            if k.lower() not in {"path", "claude_empire_vault"}
+        }
         environment["HOME"] = str(parent)
         environment["USERPROFILE"] = str(parent)
         environment["PATH"] = (

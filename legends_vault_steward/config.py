@@ -146,6 +146,8 @@ def load_config(path: str | Path | None = None, profile: str = "generic") -> dic
             raise ValueError(f"surface path must be a safe vault-relative path: {surface['path']}")
         if "role" in surface and not isinstance(surface["role"], str):
             raise ValueError("surface role must be a string")
+        if "optional" in surface and not isinstance(surface["optional"], bool):
+            raise ValueError("surface optional must be a boolean")
         for key in ("max_words", "max_age_days", "max_living_bullets", "max_bytes", "max_dated_lines"):
             if key in surface and (isinstance(surface[key], bool) or not isinstance(surface[key], (int, float)) or surface[key] < 0):
                 raise ValueError(f"surface {key} must be nonnegative")
@@ -181,6 +183,9 @@ def load_config(path: str | Path | None = None, profile: str = "generic") -> dic
             reason = is_disallowed_path_token(core, allow_tilde=True, reject_env=True)
             if reason is not None:
                 raise ValueError(f"harness {harness['id']} core '{core}' rejected: {reason}")
+        core_by_ref = harness.get("core_by_reference")
+        if core_by_ref is not None and not isinstance(core_by_ref, bool):
+            raise ValueError(f"harness {harness['id']} core_by_reference must be a boolean")
         max_chain = harness.get("max_chain_bytes")
         if max_chain is not None:
             if isinstance(max_chain, bool) or not isinstance(max_chain, int) or max_chain < 0:

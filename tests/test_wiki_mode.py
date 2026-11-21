@@ -25,7 +25,6 @@ if hasattr(sys.stdout, "reconfigure"):
 
 ROOT = Path(__file__).resolve().parent.parent
 HELPER = ROOT / "scripts" / "wiki-mode.py"
-os.environ["CLAUDE_EMPIRE_VAULT"] = str(ROOT)
 
 spec = importlib.util.spec_from_file_location("wiki_mode", HELPER)
 wm = importlib.util.module_from_spec(spec)

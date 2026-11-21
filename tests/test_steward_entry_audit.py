@@ -405,7 +405,132 @@ class StewardEntryAuditTests(unittest.TestCase):
         cfg = load_config(example_path, profile="empire")
         harness_ids = [h["id"] for h in cfg["entry_harnesses"]]
         self.assertEqual(harness_ids, ["claude", "gemini", "codex-antigravity"])
-        self.assertEqual(cfg["conflict_keys"][0]["id"], "context_compaction_threshold")
+        conflict_ids = [ck["id"] for ck in cfg["conflict_keys"]]
+        self.assertNotIn("context_compaction_threshold", conflict_ids)
+        self.assertEqual(conflict_ids, ["primary_branch"])
+        codex_cfg = next(h for h in cfg["entry_harnesses"] if h["id"] == "codex-antigravity")
+        self.assertTrue(codex_cfg.get("core_by_reference"))
+
+        # Multi-vendor compaction lines must produce 0 law.value_conflict false positives
+        self.write_vault_file(
+            "AGENTS.md",
+            "# Agents\nAuto-compaction is pinned near 160K (Claude Code) and 157K (Gemini CLI).\nprimary_branch: main\n",
+        )
+        self.write_vault_file("CLAUDE.md", "@AGENTS.md\n")
+        self.write_vault_file("GEMINI.md", "@AGENTS.md\n")
+        env_patch = {"USERPROFILE": str(self.fake_home), "HOME": str(self.fake_home)}
+        with patch.dict(os.environ, env_patch):
+            (self.fake_home / ".claude").mkdir(parents=True, exist_ok=True)
+            (self.fake_home / ".gemini").mkdir(parents=True, exist_ok=True)
+            (self.fake_home / ".claude" / "CLAUDE.md").write_text(
+                "Auto-compaction is pinned near 160K (Claude Code) and 157K (Gemini CLI).\n",
+                encoding="utf-8",
+            )
+            (self.fake_home / ".gemini" / "GEMINI.md").write_text(
+                "Auto-compaction is pinned near 160K (Claude Code) and 157K (Gemini CLI).\n",
+                encoding="utf-8",
+            )
+            report = entry_audit(str(self.vault), config_path=str(example_path), now=NOW, profile="empire")
+        conflicts = [f for f in report["findings"] if f["code"] == "law.value_conflict"]
+        self.assertEqual(conflicts, [])
+
+    def test_core_by_reference_prose_entry_reachability_and_parity(self) -> None:
+        self.write_vault_file("fleet/Core.md", "# Empire Core\nAll sessions follow this contract.\n")
+        self.write_vault_file("CLAUDE.md", "@fleet/Core.md\n")
+        self.write_vault_file(
+            "AGENTS.md",
+            f"# Root Entry\nRead `{self.vault}\\fleet\\Core.md` at session start.\n",
+        )
+        self.write_vault_file(
+            "REL.md",
+            "# Relative Prose Entry\nRead `fleet/Core.md` at session start.\n",
+        )
+        self.write_vault_file(
+            "FENCED.md",
+            "# Fenced Only\n```\nfleet/Core.md\n```\nAlso ignore other/fleet/Core.md.\n",
+        )
+
+        # 1. core_by_reference=True accepts valid vault-absolute and vault-relative prose references
+        cfg_ok = self.base / "overlay-core-ok.json"
+        cfg_ok.write_text(
+            json.dumps(
+                {
+                    "entry_harnesses": [
+                        {"id": "claude", "entry": ["CLAUDE.md"], "core": "fleet/Core.md"},
+                        {
+                            "id": "agy",
+                            "entry": ["AGENTS.md"],
+                            "core": "fleet/Core.md",
+                            "core_by_reference": True,
+                        },
+                        {
+                            "id": "codex",
+                            "entry": ["REL.md"],
+                            "core": "fleet/Core.md",
+                            "core_by_reference": True,
+                        },
+                    ]
+                }
+            ),
+            encoding="utf-8",
+        )
+        r_ok = entry_audit(str(self.vault), config_path=str(cfg_ok), now=NOW)
+        self.assertTrue(r_ok["parity"]["ok"])
+        by_id = {h["id"]: h for h in r_ok["harnesses"]}
+        self.assertTrue(by_id["agy"]["core_reached"])
+        self.assertTrue(by_id["codex"]["core_reached"])
+        self.assertEqual(by_id["agy"]["core_sha256"], by_id["claude"]["core_sha256"])
+        self.assertEqual(by_id["codex"]["core_sha256"], by_id["claude"]["core_sha256"])
+        self.assertFalse(any(f["code"] == "entry.core_unreached" for f in r_ok["findings"]))
+
+        # 2. Without core_by_reference (default False) or when fenced/prefixed, core_reached stays False
+        cfg_strict = self.base / "overlay-core-strict.json"
+        cfg_strict.write_text(
+            json.dumps(
+                {
+                    "entry_harnesses": [
+                        {"id": "agy-strict", "entry": ["AGENTS.md"], "core": "fleet/Core.md"},
+                        {
+                            "id": "fenced-ref",
+                            "entry": ["FENCED.md"],
+                            "core": "fleet/Core.md",
+                            "core_by_reference": True,
+                        },
+                    ]
+                }
+            ),
+            encoding="utf-8",
+        )
+        r_strict = entry_audit(str(self.vault), config_path=str(cfg_strict), now=NOW)
+        self.assertFalse(r_strict["parity"]["ok"])
+        unreached = {
+            f["harness"] for f in r_strict["findings"] if f["code"] == "entry.core_unreached"
+        }
+        self.assertEqual(unreached, {"agy-strict", "fenced-ref"})
+
+        # 3. Missing core file on disk still fails even with core_by_reference=True
+        (self.vault / "fleet" / "Core.md").unlink()
+        r_missing = entry_audit(str(self.vault), config_path=str(cfg_ok), now=NOW)
+        unreached_missing = {
+            f["harness"] for f in r_missing["findings"] if f["code"] == "entry.core_unreached"
+        }
+        self.assertEqual(unreached_missing, {"claude", "agy", "codex"})
+
+        # 4. Non-boolean core_by_reference rejected by config validation
+        bad_cfg = self.write_config(
+            {
+                "entry_harnesses": [
+                    {
+                        "id": "bad",
+                        "entry": ["AGENTS.md"],
+                        "core": "fleet/Core.md",
+                        "core_by_reference": "yes",
+                    }
+                ]
+            }
+        )
+        with self.assertRaises(ValueError):
+            load_config(bad_cfg)
 
 
 if __name__ == "__main__":

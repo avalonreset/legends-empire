@@ -226,6 +226,36 @@ def _extract_import_tokens(text: str) -> list[tuple[int, str]]:
     return imports
 
 
+def _chain_references_core(
+    chain_texts: list[str],
+    core_display: str,
+    core_origin: str,
+    vault: VaultRoot,
+) -> bool:
+    candidates = [core_display]
+    if core_origin == "vault":
+        for root_str in {
+            vault.as_posix.rstrip("/"),
+            str(vault.given).replace("\\", "/").rstrip("/"),
+        }:
+            if root_str:
+                candidates.append(f"{root_str}/{core_display}")
+    flags = re.IGNORECASE if os.name == "nt" else 0
+    patterns = [
+        re.compile(
+            r"(?<![A-Za-z0-9_./-])(?:\./)?" + re.escape(cand) + r"(?![A-Za-z0-9_.-])",
+            flags,
+        )
+        for cand in candidates
+    ]
+    for text in chain_texts:
+        for _, line in iter_unfenced_lines(text):
+            norm_line = line.replace("\\", "/")
+            if any(pat.search(norm_line) for pat in patterns):
+                return True
+    return False
+
+
 def entry_audit(
     vault_path: str,
     config_path: str | None = None,
@@ -250,15 +280,18 @@ def entry_audit(
         h_id = h_cfg["id"]
         entry_list = h_cfg["entry"]
         core_raw = h_cfg.get("core")
+        core_by_ref = bool(h_cfg.get("core_by_reference", False))
         max_chain_bytes = h_cfg.get("max_chain_bytes")
         shim_cfg = h_cfg.get("shim")
 
         core_abs: Path | None = None
         core_display: str | None = None
+        core_origin: str | None = None
         if core_raw:
-            core_abs, core_display, _, _ = _resolve_configured_path(core_raw, vault, reject_env=True)
+            core_abs, core_display, core_origin, _ = _resolve_configured_path(core_raw, vault, reject_env=True)
 
         chain_nodes: list[dict[str, Any]] = []
+        harness_chain_texts: list[str] = []
         visited_real: dict[Path, dict[str, Any]] = {}
         active_stack: set[Path] = set()
         cycle_detected = False
@@ -397,6 +430,8 @@ def entry_audit(
                 )
 
             text_clean = text.lstrip("\ufeff")
+            if decode_err_offset is None:
+                harness_chain_texts.append(text_clean)
             fm, _ = parse_frontmatter(text_clean)
             raw_fu = fm.get("fresh_until")
             if isinstance(raw_fu, list):
@@ -485,7 +520,32 @@ def entry_audit(
             if core_resolved in visited_real and visited_real[core_resolved].get("sha256"):
                 core_reached = True
                 core_sha256 = visited_real[core_resolved]["sha256"]
-            else:
+            elif (
+                core_by_ref
+                and core_origin is not None
+                and _chain_references_core(harness_chain_texts, core_display, core_origin, vault)
+            ):
+                c_root = vault.real if core_origin == "vault" else home_dir
+                c_st, c_data, _, _ = _read_chain_file(core_abs, c_root)
+                if c_st == "ok" and c_data is not None:
+                    core_reached = True
+                    core_sha256 = hashlib.sha256(c_data).hexdigest()
+                    if core_resolved not in seen_law_paths:
+                        try:
+                            core_text = c_data.decode("utf-8").lstrip("\ufeff")
+                        except UnicodeDecodeError:
+                            core_text = None
+                        if core_text is not None:
+                            seen_law_paths.add(core_resolved)
+                            law_chain_files.append(
+                                LawFile(
+                                    display_path=core_display,
+                                    abs_path=core_resolved,
+                                    text=core_text,
+                                    in_entry_chain=True,
+                                )
+                            )
+            if not core_reached:
                 findings.append(
                     Finding(
                         code="entry.core_unreached",
@@ -562,6 +622,7 @@ def entry_audit(
                 "id": h_id,
                 "entry": entry_displays,
                 "core": core_display,
+                "core_by_reference": core_by_ref,
                 "core_reached": core_reached if core_display else None,
                 "core_sha256": core_sha256,
                 "total_bytes": total_bytes,
