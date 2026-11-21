@@ -341,6 +341,60 @@ class Steward041FixesTests(unittest.TestCase):
         self.assertIn("ontology_certified_without_value", codes)
         self.assertIn("frontmatter_nested_unsupported", codes)
 
+    def test_surface_path_normalization_role_validation_and_malformed_overlay_exit_11(self) -> None:
+        self.write_note("HOT.md", "---\nupdated: 2026-11-16\n---\n# Hot\n")
+        self.write_note(
+            "fleet/Core.md",
+            "---\nupdated: 2026-11-16\n---\n# Core\n- 2026-01-01 a\n- 2026-01-02 b\n",
+        )
+        self.write_note("wiki/index.md", "---\nupdated: 2026-11-16\n---\n# Index\n")
+        self.write_note("wiki/hot.md", "---\nupdated: 2026-11-16\n---\n# Wiki Hot\n")
+
+        # Overlay using './' and Windows backslash paths normalizes cleanly and supersedes built-in optional surfaces
+        ov = self.base / "norm-overlay.json"
+        ov.write_text(
+            json.dumps(
+                {
+                    "surfaces": [
+                        {"id": "custom_hot", "path": "./hot.md" if sys.platform == "win32" else "./HOT.md", "role": "hot", "optional": True},
+                        {"id": "custom_core", "path": r"fleet\Core.md", "role": "core", "max_dated_lines": 1},
+                    ]
+                }
+            ),
+            encoding="utf-8",
+        )
+        cfg = load_config(ov, profile="empire")
+        surf_ids = [s["id"] for s in cfg["surfaces"]]
+        self.assertIn("custom_hot", surf_ids)
+        self.assertIn("custom_core", surf_ids)
+        self.assertNotIn("empire_hot", surf_ids)
+        self.assertNotIn("empire_core", surf_ids)
+
+        rep = observe(str(self.vault), config_path=str(ov), now=NOW, profile="empire")
+        self.assertFalse(any(f["code"] == "freshness.missing_named_surface" for f in rep["findings"]))
+        leaks = [f for f in rep["findings"] if f["code"] == "freshness.state_leak_in_core"]
+        self.assertEqual(len(leaks), 1)
+        self.assertEqual(leaks[0]["surface"], "custom_core")
+
+        # Invalid surface paths, invalid roles, and unhashable IDs/classes raise ValueError and exit 11 (never TypeError)
+        bad_overlays = [
+            {"surfaces": [{"id": "dot", "path": "."}]},
+            {"surfaces": [{"id": "dir", "path": "wiki/"}]},
+            {"surfaces": [{"id": "badrole", "path": "HOT.md", "role": "hots"}]},
+            {"surfaces": [{"id": ["unhashable"], "path": "HOT.md"}]},
+            {"classifier_rules": [{"id": "r1", "class": ["A"]}]},
+            {"skip_dir_names": "archive"},
+            {"law_paths": ["."]},
+        ]
+        for idx, bad_doc in enumerate(bad_overlays):
+            bad_path = self.base / f"bad-{idx}.json"
+            bad_path.write_text(json.dumps(bad_doc), encoding="utf-8")
+            with self.assertRaises(ValueError, msg=f"expected ValueError for {bad_doc!r}"):
+                load_config(bad_path)
+            with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+                rc = main(["scan", str(self.vault), "--config", str(bad_path)])
+            self.assertEqual(rc, 11, f"expected exit 11 for {bad_doc!r}")
+
     def test_stdlib_only_imports_in_legends_vault_steward(self) -> None:
         pkg_dir = ROOT / "legends_vault_steward"
         stdlib_names = set(sys.stdlib_module_names) | {"legends_vault_steward"}

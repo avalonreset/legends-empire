@@ -13,7 +13,7 @@ from typing import Any
 from .config import config_hash, load_config
 from .law import LawFile, collect_law_files, evaluate_laws
 from .models import Finding, SEVERITY_ORDER
-from .parse import iter_unfenced_lines, parse_frontmatter
+from .parse import iter_unfenced_lines, parse_frontmatter, strip_fences
 from .paths import (
     MAX_ENTRY_FILE_BYTES,
     ReportPathError,
@@ -93,7 +93,10 @@ def _resolve_configured_path(
         target = Path(os.path.abspath(cand))
         if not _is_contained(target, vault.real):
             raise ValueError(f"configured path escapes vault root: {redact_home_text(s)}")
-        rel = target.resolve(strict=False).relative_to(vault.real).as_posix()
+        try:
+            rel = target.relative_to(vault.real).as_posix()
+        except ValueError:
+            rel = target.resolve(strict=False).relative_to(vault.real).as_posix()
         return target, rel, "vault", None
 
     clean_rel = s.replace("\\", "/")
@@ -102,7 +105,7 @@ def _resolve_configured_path(
     target = Path(os.path.abspath(vault.real / clean_rel))
     if not _is_contained(target, vault.real):
         raise ValueError(f"configured path escapes vault root: {redact_home_text(s)}")
-    rel = target.resolve(strict=False).relative_to(vault.real).as_posix()
+    rel = target.relative_to(vault.real).as_posix()
     return target, rel, "vault", None
 
 
@@ -226,30 +229,45 @@ def _extract_import_tokens(text: str) -> list[tuple[int, str]]:
     return imports
 
 
+def _strip_html_comments_preserving_code(text: str) -> str:
+    return re.sub(
+        r"(?<!`)(`+)(?!`)[\s\S]*?\1(?!`)|<!--[\s\S]*?(?:-->|\Z)",
+        lambda m: m.group(0) if m.group(1) else "\n",
+        text,
+    )
+
+
 def _chain_references_core(
     chain_texts: list[str],
     core_display: str,
     core_origin: str,
     vault: VaultRoot,
 ) -> bool:
-    candidates = [core_display]
+    candidates: list[tuple[str, bool]] = [(core_display, core_origin == "vault")]
     if core_origin == "vault":
-        for root_str in {
-            vault.as_posix.rstrip("/"),
-            str(vault.given).replace("\\", "/").rstrip("/"),
-        }:
+        abs_roots = {vault.as_posix.rstrip("/")}
+        given_str = str(vault.given)
+        if vault.given.is_absolute() or re.match(r"^[A-Za-z]:[/\\]", given_str):
+            abs_roots.add(Path(os.path.abspath(vault.given)).as_posix().rstrip("/"))
+        for root_str in sorted(abs_roots):
             if root_str:
-                candidates.append(f"{root_str}/{core_display}")
+                candidates.append((f"{root_str}/{core_display}", False))
     flags = re.IGNORECASE if os.name == "nt" else 0
     patterns = [
         re.compile(
-            r"(?<![A-Za-z0-9_./-])(?:\./)?" + re.escape(cand) + r"(?![A-Za-z0-9_.-])",
+            r"(?<![A-Za-z0-9_./:~@-])"
+            + (r"(?:\./)?" if allow_dot_slash else r"")
+            + re.escape(cand)
+            + r"(?!\.[A-Za-z0-9_./-]|[A-Za-z0-9_/-])",
             flags,
         )
-        for cand in candidates
+        for cand, allow_dot_slash in candidates
     ]
     for text in chain_texts:
-        for _, line in iter_unfenced_lines(text):
+        _, body = parse_frontmatter(text)
+        unfenced = strip_fences(body)
+        uncommented = _strip_html_comments_preserving_code(unfenced)
+        for line in uncommented.splitlines():
             norm_line = line.replace("\\", "/")
             if any(pat.search(norm_line) for pat in patterns):
                 return True
@@ -516,8 +534,13 @@ def entry_audit(
         core_reached = False
         core_sha256: str | None = None
         if core_abs is not None and core_display is not None:
+            c_root = vault.real if core_origin == "vault" else home_dir
             core_resolved = core_abs.resolve(strict=False)
-            if core_resolved in visited_real and visited_real[core_resolved].get("sha256"):
+            if (
+                not _has_symlink_between(core_abs, c_root)
+                and core_resolved in visited_real
+                and visited_real[core_resolved].get("sha256")
+            ):
                 core_reached = True
                 core_sha256 = visited_real[core_resolved]["sha256"]
             elif (
@@ -525,26 +548,84 @@ def entry_audit(
                 and core_origin is not None
                 and _chain_references_core(harness_chain_texts, core_display, core_origin, vault)
             ):
-                c_root = vault.real if core_origin == "vault" else home_dir
-                c_st, c_data, _, _ = _read_chain_file(core_abs, c_root)
-                if c_st == "ok" and c_data is not None:
+                c_st, c_data, c_size, _ = _read_chain_file(core_abs, c_root)
+                if c_st == "oversize":
+                    oversize_emitted = True
+                    findings.append(
+                        Finding(
+                            code="budget.entry_chain_exceeded",
+                            severity="high",
+                            path=core_display,
+                            record_class=None,
+                            message=(
+                                f"Entry file {core_display} is {c_size} bytes, exceeding the "
+                                f"{MAX_ENTRY_FILE_BYTES}-byte per-file limit"
+                            ),
+                            extra={"harness": h_id, "bytes": c_size, "max_bytes": MAX_ENTRY_FILE_BYTES},
+                        )
+                    )
+                elif c_st == "ok" and c_data is not None:
                     core_reached = True
                     core_sha256 = hashlib.sha256(c_data).hexdigest()
-                    if core_resolved not in seen_law_paths:
-                        try:
-                            core_text = c_data.decode("utf-8").lstrip("\ufeff")
-                        except UnicodeDecodeError:
-                            core_text = None
-                        if core_text is not None:
-                            seen_law_paths.add(core_resolved)
-                            law_chain_files.append(
-                                LawFile(
-                                    display_path=core_display,
-                                    abs_path=core_resolved,
-                                    text=core_text,
-                                    in_entry_chain=True,
-                                )
+                    c0_off = _first_c0_control_offset(c_data)
+                    dec_err_off: int | None = None
+                    try:
+                        raw_core_text = c_data.decode("utf-8")
+                    except UnicodeDecodeError as exc:
+                        dec_err_off = exc.start
+                        raw_core_text = c_data.decode("utf-8", errors="replace")
+                    if dec_err_off is not None:
+                        findings.append(
+                            Finding(
+                                code="entry.encoding",
+                                severity="high",
+                                path=core_display,
+                                record_class=None,
+                                message=f"Invalid UTF-8 byte sequence in {core_display} at byte offset {dec_err_off}",
+                                extra={"harness": h_id, "byte_offset": dec_err_off},
                             )
+                        )
+                    elif c0_off is not None:
+                        findings.append(
+                            Finding(
+                                code="entry.encoding",
+                                severity="high",
+                                path=core_display,
+                                record_class=None,
+                                message=(
+                                    f"Disallowed C0 control byte 0x{c_data[c0_off]:02x} in {core_display} "
+                                    f"at byte offset {c0_off}"
+                                ),
+                                extra={"harness": h_id, "byte_offset": c0_off},
+                            )
+                        )
+                    core_text = raw_core_text.lstrip("\ufeff")
+                    c_fm, _ = parse_frontmatter(core_text)
+                    c_raw_fu = c_fm.get("fresh_until")
+                    if isinstance(c_raw_fu, list):
+                        c_raw_fu = c_raw_fu[0] if c_raw_fu else None
+                    c_fu_date = _parse_date_val(c_raw_fu)
+                    if c_fu_date is not None and c_fu_date < started.date():
+                        findings.append(
+                            Finding(
+                                code="freshness.expired_fresh_until",
+                                severity="high",
+                                path=core_display,
+                                record_class=None,
+                                message=f"Entry file {core_display} declared fresh_until {c_fu_date.isoformat()} has passed",
+                                extra={"harness": h_id, "fresh_until": c_fu_date.isoformat()},
+                            )
+                        )
+                    if dec_err_off is None and core_resolved not in seen_law_paths:
+                        seen_law_paths.add(core_resolved)
+                        law_chain_files.append(
+                            LawFile(
+                                display_path=core_display,
+                                abs_path=core_resolved,
+                                text=core_text,
+                                in_entry_chain=True,
+                            )
+                        )
             if not core_reached:
                 findings.append(
                     Finding(
@@ -775,7 +856,8 @@ def _dedupe_findings(items: list[Finding]) -> list[Finding]:
             d.get("path") or "",
             d.get("target") or "",
             d.get("date") or "",
-            d.get("line") or "",
+            d.get("fresh_until") or "",
+            d.get("line") if d.get("line") is not None else "",
             d.get("byte_offset") if d.get("byte_offset") is not None else "",
             d.get("harness") or "",
             d.get("key") or "",

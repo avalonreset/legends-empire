@@ -40,29 +40,44 @@ def high_key(finding: dict[str, Any]) -> str:
         subkey = str(finding["fresh_until"])
     elif finding.get("byte_offset") is not None:
         subkey = str(finding["byte_offset"])
-    elif finding.get("surface") and finding.get("code", "").startswith("budget."):
+    elif finding.get("key"):
+        subkey = str(finding["key"])
+    elif finding.get("surface") and code.startswith("budget."):
         subkey = str(finding["surface"])
     parts = [code, path]
     if subkey:
         parts.append(subkey)
-    if harness and harness != subkey:
+    if harness and code != "freshness.expired_fresh_until":
         parts.append(harness)
     return "|".join(parts)
+
+
+def _dedupe_preference_key(item: dict[str, Any]) -> tuple[int, int, int, str, str, str]:
+    return (
+        SEVERITY_ORDER.get(str(item.get("severity")), 9),
+        0 if item.get("surface") else 1,
+        1 if item.get("harness") else 0,
+        str(item.get("surface") or ""),
+        str(item.get("harness") or ""),
+        str(item.get("message") or ""),
+    )
 
 
 def merge_and_dedupe_findings(*finding_lists: list[dict[str, Any]]) -> list[dict[str, Any]]:
     seen: dict[tuple[Any, ...], int] = {}
     out: list[dict[str, Any]] = []
     for flist in finding_lists:
-        for f in flist:
-            code = f.get("code")
+        for raw_f in flist:
+            code = raw_f.get("code")
             if code == "freshness.expired_fresh_until":
+                f = {k: v for k, v in raw_f.items() if k != "harness"} if "harness" in raw_f else raw_f
                 key: tuple[Any, ...] = (
                     code,
                     f.get("path") or "",
                     f.get("fresh_until") or "",
                 )
             else:
+                f = raw_f
                 key = (
                     code,
                     f.get("path") or "",
@@ -78,16 +93,8 @@ def merge_and_dedupe_findings(*finding_lists: list[dict[str, Any]]) -> list[dict
                 )
             if key in seen:
                 idx = seen[key]
-                existing = out[idx]
-                old_sev = SEVERITY_ORDER.get(str(existing.get("severity")), 9)
-                new_sev = SEVERITY_ORDER.get(str(f.get("severity")), 9)
-                if new_sev < old_sev:
+                if _dedupe_preference_key(f) < _dedupe_preference_key(out[idx]):
                     out[idx] = f
-                elif code == "freshness.expired_fresh_until" and new_sev == old_sev:
-                    old_rank = (1 if existing.get("surface") else 0, 0 if existing.get("harness") else 1)
-                    new_rank = (1 if f.get("surface") else 0, 0 if f.get("harness") else 1)
-                    if new_rank > old_rank:
-                        out[idx] = f
                 continue
             seen[key] = len(out)
             out.append(f)

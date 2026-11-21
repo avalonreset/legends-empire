@@ -532,6 +532,134 @@ class StewardEntryAuditTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             load_config(bad_cfg)
 
+    def test_core_by_reference_security_boundaries_and_core_health_checks(self) -> None:
+        from legends_vault_steward.paths import MAX_ENTRY_FILE_BYTES
+
+        self.write_vault_file("fleet/Core.md", "# Empire Core\nContract active.\n")
+
+        # 1. Relative vault_path ('..' or subdir name) must not match '../fleet/Core.md' or '<subdir>/fleet/Core.md'
+        self.write_vault_file(
+            "ESCAPE.md",
+            "---\nnote: fleet/Core.md\n---\n"
+            "# Escape Prose\n"
+            "<!-- fleet/Core.md -->\n"
+            "Ignore ../fleet/Core.md, vault/fleet/Core.md, fleet/Core.md/extra.md, fleet/Core.md.bak,\n"
+            "D:fleet/Core.md, secret-ref:fleet/Core.md, and ~fleet/Core.md.\n",
+        )
+        self.write_vault_file(
+            "SENTENCE.md",
+            "# Sentence Prose\nNever emit raw `<!--` tokens.\nRead fleet/Core.md.\n",
+        )
+        cfg_rel = self.write_config(
+            {
+                "entry_harnesses": [
+                    {
+                        "id": "escape",
+                        "entry": ["ESCAPE.md"],
+                        "core": "fleet/Core.md",
+                        "core_by_reference": True,
+                    },
+                    {
+                        "id": "sentence",
+                        "entry": ["SENTENCE.md"],
+                        "core": "fleet/Core.md",
+                        "core_by_reference": True,
+                    },
+                ]
+            }
+        )
+        sub_cwd = self.vault / "fleet"
+        orig_cwd = Path.cwd()
+        try:
+            os.chdir(sub_cwd)
+            r_dotdot = entry_audit("..", config_path=str(cfg_rel), now=NOW)
+            os.chdir(self.base)
+            r_subname = entry_audit("vault", config_path=str(cfg_rel), now=NOW)
+        finally:
+            os.chdir(orig_cwd)
+
+        for rep in (r_dotdot, r_subname):
+            by_h = {h["id"]: h for h in rep["harnesses"]}
+            self.assertFalse(by_h["escape"]["core_reached"])
+            self.assertTrue(by_h["sentence"]["core_reached"])
+
+        # 2. In-vault junction/symlink declared as core is rejected even when target was @-imported
+        junc_dir = self.vault / "junc-fleet"
+        linked = False
+        if os.name == "nt":
+            import _winapi
+
+            _winapi.CreateJunction(str(self.vault / "fleet"), str(junc_dir))
+            linked = True
+        else:
+            os.symlink(self.vault / "fleet", junc_dir)
+            linked = True
+        if linked:
+            self.write_vault_file("IMPORT_REAL.md", "@fleet/Core.md\n")
+            cfg_junc = self.write_config(
+                {
+                    "entry_harnesses": [
+                        {
+                            "id": "via-junc",
+                            "entry": ["IMPORT_REAL.md"],
+                            "core": "junc-fleet/Core.md",
+                        }
+                    ]
+                }
+            )
+            r_junc = entry_audit(str(self.vault), config_path=str(cfg_junc), now=NOW)
+            self.assertFalse(r_junc["harnesses"][0]["core_reached"])
+
+        # 3. core_by_reference=True still enforces UTF-8, C0 control bytes, fresh_until, and 256 KiB cap on core
+        cfg_single = self.write_config(
+            {
+                "entry_harnesses": [
+                    {
+                        "id": "agy",
+                        "entry": ["SENTENCE.md"],
+                        "core": "fleet/Core.md",
+                        "core_by_reference": True,
+                    }
+                ]
+            }
+        )
+        self.write_vault_file("fleet/Core.md", b"# Core\n\xff\xfeBad")
+        r_utf8 = entry_audit(str(self.vault), config_path=str(cfg_single), now=NOW)
+        self.assertTrue(
+            any(
+                f["code"] == "entry.encoding" and f["path"] == "fleet/Core.md" and f["harness"] == "agy"
+                for f in r_utf8["findings"]
+            )
+        )
+
+        self.write_vault_file("fleet/Core.md", b"# Core\nNull\x00Byte\n")
+        r_c0 = entry_audit(str(self.vault), config_path=str(cfg_single), now=NOW)
+        self.assertTrue(
+            any(
+                f["code"] == "entry.encoding" and f["path"] == "fleet/Core.md" and f["byte_offset"] == 11
+                for f in r_c0["findings"]
+            )
+        )
+
+        self.write_vault_file("fleet/Core.md", "---\nfresh_until: 2026-10-01\n---\n# Core\n")
+        r_fu = entry_audit(str(self.vault), config_path=str(cfg_single), now=NOW)
+        self.assertTrue(
+            any(
+                f["code"] == "freshness.expired_fresh_until" and f["path"] == "fleet/Core.md"
+                for f in r_fu["findings"]
+            )
+        )
+
+        self.write_vault_file("fleet/Core.md", b"# Big\n" + (b"x" * MAX_ENTRY_FILE_BYTES))
+        r_big = entry_audit(str(self.vault), config_path=str(cfg_single), now=NOW)
+        self.assertFalse(r_big["harnesses"][0]["core_reached"])
+        self.assertTrue(
+            any(
+                f["code"] == "budget.entry_chain_exceeded" and f["path"] == "fleet/Core.md"
+                for f in r_big["findings"]
+            )
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

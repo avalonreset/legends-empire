@@ -431,6 +431,107 @@ class StewardDigestTests(unittest.TestCase):
         self.assertEqual(doc["high_keys"], ["freshness.expired_fresh_until|HOT.md|2026-11-24"])
         self.assertEqual(md.count("freshness.expired_fresh_until"), 1)
 
+    def test_expired_fresh_until_harness_only_order_independence_and_ontology_key_regressions(self) -> None:
+        from legends_vault_steward.digest import high_key, merge_and_dedupe_findings
+
+        # 1. Harness-only expired_fresh_until (e.g., ~/... or skipped dir) is order-independent and omits harness in high_key
+        ea_claude = {
+            "code": "freshness.expired_fresh_until",
+            "severity": "high",
+            "path": "~/.claude/HOT.md",
+            "harness": "claude",
+            "fresh_until": "2026-11-20",
+            "message": "Entry file ~/.claude/HOT.md declared fresh_until 2026-11-20 has passed",
+        }
+        ea_gemini = {
+            "code": "freshness.expired_fresh_until",
+            "severity": "high",
+            "path": "~/.claude/HOT.md",
+            "harness": "gemini",
+            "fresh_until": "2026-11-20",
+            "message": "Entry file ~/.claude/HOT.md declared fresh_until 2026-11-20 has passed",
+        }
+        m_ab = merge_and_dedupe_findings([ea_claude, ea_gemini])
+        m_ba = merge_and_dedupe_findings([ea_gemini, ea_claude])
+        self.assertEqual(m_ab, m_ba)
+        self.assertEqual(len(m_ab), 1)
+        self.assertNotIn("harness", m_ab[0])
+        self.assertEqual(high_key(ea_claude), "freshness.expired_fresh_until|~/.claude/HOT.md|2026-11-20")
+        self.assertEqual(high_key(m_ab[0]), "freshness.expired_fresh_until|~/.claude/HOT.md|2026-11-20")
+
+        # 2. high_key preserves harness even when harness == subkey
+        same_sub = {
+            "code": "entry.broken_import",
+            "severity": "high",
+            "path": "CLAUDE.md",
+            "target": "core.md",
+            "harness": "core.md",
+        }
+        self.assertEqual(high_key(same_sub), "entry.broken_import|CLAUDE.md|core.md|core.md")
+
+        # 3. End-to-end ontology.conflict & ontology_certified_without_value on same note stay distinct and regress
+        self.write_vault_file("wiki/acme.md", "# Acme\n")
+        idx_dir = self.vault / ".vault-meta" / "ontology"
+        idx_dir.mkdir(parents=True)
+        idx_file = idx_dir / "index.json"
+        idx_file.write_text(
+            json.dumps(
+                {
+                    "facts": {
+                        "acme.domain": {"state": "conflict", "path": "wiki/acme.md"},
+                    },
+                    "findings": [
+                        {
+                            "code": "ontology_certified_without_value",
+                            "path": "wiki/acme.md",
+                            "detail": "key 'fact.domain' listed in certification but missing from frontmatter",
+                        }
+                    ],
+                }
+            ),
+            encoding="utf-8",
+        )
+        out_dir = self.vault / ".steward" / "digest-ont"
+        with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+            rc1 = main(["digest", str(self.vault), "--out", str(out_dir), "--as-of", "2026-11-21"])
+        self.assertEqual(rc1, 0)
+        d1 = json.loads((out_dir / "digest.json").read_text(encoding="utf-8"))
+        self.assertIn("ontology.conflict|wiki/acme.md|acme.domain", d1["high_keys"])
+
+        # Second conflicting fact and second missing certified value on the SAME note must regress (exit 12)
+        idx_file.write_text(
+            json.dumps(
+                {
+                    "facts": {
+                        "acme.domain": {"state": "conflict", "path": "wiki/acme.md"},
+                        "acme.phone": {"state": "conflict", "path": "wiki/acme.md"},
+                    },
+                    "findings": [
+                        {
+                            "code": "ontology_certified_without_value",
+                            "path": "wiki/acme.md",
+                            "detail": "key 'fact.domain' listed in certification but missing from frontmatter",
+                        },
+                        {
+                            "code": "ontology_certified_without_value",
+                            "path": "wiki/acme.md",
+                            "detail": "key 'fact.phone' listed in certification but missing from frontmatter",
+                        },
+                    ],
+                }
+            ),
+            encoding="utf-8",
+        )
+        with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+            rc2 = main(["digest", str(self.vault), "--out", str(out_dir), "--as-of", "2026-11-21"])
+        self.assertEqual(rc2, 12)
+        d2 = json.loads((out_dir / "digest.json").read_text(encoding="utf-8"))
+        self.assertEqual(d2["status"], "regression")
+        self.assertEqual(d2["code_counts"].get("ontology.conflict"), 2)
+        self.assertEqual(d2["code_counts"].get("ontology_certified_without_value"), 2)
+        self.assertIn("ontology.conflict|wiki/acme.md|acme.phone", d2["new_high_keys"])
+        self.assertEqual(len(d2["new_high_keys"]), 2)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 from copy import deepcopy
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 from .paths import is_disallowed_path_token, read_bounded_json
@@ -94,7 +95,7 @@ def _read_json(path: Path) -> dict[str, Any]:
 
 
 def _merge_lists(base: list[Any], overlay: list[Any]) -> list[Any]:
-    if all(isinstance(item, dict) and "id" in item for item in base + overlay):
+    if all(isinstance(item, dict) and isinstance(item.get("id"), str) for item in base + overlay):
         keyed = {item["id"]: deepcopy(item) for item in base}
         for item in overlay:
             keyed[item["id"]] = _deep_merge(keyed.get(item["id"], {}), item)
@@ -108,6 +109,28 @@ def _merge_lists(base: list[Any], overlay: list[Any]) -> list[Any]:
                 seen.add(item)
         return merged
     return list(base) + deepcopy(overlay)
+
+
+def _normalize_surface_path(raw: str) -> str:
+    s = raw.strip()
+    if not s or s.endswith(("/", "\\")):
+        raise ValueError(f"surface path must be a safe vault-relative path: {raw}")
+    if is_disallowed_path_token(s, allow_tilde=False, reject_env=True) is not None:
+        raise ValueError(f"surface path must be a safe vault-relative path: {raw}")
+    if Path(s).is_absolute() or re.match(r"^[A-Za-z]:[/\\]", s) or s.startswith(("/", "\\")):
+        raise ValueError(f"surface path must be a safe vault-relative path: {raw}")
+    clean = s.replace("\\", "/")
+    parts = PurePosixPath(clean).parts
+    if ".." in parts:
+        raise ValueError(f"surface path must be a safe vault-relative path: {raw}")
+    norm = PurePosixPath(clean).as_posix()
+    if norm in {"", "."}:
+        raise ValueError(f"surface path must be a safe vault-relative path: {raw}")
+    return norm
+
+
+def _surface_path_key(path: str) -> str:
+    return path.lower() if os.name == "nt" else path
 
 
 def _deep_merge(base: dict[str, Any], overlay: dict[str, Any]) -> dict[str, Any]:
@@ -131,29 +154,71 @@ def load_config(path: str | Path | None = None, profile: str = "generic") -> dic
         raise ValueError("profile must be generic or empire")
     if profile == "empire":
         config = _deep_merge(config, _read_json(PACKAGE_DIR / "data" / "empire.json"))
+    base_optional_ids = {
+        s["id"]
+        for s in config.get("surfaces", [])
+        if isinstance(s, dict) and isinstance(s.get("id"), str) and s.get("optional") is True
+    }
+    overlay_surface_ids: set[str] = set()
     if path:
         overlay = _read_json(Path(path))
+        if isinstance(overlay.get("surfaces"), list):
+            overlay_surface_ids = {
+                s["id"]
+                for s in overlay["surfaces"]
+                if isinstance(s, dict) and isinstance(s.get("id"), str) and s["id"]
+            }
         config = _deep_merge(config, overlay)
     if not isinstance(config.get("findings"), dict):
         raise ValueError("findings must be an object")
     for section in ("surfaces", "classifier_rules"):
         if not isinstance(config.get(section), list):
             raise ValueError(f"{section} must be a list")
+    for str_list_key in ("entrypoints", "skip_dir_names", "skip_dir_prefixes"):
+        if str_list_key in config:
+            str_list_val = config[str_list_key]
+            if not isinstance(str_list_val, list) or not all(isinstance(item, str) for item in str_list_val):
+                raise ValueError(f"{str_list_key} must be a list of strings")
     for surface in config["surfaces"]:
-        if not isinstance(surface, dict) or not all(isinstance(surface.get(k), str) and surface[k] for k in ("id", "path")):
+        if not isinstance(surface, dict) or not all(isinstance(surface.get(k), str) and surface[k].strip() for k in ("id", "path")):
             raise ValueError("each surface requires an id and vault-relative path")
-        if is_disallowed_path_token(surface["path"], allow_tilde=False) is not None or Path(surface["path"]).is_absolute() or ".." in Path(surface["path"]).parts:
-            raise ValueError(f"surface path must be a safe vault-relative path: {surface['path']}")
-        if "role" in surface and not isinstance(surface["role"], str):
-            raise ValueError("surface role must be a string")
+        surface["path"] = _normalize_surface_path(surface["path"])
+        if "role" in surface:
+            if surface["role"] is None:
+                surface.pop("role", None)
+            elif not isinstance(surface["role"], str) or surface["role"] not in {"hot", "core"}:
+                raise ValueError("surface role must be 'hot' or 'core'")
         if "optional" in surface and not isinstance(surface["optional"], bool):
             raise ValueError("surface optional must be a boolean")
         for key in ("max_words", "max_age_days", "max_living_bullets", "max_bytes", "max_dated_lines"):
             if key in surface and (isinstance(surface[key], bool) or not isinstance(surface[key], (int, float)) or surface[key] < 0):
                 raise ValueError(f"surface {key} must be nonnegative")
+    if overlay_surface_ids:
+        overlay_paths = {
+            _surface_path_key(s["path"])
+            for s in config["surfaces"]
+            if s["id"] in overlay_surface_ids
+        }
+        config["surfaces"] = [
+            s
+            for s in config["surfaces"]
+            if not (
+                s["id"] in base_optional_ids
+                and s["id"] not in overlay_surface_ids
+                and _surface_path_key(s["path"]) in overlay_paths
+            )
+        ]
     for rule in config["classifier_rules"]:
-        if not isinstance(rule, dict) or "id" not in rule or rule.get("class") not in set("ABCDEFGHI"):
+        if (
+            not isinstance(rule, dict)
+            or not isinstance(rule.get("id"), str)
+            or not rule["id"].strip()
+            or not isinstance(rule.get("class"), str)
+            or rule["class"] not in set("ABCDEFGHI")
+        ):
             raise ValueError("classifier rule requires id and class A-I")
+        if "weight" in rule and (isinstance(rule["weight"], bool) or not isinstance(rule["weight"], (int, float)) or rule["weight"] < 0):
+            raise ValueError("classifier rule weight must be nonnegative")
     operations = config.get("operations", {})
     if not isinstance(operations, dict) or isinstance(operations.get("review_after_days", 14), bool) or not isinstance(operations.get("review_after_days", 14), int) or operations.get("review_after_days", 14) < 0:
         raise ValueError("operations.review_after_days must be a nonnegative integer")
@@ -213,8 +278,15 @@ def load_config(path: str | Path | None = None, profile: str = "generic") -> dic
     if not isinstance(law_paths, list) or not all(isinstance(p, str) and p.strip() for p in law_paths):
         raise ValueError("law_paths must be a list of non-empty strings")
     for l_path in law_paths:
+        clean_lp = l_path.strip().replace("\\", "/")
         reason = is_disallowed_path_token(l_path, allow_tilde=False, reject_env=True)
-        if reason is not None or Path(l_path).is_absolute() or ".." in Path(l_path).parts:
+        if (
+            reason is not None
+            or Path(l_path).is_absolute()
+            or re.match(r"^[A-Za-z]:[/\\]", l_path.strip())
+            or ".." in PurePosixPath(clean_lp).parts
+            or PurePosixPath(clean_lp).as_posix() in {"", "."}
+        ):
             raise ValueError(f"law_paths item '{l_path}' must be an in-vault relative glob")
 
     if "duplicate_block_entry_only" in config and not isinstance(config["duplicate_block_entry_only"], bool):

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from datetime import date, datetime, timezone
 
 from .models import Finding, FreshnessResult, NoteRecord
@@ -29,22 +30,32 @@ def _age_days(note: NoteRecord, now: datetime) -> float | None:
         return None
 
 
+def _path_key(path: str) -> str:
+    return path.lower() if os.name == "nt" else path
+
+
 def evaluate_surfaces(notes: dict[str, NoteRecord], config: dict, now: datetime) -> tuple[list[FreshnessResult], list[Finding]]:
     results: list[FreshnessResult] = []
     findings: list[Finding] = []
-    surface_paths: set[str] = set()
+    surface_path_keys: set[str] = set()
+    notes_by_key: dict[str, str] = {}
+    for note_path in sorted(notes):
+        notes_by_key.setdefault(_path_key(note_path), note_path)
     explicit_paths = {
-        s["path"]
+        _path_key(s["path"])
         for s in config.get("surfaces", [])
         if isinstance(s, dict) and isinstance(s.get("path"), str) and not s.get("optional")
     }
     for surface in config.get("surfaces", []):
         path = surface["path"]
-        if surface.get("optional") and path in explicit_paths:
+        pkey = _path_key(path)
+        if surface.get("optional") and pkey in explicit_paths:
             continue
-        surface_paths.add(path)
+        surface_path_keys.add(pkey)
         role = surface.get("role")
-        note = notes.get(path)
+        resolved_note_path = path if path in notes else notes_by_key.get(pkey)
+        note = notes.get(resolved_note_path) if resolved_note_path is not None else None
+        effective_path = resolved_note_path if resolved_note_path is not None else path
         if note is None:
             if surface.get("optional"):
                 continue
@@ -68,6 +79,8 @@ def evaluate_surfaces(notes: dict[str, NoteRecord], config: dict, now: datetime)
                 )
             )
             continue
+
+        path = effective_path
 
         breaches: list[str] = []
         words = note.words
@@ -184,7 +197,7 @@ def evaluate_surfaces(notes: dict[str, NoteRecord], config: dict, now: datetime)
         )
 
     for path in sorted(notes):
-        if path in surface_paths:
+        if _path_key(path) in surface_path_keys:
             continue
         note = notes[path]
         raw_fu = note.frontmatter.get("fresh_until")

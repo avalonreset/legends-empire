@@ -215,8 +215,16 @@ def observe(
 
     inventory_findings: list[Finding] = []
     # Check ontology signals if index exists (bounded and contained per R2 / O1)
-    idx_path = vault.real / ".vault-meta" / "ontology" / "index.json"
-    if idx_path.exists() and not _is_symlink_or_junction(idx_path) and is_contained(idx_path, vault):
+    meta_dir = vault.real / ".vault-meta"
+    ont_dir = meta_dir / "ontology"
+    idx_path = ont_dir / "index.json"
+    if (
+        not _is_symlink_or_junction(meta_dir)
+        and not _is_symlink_or_junction(ont_dir)
+        and not _is_symlink_or_junction(idx_path)
+        and idx_path.is_file()
+        and is_contained(idx_path, vault)
+    ):
         try:
             raw_idx = read_bounded_json(idx_path, max_bytes=MAX_BASELINE_JSON_BYTES)
             if isinstance(raw_idx, dict):
@@ -233,6 +241,7 @@ def observe(
                                 path=f_path,
                                 record_class=None,
                                 message=f"Ontology fact {f_key} has conflicting uncertified values across notes",
+                                extra={"key": str(f_key)},
                             )
                         )
                     elif st == "stale":
@@ -243,6 +252,7 @@ def observe(
                                 path=f_path,
                                 record_class=None,
                                 message=f"Ontology fact {f_key} is stale (review overdue or evidence mismatch)",
+                                extra={"key": str(f_key)},
                             )
                         )
                 for ont_f in raw_idx.get("findings", []):
@@ -252,6 +262,12 @@ def observe(
                     if ont_code in _ONTOLOGY_FINDING_SEVERITY:
                         ont_path = ont_f.get("path")
                         ont_detail = str(ont_f.get("detail") or f"Ontology index reported {ont_code}")
+                        ont_extra: dict[str, Any] = {}
+                        raw_ont_key = ont_f.get("key")
+                        if isinstance(raw_ont_key, str) and raw_ont_key:
+                            ont_extra["key"] = raw_ont_key
+                        elif ont_code in {"ontology_certified_without_value", "ontology_duplicate_entity_id"}:
+                            ont_extra["key"] = hashlib.sha256(ont_detail.encode("utf-8")).hexdigest()[:12]
                         inventory_findings.append(
                             Finding(
                                 code=ont_code,
@@ -259,6 +275,7 @@ def observe(
                                 path=str(ont_path) if ont_path else None,
                                 record_class=inventory.notes[ont_path].record_class if ont_path in inventory.notes else None,
                                 message=ont_detail,
+                                extra=ont_extra,
                             )
                         )
         except Exception:
