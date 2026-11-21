@@ -7,6 +7,19 @@ implementation record for older releases.
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-11-21
+
+Public release. Ships the Seven Provinces starter framework (`Work`, `Money`, `Craft`, `Home`, `People`, `Self`, `Ambition`) inside `templates/vault/wiki/` and refreshes the README and outlined Legends Font SVG design cards.
+
+### Added
+
+- Added the Seven Provinces starter pages (`wiki/work/Work.md`, `wiki/money/Money.md`, `wiki/craft/Craft.md`, `wiki/home/Home.md`, `wiki/people/People.md`, `wiki/self/Self.md`, and `wiki/ambition/Ambition.md`) to `templates/vault/wiki/` and `_BOOTSTRAP_COMMON_PATHS`, each pre-structured with `## The Map` and `## The Blueprint` and indexed in `templates/vault/wiki/index.md`.
+- Added `scripts/render_cards.py` and the outlined Legends Font SVG design card suite under `assets/cards/r1/`.
+
+### Changed
+
+- Refreshed `README.md` around plain-english vault operations, the shipped Seven Provinces starter framework, source-cited research intake, instant vault search, ontology fact queries, and vault stewardship.
+
 ## [0.4.1] - 2026-11-21
 
 Public release. Health pass over 0.4.0 plus multi-vendor entry checks, ontology and lint performance hardening, and native Windows test isolation.

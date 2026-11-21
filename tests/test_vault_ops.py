@@ -39,6 +39,19 @@ def test_init_and_adopt_are_non_destructive() -> None:
         assert scan_vault(vault)["workspace_config"]
         assert "created: 2026-07-11" in (vault / "wiki/index.md").read_text()
         assert "{{generated_date}}" not in (vault / "wiki/index.md").read_text()
+        for province in (
+            "wiki/work/Work.md",
+            "wiki/money/Money.md",
+            "wiki/craft/Craft.md",
+            "wiki/home/Home.md",
+            "wiki/people/People.md",
+            "wiki/self/Self.md",
+            "wiki/ambition/Ambition.md",
+        ):
+            p_text = (vault / province).read_text(encoding="utf-8")
+            assert "## The Map" in p_text
+            assert "## The Blueprint" in p_text
+            assert "{{generated_date}}" not in p_text
 
         custom = vault / ".obsidian/app.json"
         custom.write_text('{"custom": true}\n')

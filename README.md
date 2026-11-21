@@ -1,135 +1,128 @@
-<a name="banner"></a>
-<a name="legends-empire"></a>
+<p align="center"><img src="assets/banner.webp" width="100%" alt="legends-empire: turn your Obsidian vault into AI agent memory and a source-cited markdown knowledge base"></p>
 
-# ![legends-empire](assets/banner.webp)
+# legends-empire: turn your Obsidian vault into AI agent memory and a markdown knowledge base
 
 [![release](https://img.shields.io/github/v/release/avalonreset/legends-empire?label=release&sort=date&style=flat-square&labelColor=000000&color=ff0000)](https://github.com/avalonreset/legends-empire/releases/latest)
 [![checks](https://img.shields.io/github/actions/workflow/status/avalonreset/legends-empire/test.yml?branch=main&label=checks&style=flat-square&labelColor=000000)](https://github.com/avalonreset/legends-empire/actions/workflows/test.yml)
-[![license](https://img.shields.io/github/license/avalonreset/legends-empire?label=license&style=flat-square&labelColor=000000&color=666666)](LICENSE)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-ff0000?style=flat-square&labelColor=000000)](docs/install-guide.md)
+[![License: MIT](https://img.shields.io/badge/license-MIT-ff0000?style=flat-square&labelColor=000000)](LICENSE)
 
-[Operating recipe](docs/AGENT-RECIPE.md) · [install](docs/install-guide.md) · [releases](https://github.com/avalonreset/legends-empire/releases) · [attribution](#attribution)
+Every coding agent session begins with amnesia unless your agent has a durable memory it cannot corrupt. Point a raw assistant directly at your folder of notes and it will edit files in place, break wikilinks, bloat startup instructions, and blend invented summaries straight into primary research.
 
-Your digital reality is already there: folders, repositories, tools, knowledge, infrastructure, and half-built ideas. The problem is keeping track of what exists, how it connects, and what you meant to do with it.
+**Your vault is the memory. The agents do the operating.**
 
-`legends-empire` brings that into one navigable map, backed by a Markdown knowledge base you own. Obsidian is the visual interface. AI agents help maintain the knowledge and work from it.
+`legends-empire` turns any local Obsidian vault or Markdown folder into source-cited AI agent memory. You speak to your agent in plain english, and `legends-empire` keeps raw evidence quarantined from synthesized wiki notes, organizes your digital reality across seven provinces you actually own, and protects every file write behind a previewed, hash-locked transaction.
 
-## The seven provinces
+<p align="center"><img src="assets/cards/r1/slot-1-agent-handoff.svg" width="100%" alt="Agent handoff: paste this into Claude Code, Codex, or any coding agent and it does the setup"></p>
 
-AI Marketing Hub Home fits an [optional shared-root capability slot](docs/home-adapter.md).
-Standalone Empire can create Home-compatible project and business records first;
-an authorized private Home installation adds methods later, without a second ontology.
-Empire remains the session starting point. Private methods are never bundled in
-this public module. Existing separate Home workspaces can also be linked intact.
+```text
+Set up legends-empire through cto-legends and initialize or adopt my Obsidian vault,
+showing me the plan before writing any files.
+```
 
-An empire needs a map. These are its seven provinces:
+<p align="center"><img src="assets/cards/r1/slot-2-three-pillars.svg" width="100%" alt="Three pillars of legends-empire: 01 The seven provinces, 02 Source-cited memory, and 03 Hash-locked writes"></p>
 
-| Province | What lives here |
-|---|---|
-| **Work** | The operations, ventures, and commitments consuming your attention. |
-| **Money** | Resources, obligations, ownership, and the room you have to maneuver. |
-| **Craft** | The things you make and the skills you pursue because mastery and taste matter. |
-| **Home** | The physical world you inhabit and the machinery that keeps it running. |
-| **People** | Relationships, promises, and the people who matter beyond a transaction. |
-| **Self** | Health, identity, capacity, and the person operating all this machinery. |
-| **Dreams** | What the machinery is for. The intentions that reach across the whole empire. |
+[Plain english](#ai-agent-memory-in-plain-english) · [Seven provinces](#the-seven-provinces-map-and-blueprint) · [Source-cited memory](#why-source-cited-memory-beats-raw-agent-file-edits) · [Stewardship & ontology](#vault-stewardship-instant-search-and-the-ontology-engine) · [Reference](#reference)
 
-Every province has **the Map** and **the Blueprint**. The Map records reality. The Blueprint records intention. A planned system is not a working system. An unwritten ambition stays unwritten until you decide what it is.
+---
 
-## The Throne Room, the library, and the machinery
+## AI agent memory in plain english
 
-The **Throne Room** is the visual overview: the provinces and their connections on an Obsidian canvas. The **library** holds sources, concepts, and accumulated knowledge. The **machinery** keeps the index, history, and navigation useful.
+You should never have to babysit file paths, frontmatter schemas, or SHA-256 digests by hand just to keep an Obsidian vault clean. You tell your coding agent what you want remembered, searched, or audited in normal words, and [`cto-legends`](https://github.com/avalonreset/cto-legends) routes the job straight to `legends-empire`.
 
-The **hot wiki index** is the agent's way into the empire. What matters now? Where is the relevant knowledge? What has already been established? Keep that doorway short; keep the detail behind it.
+<p align="center"><img src="assets/cards/r1/slot-3-plain-english-chains.svg" width="100%" alt="Say the job in plain words: four spoken sentences routing directly into legends-empire vault operations"></p>
 
-Repositories, other vaults, tools, and infrastructure are **territories**. Record where they live and how they connect. You do not need to uproot everything to draw the map.
+Here are four everyday sentences `legends-empire` was built to answer.
 
-The names are deliberate. So is the structure underneath them. An agent should be able to find the actual file, the actual source, and the actual state of the thing you are talking about.
+**"Set up my Obsidian vault."**
 
-## What belongs in the knowledge base
+Whether you are starting a brand-new folder or adopting a vault you have lived in for years, `legends-empire` previews every file before touching your disk. New vaults receive the complete Seven Provinces starter map, the `wiki/hot.md` doorway for fast agent orientation, an `inbox/` drop zone, and an immutable `.raw/` evidence store. Existing vaults are adopted non-destructively without overwriting a single note or Obsidian setting you customized by hand.
 
-- What a system does, where it lives, and what depends on it.
-- Sources behind a finding, not just an agent's summary.
-- Decisions and the reasons for them.
-- What is working, what is missing, and what comes next.
+**"Save this research in my vault."**
 
-Keep one canonical home for each fact. Link to it from the other places that need it.
+When [`legends-dataforseo`](https://github.com/avalonreset/legends-dataforseo) pulls live Google search demand or [`legends-firecrawl`](https://github.com/avalonreset/legends-firecrawl) scrapes a competitor's site and PDF brochures, they export portable evidence packages bound to a cryptographic manifest. `legends-empire` verifies every byte offline, locks the raw files inside `.raw/` so primary data is never altered, and synthesizes source-cited wiki notes that link back to the exact origin.
 
-This is personal knowledge management across your whole digital environment. Its structure should reflect your reality and change as you build.
+**"Search my vault for our pricing notes."**
 
-## Where the tools fit
+Instead of grepping thousands of random lines or re-reading your entire folder into the context window on every turn, your agent queries the local search index (`empire search`) and the ontology index in milliseconds. It gets back the exact notes, frontmatter facts, and source citations relevant to your question.
 
-[cto-legends](https://github.com/avalonreset/cto-legends) discovers the appropriate module and loads its instructions. The modules do the work. `legends-empire` keeps the evidence and context available for the next session.
+**"What needs attention in my vault?"**
 
-The released memory tools support source capture, linked wiki notes, retrieval, and recoverable updates. You choose the vault. Installing the product does not give an agent permission to reorganize your files.
+Vault stewardship scans your Markdown knowledge base read-only for broken wikilinks, orphan notes, expired freshness windows, and stale project pages. It also audits your coding agent startup files (`CLAUDE.md`, `AGENTS.md`, `GEMINI.md`) so your agent instructions stay lean, consistent across hosts, and free of duplicated rules.
 
-## Provider evidence intake
+---
 
-Keep DataForSEO and Firecrawl evidence banks in a chosen client workspace,
-outside module installs. Empire can verify either supported v1 package and
-plan its intake without network access or vault writes. The existing capture
-and reviewed semantic transaction workflow remains responsible for mutation.
-See [the handoff recipe](docs/RESEARCH-EVIDENCE-HANDOFF.md). A saved response is
-source material, not automatically accepted knowledge.
+## The seven provinces: Map and Blueprint
 
-## Vault stewardship
+Your digital reality is already scattered across folders, repositories, servers, financial records, and half-built ideas. The challenge is keeping track of what actually exists today versus what you intend to build tomorrow.
 
-Ask your agent: "What needs attention in my vault?", "Review my stale projects",
-or "Help me recover this session." The **vault stewardship** capability in
-`legends-empire` gives the agent a repeatable inventory, link and freshness
-evidence, and a bounded review queue. File hashes and baseline comparisons help
-it distinguish changed evidence from yesterday's findings.
+`legends-empire` ships a whole-life starter framework organized into seven provinces. Inside every province live two distinct sections: **The Map** and **The Blueprint**.
 
-The agent names the capability it selects, checks readiness, and shows the
-results of the work it actually performs. You can also ask for
-`legends-vault-stewardship` directly. It shares Empire's installation and update
-lifecycle; there is no second package to manage.
+<p align="center"><img src="assets/cards/r1/slot-4-seven-provinces.svg" width="100%" alt="The seven provinces: Map and Blueprint across Work, Money, Craft, Home, People, Self, and Ambition"></p>
 
-The value is continuity: notes, project intentions, and session handoffs remain
-readable Markdown, while mechanical checks make the agent's review verifiable.
-An unlinked receipt need not become cleanup work. A missing route to an active
-decision deserves a closer look. The agent interprets that evidence and prepares
-a small campaign; authorized repairs use Empire's existing transaction engine.
+**The Map** records verified reality: what is live right now, where its canonical files or repositories sit, and when it was last checked. **The Blueprint** records future intention. Keeping them separate enforces one crucial discipline for both humans and AI agents: a planned system is never confused with a working system, and an unwritten ambition stays unwritten until you decide what it is.
 
-Stewardship adds no separate skill or product installation. It includes an
-attachable [Markdown knowledge pack](docs/knowledge-packs.md): operating
-playbooks, ontology and reusable project/session records. Preview its
-attachment to your vault, then apply the reviewed transaction. Future pack
-updates preserve your work and report conflicts with edited references. See the
-[stewardship workflow](docs/stewardship.md) for commands, limits, and the optional
-Plane view.
+| Province | Starter path | What lives here |
+| --- | --- | --- |
+| **Work** | `wiki/work/Work.md` | Active operations, ventures, client deliveries, and commitments consuming your attention |
+| **Money** | `wiki/money/Money.md` | Resources, obligations, pricing, runway, ownership, and the room you have to maneuver |
+| **Craft** | `wiki/craft/Craft.md` | The things you make and the disciplines you sharpen because mastery and taste matter |
+| **Home** | `wiki/home/Home.md` | The physical world you inhabit, your property and hardware, and the household machinery |
+| **People** | `wiki/people/People.md` | Relationships, promises, collaborators, and the allies who matter beyond a transaction |
+| **Self** | `wiki/self/Self.md` | Health, energy, capacity, operating rhythm, and the human running all of this machinery |
+| **Ambition** | `wiki/ambition/Ambition.md` | What all of the machinery is for: long-range targets before they become active Work projects |
 
-## Ontology engine and fact gating
+The provinces organize attention without forcing you to move your existing project folders or git repositories. Your operational folders stay right where they work best, while the seven provinces act as your navigable map over the whole terrain.
 
-Version `0.4.0` introduces the **Ontology Engine** ([docs/ontology.md](docs/ontology.md)), providing answerable vault queries over structured entities and flat frontmatter facts without altering human-readable Markdown notes.
+---
 
-- **Deterministic Prerequisite Gating (`ontology need`)**: Automated workflows check fact freshness and certification before executing actions, halting safely on draft, missing, conflicting, or stale facts.
-- **Exact Differential Replacement (EDR)**: Mutating transaction bundles (`operation_type: "ontology"`) may only update declared ontology frontmatter keys, preserving non-ontology blocks, BOM, newlines, and body bytes byte-for-byte.
-- **Cryptographic & Owner Certification**: Facts can be certified by explicit owner review digests or pinned evidence files (`raw:sha256:`, `bank:`).
-- **Sub-Millisecond Alias & Fact Resolution**: Resolves canonical entity IDs and aliases in sub-millisecond index lookups and halts automated workflows when required facts are missing, uncertified, stale, or conflicting.
+## Why source-cited memory beats raw agent file edits
 
-## Agent setup (via `cto-legends`)
+Giving a coding agent raw filesystem write access to your personal or company notes feels convenient until the first time an assistant silently overwrites a decision log, invents a citation, or deletes an unlinked receipt during "cleanup."
 
-Part of the [CTO Legends](https://github.com/avalonreset/cto-legends) ecosystem. `cto-legends` is the only registered skill; this repo vendors a pinned copy at [skills/cto-legends/SKILL.md](skills/cto-legends/SKILL.md).
+<p align="center"><img src="assets/cards/r1/slot-5-raw-vs-empire.svg" width="100%" alt="Comparison: Direct agent file edits versus One vault engine with legends-empire"></p>
 
-Install with `python -m cto_legends --home <cto-legends-home> install legends-empire --apply` (or shorthand `cto-legends install legends-empire --apply` when `cto-legends` is on `PATH`), then follow the module recipe the router loads ([docs/AGENT-RECIPE.md](docs/AGENT-RECIPE.md)). Do not register this module as its own skill.
+`legends-empire` treats your Markdown vault with the same rigor a database engineer gives a production ledger:
 
-## Install and use
+- **One canonical home per fact.** Raw captures and API payloads live in `.raw/` bound to a SHA-256 source ledger. Human-readable synthesis lives in `wiki/`. An agent summary never overwrites the primary source behind it.
+- **Hash-locked write transactions.** Every proposed mutation binds each target file to its expected prior SHA-256 digest. If you edited a note in Obsidian while the agent was thinking, the transaction halts cleanly instead of clobbering your work.
+- **Crash-safe recovery across macOS, Linux, and Windows NTFS.** Every transaction records a private recovery journal before modifying files, so an interrupted process can be rolled back to a verified state in one step.
+- **Hot doorway orientation (`wiki/hot.md`).** Instead of stuffing your entire vault into every prompt, `wiki/hot.md` gives your coding agent a short, current doorway into what matters right now and where the deeper notes live.
 
-Follow the [installation guide](docs/install-guide.md) with the [current release](https://github.com/avalonreset/legends-empire/releases). Keep the software checkout separate from your own `Empire` folder.
+---
 
-**Release boundary:** this package supplies memory tools, vault stewardship and its attachable Markdown knowledge pack. The seven-province starter, Throne Room canvas, territory maps, and unified onboarding remain separate development work. The structure described above is the direction, not a claim that the current installer sets up all of it.
+## Vault stewardship, instant search and the ontology engine
 
-Native Windows supports reviewed transactions on local NTFS vaults through
-retained Windows handles and protected runtime ACLs. Linux and macOS retain
-their POSIX backend. Native recovery covers process interruption; Windows
-does not claim POSIX directory-fsync durability after sudden power loss.
-Network shares, reparse-point paths and non-NTFS storage are not native write
-targets. See [platform setup](docs/windows-wsl.md) for the exact scope and the
-optional WSL route.
+As a Markdown knowledge base grows from fifty notes to five thousand, three capabilities keep it fast and trustworthy without turning your files into a proprietary database.
 
-## Quick start
+### Instant local search and hybrid retrieval
 
-Install and inspect `legends-empire` through the central [`cto-legends`](https://github.com/avalonreset/cto-legends) router (replace `<cto-legends-home>` with your router state directory, such as `~/.cto-legends`; bare `cto-legends ...` is an optional shorthand when `Scripts`/`bin` is on `PATH`):
+Your notes remain plain `.md` files on your own drive, ready to open in Obsidian at any moment. Behind the scenes, `legends-empire` indexes headings, wikilinks, and note bodies locally so your agent can run instant BM25 and contextual retrieval searches offline without sending your private vault to a third-party vector cloud.
+
+### The ontology engine
+
+Standard Markdown frontmatter becomes an answerable fact graph ([docs/ontology.md](docs/ontology.md)). You and your agent can declare structured entities, aliases, and certified frontmatter facts while preserving every byte of your human prose below the frontmatter fence. Automated workflows can check whether a required fact is fresh and certified before acting, halting safely when key information is still a draft or out of date.
+
+### Vault stewardship and attachable knowledge packs
+
+Running a stewardship check (`legends-vault-stewardship`, bundled inside the same installation) gives your agent a repeatable health report: broken wikilinks, unreadable files, expired freshness dates, and drift across your coding agent entry files.
+
+Stewardship also lets you attach curated Markdown knowledge packs ([docs/knowledge-packs.md](docs/knowledge-packs.md)) from sibling modules such as [`legends-hetzner`](https://github.com/avalonreset/legends-hetzner), [`legends-coolify`](https://github.com/avalonreset/legends-coolify), and [`legends-cloudflare`](https://github.com/avalonreset/legends-cloudflare), bringing verified infrastructure runbooks straight into your vault without touching your private notes.
+
+---
+
+## Reference
+
+Everything you need to run `legends-empire` through your coding agent is in the essay above. Open these drawers whenever you want the CLI command reference, architecture layout, or release notes.
+
+<details>
+<summary><strong>CLI reference and agent setup</strong></summary>
+
+<br>
+
+### Agent setup (via `cto-legends`)
+
+Part of the [`cto-legends`](https://github.com/avalonreset/cto-legends) ecosystem. `cto-legends` is the only registered skill; this repository vendors a pinned copy at [skills/cto-legends/SKILL.md](skills/cto-legends/SKILL.md). Install via `cto-legends install legends-empire` and let the router resolve [docs/AGENT-RECIPE.md](docs/AGENT-RECIPE.md) on demand. Do not register this module as a standalone skill folder.
 
 ```sh
 python -m cto_legends --home <cto-legends-home> sync --apply
@@ -137,56 +130,58 @@ python -m cto_legends --home <cto-legends-home> install legends-empire --apply
 python -m cto_legends --home <cto-legends-home> handoff legends-empire
 ```
 
-Run a read-only vault stewardship check or verify an exported research evidence bank from any working directory through the router:
+Run vault memory, search, ontology, or stewardship commands through the router from any working directory:
 
 ```sh
-python -m cto_legends --home <cto-legends-home> run legends-vault-stewardship -- steward --help
 python -m cto_legends --home <cto-legends-home> run legends-empire -- --help
+python -m cto_legends --home <cto-legends-home> run legends-vault-stewardship -- steward --help
 ```
 
-When running directly from a source checkout, set the repository root as the current working directory first:
+| Surface | Key subcommands | What it does |
+| --- | --- | --- |
+| Vault setup & memory | `init`, `adopt`, `doctor`, `capture`, `plan-transaction`, `apply-transaction`, `recover`, `checkpoint` | Non-destructive Seven Provinces initialization, source-cited capture, hash-locked transactions, and crash recovery |
+| Search & retrieval | `search` (`retrieve.py`, `bm25-index.py`, `read-hot-cache.sh`) | Instant local search, BM25 indexing, and `wiki/hot.md` orientation |
+| Research intake | `verify-research-evidence`, `plan-research-intake` | Offline SHA-256 verification and intake planning for `legends-dataforseo` and `legends-firecrawl` evidence packs |
+| Ontology engine | `ontology resolve`, `ontology ask`, `ontology need`, `ontology propose`, `ontology certify`, `ontology bench` | Sub-millisecond entity resolution, frontmatter fact queries, prerequisite gating, and differential frontmatter updates |
+| Vault stewardship | `steward scan`, `steward observe`, `steward review`, `steward entry-audit`, `steward digest`, `steward law` | Read-only link and freshness audits, multi-vendor agent startup audits, and attachable `legends.knowledge-pack/v1` packs |
 
-```sh
-python -m legends_vault_steward --help
-python -m claude_empire.cli --help
-```
+</details>
 
-## Architecture and how it works
+<details>
+<summary><strong>Vault layout, platform support and attribution</strong></summary>
+
+<br>
 
 ```text
 Obsidian Markdown Vault (user-owned files)
-  +-- claude_empire/ (source capture, linked wiki notes, reviewed transactions)
-  +-- legends_vault_steward/ (read-only inventory, link freshness, bounded review queue)
-  +-- knowledge/ (attachable `legends.knowledge-pack/v1` playbooks and templates)
+  +-- wiki/
+  |     +-- hot.md, index.md, overview.md, log.md
+  |     +-- work/Work.md, money/Money.md, craft/Craft.md, home/Home.md
+  |     +-- people/People.md, self/Self.md, ambition/Ambition.md
+  |     +-- meta/ (ledgers and ontology starter)
+  +-- inbox/ (drop zone for captures and research intake)
+  +-- .raw/ (immutable SHA-256 primary evidence archive)
+  +-- .obsidian/ (graph view colors and workspace config)
 ```
 
-- `claude_empire/`: Core vault memory runtime, atomic transaction engine, and research evidence handoff verifier.
-- `legends_vault_steward/`: Vault stewardship CLI and attachable knowledge pack manager.
-- `docs/`: [Operating recipe](docs/AGENT-RECIPE.md), [installation guide](docs/install-guide.md), [stewardship guide](docs/stewardship.md), [knowledge packs](docs/knowledge-packs.md), and [search strategy](docs/SEARCH-STRATEGY.md).
+- **Platform support.** Runs locally in Python 3.11+ using the standard library across Linux, macOS, and native Windows NTFS vaults ([docs/windows-wsl.md](docs/windows-wsl.md)). Network shares, symlinks, and reparse points are refused as write targets.
+- **Optional Home compatibility.** AI Marketing Hub Home fits an [optional shared-root capability slot](docs/home-adapter.md); standalone `legends-empire` vaults remain completely independent.
+- **Guides and docs.** [Operating recipe](docs/AGENT-RECIPE.md), [installation guide](docs/install-guide.md), [stewardship guide](docs/stewardship.md), [ontology guide](docs/ontology.md), [knowledge packs](docs/knowledge-packs.md), [research evidence handoff](docs/RESEARCH-EVIDENCE-HANDOFF.md), and [search strategy](docs/SEARCH-STRATEGY.md).
+- **Attribution & license.** Released under the [MIT License](LICENSE). Incorporates source-cited wiki and memory foundations from [claude-obsidian](https://github.com/AgriciDaniel/claude-obsidian) by Daniel Agrici ([AgriciDaniel](https://github.com/AgriciDaniel)); full notices are preserved in [ATTRIBUTION.md](ATTRIBUTION.md), [NOTICE](NOTICE), [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md), [CITATION.cff](CITATION.cff), [CONTRIBUTING.md](CONTRIBUTING.md), [SUPPORT.md](SUPPORT.md), and [SECURITY.md](SECURITY.md).
 
-## FAQ
+</details>
 
-**Does installing `legends-empire` automatically modify my Obsidian vault?**
-No. You choose the target vault, and all writes happen through reviewed transactions. Vault stewardship inspections and evidence intake previews are read-only by default.
+## Start here
 
-**Can other Legends modules attach their runbooks to my vault?**
-Yes. Modules that ship a `legends.knowledge-pack/v1` manifest (such as [`legends-hetzner`](https://github.com/avalonreset/legends-hetzner), [`legends-coolify`](https://github.com/avalonreset/legends-coolify), and [`legends-cloudflare`](https://github.com/avalonreset/legends-cloudflare)) can preview and attach their reference packs without overwriting your private notes.
+Paste the [agent handoff block](#legends-empire-turn-your-obsidian-vault-into-ai-agent-memory-and-a-markdown-knowledge-base) at the top of this page into your coding agent, let it wire `legends-empire` through [`cto-legends`](https://github.com/avalonreset/cto-legends), and give your agent a vault memory that compounds across every session.
 
----
+<p align="center"><a href="https://github.com/stars/avalonreset/lists/cto-legends"><img src="assets/cards/r1/slot-collection-star-shrine.svg" width="100%" alt="GitHub Star List: The complete cto-legends collection on one page. Bookmark or star the router and every module from a single GitHub list."></a></p>
 
-## Attribution
+Running a company and want this vault architecture and agent stack applied directly to your business? Message Avalon Reset at [cto-legends.com/dm](https://cto-legends.com/dm). The desk is async, so the conversation starts the moment you write and nobody forces you onto a sales call.
 
-`legends-empire` incorporates source-cited wiki and memory tooling from [claude-obsidian](https://github.com/AgriciDaniel/claude-obsidian) by Daniel Agrici ([AgriciDaniel](https://github.com/AgriciDaniel)), under the MIT license.
-
-Original copyright, license, and contributor notices are preserved in [LICENSE](LICENSE), [ATTRIBUTION.md](ATTRIBUTION.md), [CITATION.cff](CITATION.cff), [CONTRIBUTING.md](CONTRIBUTING.md), [SUPPORT.md](SUPPORT.md), and [SECURITY.md](SECURITY.md).
+<p align="center"><a href="https://cto-legends.com/dm"><img src="assets/cards/r1/slot-7-message-avalon-reset.svg" width="100%" alt="Want this way of working applied to your own stack? Message Avalon Reset at cto-legends.com/dm"></a></p>
 
 ---
-
-[cto-legends](https://cto-legends.com) · [ai-marketing-hub-pro](https://www.skool.com/ai-marketing-hub-pro)
-
----
-
-<p align="center"><a href="https://github.com/stars/avalonreset/lists/cto-legends"><img src="assets/collection-star-shrine.svg" width="100%" alt="GitHub Star List: The complete cto-legends collection on one page. Bookmark or star the router and every module from a single GitHub list."></a></p>
 
 **Specification & benchmarks on cto-legends.com:**
 - **Module specification & architecture matrix:** [cto-legends.com/modules/legends-empire](https://cto-legends.com/modules/legends-empire)
