@@ -6,7 +6,6 @@
 [![release](https://img.shields.io/github/v/release/avalonreset/legends-empire?label=release&sort=date&style=flat-square&labelColor=000000&color=ff0000)](https://github.com/avalonreset/legends-empire/releases/latest)
 [![checks](https://img.shields.io/github/actions/workflow/status/avalonreset/legends-empire/test.yml?branch=main&label=checks&style=flat-square&labelColor=000000)](https://github.com/avalonreset/legends-empire/actions/workflows/test.yml)
 [![license](https://img.shields.io/github/license/avalonreset/legends-empire?label=license&style=flat-square&labelColor=000000&color=666666)](LICENSE)
-[![github list: 22 repos](https://img.shields.io/badge/github_list-22_repos-ff0000?style=flat-square&labelColor=000000)](https://github.com/stars/avalonreset/lists/cto-legends)
 
 [Operating recipe](docs/AGENT-RECIPE.md) · [install](docs/install-guide.md) · [releases](https://github.com/avalonreset/legends-empire/releases) · [attribution](#attribution)
 
@@ -192,4 +191,4 @@ Original copyright, license, and contributor notices are preserved in [LICENSE](
 **Specification & benchmarks on cto-legends.com:**
 - **Module specification & architecture matrix:** [cto-legends.com/modules/legends-empire](https://cto-legends.com/modules/legends-empire)
 - **Related engineering dispatches:** [Obsidian Second Brain: Markdown Knowledge Base Guide](https://cto-legends.com/blog?post=obsidian-second-brain-markdown-knowledge-base) · [How to Build AI Agents: Production CLI & MCP Routing](https://cto-legends.com/blog?post=how-to-build-ai-agents-cli-mcp-routing) · [Fractional CTO Advisory: Technical Due Diligence Guide](https://cto-legends.com/blog?post=fractional-cto-technical-due-diligence-guide)
-- **Ecosystem hub & 22-repo GitHub list:** [cto-legends.com/home](https://cto-legends.com/home) · [github.com/stars/avalonreset/lists/cto-legends](https://github.com/stars/avalonreset/lists/cto-legends) (browse or star all 22 repositories from one page)
+- **Ecosystem hub:** [cto-legends.com/home](https://cto-legends.com/home)
