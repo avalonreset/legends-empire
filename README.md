@@ -1,6 +1,6 @@
-<p align="center"><img src="assets/banner.webp" width="100%" alt="legends-empire: turn your Obsidian vault into AI agent memory and a source-cited markdown knowledge base"></p>
+<p align="center"><img src="assets/banner.webp" width="100%" alt="legends-empire: turn your Markdown Empire vault into AI agent memory and a source-cited business ontology"></p>
 
-# legends-empire: turn your Obsidian vault into AI agent memory and a markdown knowledge base
+# legends-empire: turn your Markdown Empire vault into AI agent memory and a business ontology
 
 [![release](https://img.shields.io/github/v/release/avalonreset/legends-empire?label=release&sort=date&style=flat-square&labelColor=000000&color=ff0000)](https://github.com/avalonreset/legends-empire/releases/latest)
 [![checks](https://img.shields.io/github/actions/workflow/status/avalonreset/legends-empire/test.yml?branch=main&label=checks&style=flat-square&labelColor=000000)](https://github.com/avalonreset/legends-empire/actions/workflows/test.yml)
@@ -11,12 +11,12 @@ Every coding agent session begins with amnesia unless your agent has a durable m
 
 **Your vault is the memory. The agents do the operating.**
 
-`legends-empire` turns any local Obsidian vault or Markdown folder into source-cited AI agent memory. You speak to your agent in plain english, and `legends-empire` keeps raw evidence quarantined from synthesized wiki notes, organizes your digital reality across seven provinces you actually own, and protects every file write behind a previewed, hash-locked transaction.
+`legends-empire` turns any local Markdown folder into a structured Empire vault and source-cited AI agent memory. You speak to your agent in plain english, and `legends-empire` keeps raw evidence quarantined from synthesized wiki notes, organizes your digital reality across seven provinces you actually own, and protects every file write behind a previewed, hash-locked transaction.
 
 <p align="center"><img src="assets/cards/r1/slot-1-agent-handoff.svg" width="100%" alt="Agent handoff: paste this into Claude Code, Codex, or any coding agent and it does the setup"></p>
 
 ```text
-Set up legends-empire through cto-legends and initialize or adopt my Obsidian vault,
+Set up legends-empire through cto-legends and initialize or adopt my Markdown vault,
 showing me the plan before writing any files.
 ```
 
@@ -28,15 +28,15 @@ showing me the plan before writing any files.
 
 ## AI agent memory in plain english
 
-You should never have to babysit file paths, frontmatter schemas, or SHA-256 digests by hand just to keep an Obsidian vault clean. You tell your coding agent what you want remembered, searched, or audited in normal words, and [`cto-legends`](https://github.com/avalonreset/cto-legends) routes the job straight to `legends-empire`.
+You should never have to babysit file paths, frontmatter schemas, or SHA-256 digests by hand just to keep a Markdown vault clean. You tell your coding agent what you want remembered, searched, or audited in normal words, and [`cto-legends`](https://github.com/avalonreset/cto-legends) routes the job straight to `legends-empire`.
 
 <p align="center"><img src="assets/cards/r1/slot-3-plain-english-chains.svg" width="100%" alt="Say the job in plain words: four spoken sentences routing directly into legends-empire vault operations"></p>
 
 Here are four everyday sentences `legends-empire` was built to answer.
 
-**"Set up my Obsidian vault."**
+**"Set up my Markdown Empire vault."**
 
-Whether you are starting a brand-new folder or adopting a vault you have lived in for years, `legends-empire` previews every file before touching your disk. New vaults receive the complete Seven Provinces starter map, the `wiki/hot.md` doorway for fast agent orientation, an `inbox/` drop zone, and an immutable `.raw/` evidence store. Existing vaults are adopted non-destructively without overwriting a single note or Obsidian setting you customized by hand.
+Whether you are starting a brand-new folder or adopting a vault you have lived in for years, `legends-empire` previews every file before touching your disk. New vaults receive the complete Seven Provinces starter map, the `wiki/hot.md` doorway for fast agent orientation, an `inbox/` drop zone, and an immutable `.raw/` evidence store. Existing vaults are adopted non-destructively without overwriting a single note or workspace setting you customized by hand.
 
 **"Save this research in my vault."**
 
@@ -85,7 +85,7 @@ Giving a coding agent raw filesystem write access to your personal or company no
 `legends-empire` treats your Markdown vault with the same rigor a database engineer gives a production ledger:
 
 - **One canonical home per fact.** Raw captures and API payloads live in `.raw/` bound to a SHA-256 source ledger. Human-readable synthesis lives in `wiki/`. An agent summary never overwrites the primary source behind it.
-- **Hash-locked write transactions.** Every proposed mutation binds each target file to its expected prior SHA-256 digest. If you edited a note in Obsidian while the agent was thinking, the transaction halts cleanly instead of clobbering your work.
+- **Hash-locked write transactions.** Every proposed mutation binds each target file to its expected prior SHA-256 digest. If you edited a note in your code editor while the agent was thinking, the transaction halts cleanly instead of clobbering your work.
 - **Crash-safe recovery across macOS, Linux, and Windows NTFS.** Every transaction records a private recovery journal before modifying files, so an interrupted process can be rolled back to a verified state in one step.
 - **Hot doorway orientation (`wiki/hot.md`).** Instead of stuffing your entire vault into every prompt, `wiki/hot.md` gives your coding agent a short, current doorway into what matters right now and where the deeper notes live.
 
@@ -97,7 +97,7 @@ As a Markdown knowledge base grows from fifty notes to five thousand, three capa
 
 ### Instant local search and hybrid retrieval
 
-Your notes remain plain `.md` files on your own drive, ready to open in Obsidian at any moment. Behind the scenes, `legends-empire` indexes headings, wikilinks, and note bodies locally so your agent can run instant BM25 and contextual retrieval searches offline without sending your private vault to a third-party vector cloud.
+Your notes remain plain `.md` files on your own drive, ready to open in any code editor or terminal at any moment. Behind the scenes, `legends-empire` indexes headings, wikilinks, and note bodies locally so your agent can run instant BM25 and contextual retrieval searches offline without sending your private vault to a third-party vector cloud.
 
 ### The ontology engine
 
@@ -153,7 +153,7 @@ python -m cto_legends --home <cto-legends-home> run legends-vault-stewardship --
 <br>
 
 ```text
-Obsidian Markdown Vault (user-owned files)
+Empire Markdown Vault (user-owned files)
   +-- wiki/
   |     +-- hot.md, index.md, overview.md, log.md
   |     +-- work/Work.md, money/Money.md, craft/Craft.md, home/Home.md
@@ -161,7 +161,6 @@ Obsidian Markdown Vault (user-owned files)
   |     +-- meta/ (ledgers and ontology starter)
   +-- inbox/ (drop zone for captures and research intake)
   +-- .raw/ (immutable SHA-256 primary evidence archive)
-  +-- .obsidian/ (graph view colors and workspace config)
 ```
 
 - **Platform support.** Runs locally in Python 3.11+ using the standard library across Linux, macOS, and native Windows NTFS vaults ([docs/windows-wsl.md](docs/windows-wsl.md)). Network shares, symlinks, and reparse points are refused as write targets.
@@ -173,7 +172,7 @@ Obsidian Markdown Vault (user-owned files)
 
 ## Start here
 
-Paste the [agent handoff block](#legends-empire-turn-your-obsidian-vault-into-ai-agent-memory-and-a-markdown-knowledge-base) at the top of this page into your coding agent, let it wire `legends-empire` through [`cto-legends`](https://github.com/avalonreset/cto-legends), and give your agent a vault memory that compounds across every session.
+Paste the [agent handoff block](#legends-empire-turn-your-markdown-empire-vault-into-ai-agent-memory-and-a-business-ontology) at the top of this page into your coding agent, let it wire `legends-empire` through [`cto-legends`](https://github.com/avalonreset/cto-legends), and give your agent a vault memory that compounds across every session.
 
 <p align="center"><a href="https://github.com/stars/avalonreset/lists/cto-legends"><img src="assets/cards/r1/slot-collection-star-shrine.svg" width="100%" alt="GitHub Star List: The complete cto-legends collection on one page. Bookmark or star the router and every module from a single GitHub list."></a></p>
 
@@ -185,5 +184,5 @@ Running a company and want this vault architecture and agent stack applied direc
 
 **Specification & benchmarks on cto-legends.com:**
 - **Module specification & architecture matrix:** [cto-legends.com/modules/legends-empire](https://cto-legends.com/modules/legends-empire)
-- **Related engineering dispatches:** [Obsidian Second Brain: Markdown Knowledge Base Guide](https://cto-legends.com/blog?post=obsidian-second-brain-markdown-knowledge-base) · [How to Build AI Agents: Production CLI & MCP Routing](https://cto-legends.com/blog?post=how-to-build-ai-agents-cli-mcp-routing) · [Fractional CTO Advisory: Technical Due Diligence Guide](https://cto-legends.com/blog?post=fractional-cto-technical-due-diligence-guide)
+- **Related engineering dispatches:** [AI Agent Governance: Markdown Knowledge Base & Vault Architecture](https://cto-legends.com/blog?post=ai-agent-governance) · [How to Build AI Agents: Production CLI & MCP Routing](https://cto-legends.com/blog?post=how-to-build-ai-agents-cli-mcp-routing) · [Fractional CTO Advisory: Technical Due Diligence Guide](https://cto-legends.com/blog?post=fractional-cto-technical-due-diligence-guide)
 - **Ecosystem hub:** [cto-legends.com/home](https://cto-legends.com/home)
