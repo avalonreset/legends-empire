@@ -27,6 +27,9 @@ def _find_typeset_root() -> Path:
     raise SystemExit("FAIL: typeset.py not found; set AVALON_TYPESET_ROOT to the avalonreset directory.")
 
 
+if __name__ == "__main__" and ("--help" in sys.argv or "-h" in sys.argv):
+    argparse.ArgumentParser(description="Render outlined Legends Font SVG cards (rev r1) for legends-empire.").parse_args()
+
 AVALON_ROOT = _find_typeset_root()
 sys.path.insert(0, str(AVALON_ROOT))
 from typeset import CAP, EM, FONT, Typesetter, width  # noqa: E402

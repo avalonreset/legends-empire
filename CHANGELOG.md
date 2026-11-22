@@ -7,6 +7,10 @@ implementation record for older releases.
 
 ## [Unreleased]
 
+## [0.4.3] - 2026-11-22
+
+- Sync vendored `cto-legends` router skill pin (`69ddc4f68faa`), enforce LF line endings via `.gitattributes`, and standardize release artifact checksums.
+
 ## [0.4.2] - 2026-11-21
 
 Public release. Ships the Seven Provinces starter framework (`Work`, `Money`, `Craft`, `Home`, `People`, `Self`, `Ambition`) inside `templates/vault/wiki/` and refreshes the README and outlined Legends Font SVG design cards.

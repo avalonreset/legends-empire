@@ -1,7 +1,7 @@
 {
   "router_skill_path": "skills/cto-legends/SKILL.md",
-  "router_skill_sha256": "80c198f2946121113b8f1da2ed12ca6e286ec74d5bea5938a28e5372deb96eaf",
+  "router_skill_sha256": "ce04dfd92a842e18c206b413c966aeacca1abe2fdc0806a15170c2d0886f1402",
   "schema_version": 1,
-  "source_commit": "45b08cd6d5c6276d67386f6dc92ffd1e10b9fe0b",
+  "source_commit": "69ddc4f68faa14a72ae8e80bc08f91e3277e4c7d",
   "source_repo": "avalonreset/cto-legends"
 }
