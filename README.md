@@ -13,6 +13,8 @@ Every coding agent session begins with amnesia unless your agent has a durable m
 
 `legends-empire` turns any local Markdown folder into a structured Empire vault and source-cited AI agent memory. You speak to your agent in plain english, and `legends-empire` keeps raw evidence quarantined from synthesized wiki notes, organizes your digital reality across seven provinces you actually own, and protects every file write behind a previewed, hash-locked transaction.
 
+**Specification & governance guide:** [cto-legends.com/modules/legends-empire](https://cto-legends.com/modules/legends-empire) · [AI Agent Governance With Green-Yellow-Red Tool Gates](https://cto-legends.com/blog?post=ai-agent-governance)
+
 <p align="center"><img src="assets/cards/r1/slot-1-agent-handoff.svg" width="100%" alt="Agent handoff: paste this into Claude Code, Codex, or any coding agent and it does the setup"></p>
 
 ```text
